@@ -67,7 +67,7 @@
         <div class="flex flex-wrap items-baseline justify-center gap-x-4 gap-y-2">
           <span class="text-4xl sm:text-5xl font-extrabold text-white">€37</span>
           <span class="text-xl text-slate-500 line-through">€47</span>
-          <span class="w-full sm:w-auto text-blue-300 text-sm font-medium">Early access 48h (lista quente) · depois €47</span>
+          <span class="w-full sm:w-auto text-blue-300 text-sm font-medium">Preço early €37 · depois €47</span>
         </div>
         
         <div class="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto">
@@ -428,7 +428,7 @@ Confirma em 3 linhas e faz 2 perguntas só se forem críticas.</code></pre>
       <div class="grid md:grid-cols-2 gap-6 lg:gap-8">
         <div class="bg-gradient-to-b from-blue-50 to-white border-2 border-blue-200 rounded-2xl p-8 lg:p-10 shadow-sm relative">
           <span class="inline-block px-3 py-1 bg-blue-100 text-blue-800 text-xs font-bold uppercase tracking-wider rounded-md mb-4">
-            Order bump · €19
+            Opcional no Stripe · €27
           </span>
           <h3 class="text-2xl font-bold text-slate-900 mb-4">Pack WhatsApp IA</h3>
           <p class="text-slate-600 leading-relaxed">Sequências prontas: primeiro contacto, visitas, pós-visita, 7 toques, objeções curtas e quick replies para WhatsApp Business.</p>
@@ -436,7 +436,7 @@ Confirma em 3 linhas e faz 2 perguntas só se forem críticas.</code></pre>
         
         <div class="bg-white border-2 border-slate-800 rounded-2xl p-8 lg:p-10 shadow-sm relative">
           <span class="inline-block px-3 py-1 bg-slate-800 text-white text-xs font-bold uppercase tracking-wider rounded-md mb-4">
-            OTO · €47
+            OTO · €97 Pro / €47 Lite
           </span>
           <h3 class="text-2xl font-bold text-slate-900 mb-4">Kit Angariação com IA</h3>
           <p class="text-slate-600 leading-relaxed">Pitch 60s + 5 min, 12 objeções com treino, proposta 1 página, CMA conversacional e sequência pós-reunião 7 dias.</p>
@@ -540,7 +540,7 @@ Confirma em 3 linhas e faz 2 perguntas só se forem críticas.</code></pre>
             <iconify-icon icon="lucide:chevron-down" class="text-xl text-slate-400 group-open:rotate-180 transition-transform"></iconify-icon>
           </summary>
           <div class="px-6 pb-6 text-slate-600">
-            Não é um PDF de teoria. É plano de 21 dias + 60–80 prompts + checklists + caminho de rotina semanal. Early access lista: €37–€41 nas primeiras 48h.
+            Não é um PDF de teoria. É plano de 21 dias + 60–80 prompts + checklists + caminho de rotina semanal. Preço early: €37 nas primeiras 48h.
           </div>
         </details>
         
@@ -572,9 +572,9 @@ Confirma em 3 linhas e faz 2 perguntas só se forem críticas.</code></pre>
     <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="grid lg:grid-cols-2 gap-12 lg:gap-20 items-start">
         <div>
-          <h2 class="text-3xl lg:text-4xl font-bold mb-6 tracking-tight">Early access em breve — entra na lista</h2>
+          <h2 class="text-3xl lg:text-4xl font-bold mb-6 tracking-tight">Começa hoje o teu sistema de 21 dias</h2>
           <p class="text-lg text-slate-300 mb-8 leading-relaxed">
-            Early access 48h a €37 para a lista quente (depois €47). Entra na lista agora; o link de pagamento Stripe chega por email assim que estiver ativo.
+            Acesso early a €37 (depois €47). O pagamento é feito com segurança no Stripe Checkout e recebes o acesso por email.
           </p>
           
           <ul class="space-y-4 mb-8">
@@ -584,7 +584,7 @@ Confirma em 3 linhas e faz 2 perguntas só se forem críticas.</code></pre>
             </li>
             <li class="flex gap-3 text-slate-200 border-b border-white/10 pb-4">
               <iconify-icon icon="lucide:check" class="text-xl text-blue-400 shrink-0 mt-0.5"></iconify-icon>
-              <span>Opção Pack WhatsApp no mesmo checkout</span>
+              <span>Packs opcionais disponíveis no Stripe Checkout</span>
             </li>
             <li class="flex gap-3 text-slate-200 border-b border-white/10 pb-4">
               <iconify-icon icon="lucide:check" class="text-xl text-blue-400 shrink-0 mt-0.5"></iconify-icon>
@@ -606,35 +606,35 @@ Confirma em 3 linhas e faz 2 perguntas só se forem críticas.</code></pre>
           </div>
           
           <div class="my-6 p-5 border-2 border-dashed border-blue-200 bg-blue-50/50 rounded-xl">
-            <label class="flex gap-4 cursor-pointer items-start">
-              <input type="checkbox" id="bump" checked onchange="updateTotal()" class="mt-1 w-5 h-5 rounded border-blue-300 text-blue-600 focus:ring-blue-500" />
+            <div class="flex gap-4 items-start">
+              <div class="w-5 h-5 mt-1 rounded border-2 border-blue-300 shrink-0"></div>
               <div>
-                <strong class="block text-slate-900 mb-1">Sim — adicionar Pack WhatsApp IA (+€19)</strong>
-                <p class="text-sm text-slate-600 leading-relaxed">Sequências WA prontas: 7 toques, visitas, objeções, quick replies.</p>
+                <strong class="block text-slate-900 mb-1">Pack WhatsApp IA — opcional no Stripe (+€27)</strong>
+                <p class="text-sm text-slate-600 leading-relaxed">Escolhes no Stripe Checkout: sequências WA prontas, visitas, objeções e quick replies.</p>
               </div>
-            </label>
+            </div>
           </div>
           
-          <div id="bump-line" class="flex justify-between items-center py-4 border-b border-slate-200">
-            <span class="text-slate-600 font-medium">Pack WhatsApp IA</span>
-            <strong class="text-lg">€19</strong>
+          <div class="flex justify-between items-center py-4 border-b border-slate-200">
+            <span class="text-slate-600 font-medium">Pack Follow-up &amp; Visitas — opcional no Stripe</span>
+            <strong class="text-lg">€37</strong>
           </div>
           
           <div class="flex justify-between items-center py-6">
             <span class="text-xl font-bold text-slate-900">Total hoje</span>
-            <span id="total" class="text-3xl font-extrabold text-blue-600">€56</span>
+            <span id="total" class="text-3xl font-extrabold text-blue-600">€37</span>
           </div>
           
-          <a href="mailto:4improvementsportugal@gmail.com?subject=Lista%20early%20Sistema%20IA%2021%20Dias&body=Quero%20entrar%20na%20lista%20early%20(%E2%82%AC37%2F48h).%0ANome%3A%0AEmail%3A%0ATelefone%20(opcional)%3A" id="checkout-final-btn" class="block w-full text-center py-4 px-6 text-lg font-bold text-white transition-all bg-emerald-600 rounded-xl hover:bg-emerald-500 shadow-lg shadow-emerald-600/20 mb-6">
-            Entrar na lista early — €37
+          <a href="https://buy.stripe.com/aFa5kF1OFc4D1fNb6mgrS02" target="_blank" rel="noopener" id="checkout-final-btn" class="block w-full text-center py-4 px-6 text-lg font-bold text-white transition-all bg-emerald-600 rounded-xl hover:bg-emerald-500 shadow-lg shadow-emerald-600/20 mb-6">
+            Comprar agora — early €37
           </a>
           
           <div class="space-y-3">
             <p class="text-xs text-slate-500 text-center">
-              Checkout Stripe em preparação. Por agora, entra na lista early (€37 / 48h). Assim que o pagamento estiver ativo, recebes o link por email.
+              Pagamento seguro no Stripe Checkout. Podes escolher os packs opcionais diretamente no checkout.
             </p>
             <p class="text-xs text-slate-400 text-center font-medium">
-              Preço normal core: €47 · Bump WhatsApp €19 · OTO Kit Angariação €47.
+              Core €47 / early €37 · Pack WA €27 · Pack Follow-up €37 · OTO Pro €97 / Lite €47.
             </p>
           </div>
         </div>
@@ -658,6 +658,7 @@ Confirma em 3 linhas e faz 2 perguntas só se forem críticas.</code></pre>
       <div class="space-y-4">
         <p><strong class="text-white tracking-widest uppercase text-xs">4Improvements</strong> — IA para imobiliário em Portugal.</p>
         <p>Produto digital · Autor: Pedro Ferreira · Garantia 14 dias · Uso profissional do comprador.</p>
+        <p class="text-slate-500">Preços: Core €47 / early €37 · Pack WA €27 · Pack Follow-up €37 · OTO Pro €97 / Lite €47.</p>
         <p class="text-slate-500">Aviso: não coloques dados pessoais de clientes em ferramentas de IA. Este material não substitui aconselhamento jurídico nem deveres AMI/RGPD.</p>
       </div>
     </div>
@@ -676,15 +677,6 @@ Confirma em 3 linhas e faz 2 perguntas só se forem críticas.</code></pre>
   </div>
 
   <script>
-    function updateTotal() {
-      const bump = document.getElementById('bump').checked;
-      const core = 37;
-      const bumpPrice = bump ? 19 : 0;
-      document.getElementById('bump-line').style.display = bump ? 'flex' : 'none';
-      document.getElementById('total').textContent = '€' + (core + bumpPrice);
-    }
-    updateTotal();
-
     // Purchase toast — demo cycling Portuguese names + cities
     (function () {
       const people = [

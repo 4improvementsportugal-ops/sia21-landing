@@ -1,2 +1,3 @@
-# sia21-landing
-Landing + checkout Sistema IA do Consultor Imobiliário 21 Dias (4Improvements)
+# SIA21 Landing
+
+Public landing page for SIA21 (Sistema IA Consultor 21 Dias). CTAs will use Stripe Payment Links.

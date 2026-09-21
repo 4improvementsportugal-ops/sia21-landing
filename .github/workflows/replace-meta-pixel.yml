@@ -1,0 +1,33 @@
+name: Apply Meta Pixel ID
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  replace:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Replace placeholder and remove temporary workflow
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          for path in Path('angles').glob('*/index.html'):
+              text = path.read_text()
+              if '[META_PIXEL_ID]' in text:
+                  path.write_text(text.replace('[META_PIXEL_ID]', '1506988540335331'))
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add angles
+          git rm .github/workflows/replace-meta-pixel.yml
+          if ! git diff --cached --quiet; then
+            git commit -m 'Replace landing page Meta Pixel placeholder'
+            git push
+          fi

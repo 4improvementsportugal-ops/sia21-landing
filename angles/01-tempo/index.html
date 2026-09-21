@@ -1,23 +1,30 @@
 <!DOCTYPE html>
-<html lang="pt-PT"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Sistema IA do Consultor</title>
-<meta name="robots" content="noindex">
-<style>body{margin:0;font-family:system-ui,sans-serif;background:#0f172a;color:#e2e8f0;display:grid;place-items:center;min-height:100vh}p{opacity:.7}</style>
-</head><body><p>A carregar…</p>
+<html lang="pt-PT">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Volta a Decidir Onde Vão as Tuas Horas | Sistema IA do Consultor</title>
+<meta name="description" content="Em 21 dias instalas prompts pt-PT, batching e tarefas diárias para recuperar tempo.">
+<link rel="stylesheet" href="../../assets/brand-188cafc4dde0.jpg.css">
+<link rel="stylesheet" href="../../assets/brand-32af63f580aa.jpg.css">
+<link rel="stylesheet" href="../../assets/brand-7f5c123ac745.jpg.css">
+<link rel="stylesheet" href="../../assets/brand-9dc24c351b42.png.css">
+<link rel="stylesheet" href="../../assets/brand-c4d670e1193e.jpg.css">
+<link rel="stylesheet" href="../../assets/brand-cb96aedd6f5f.png.css">
+<style>body{font-family:system-ui,sans-serif;margin:0;color:#0f172a;background:#f8fafc}main{max-width:900px;margin:auto;padding:72px 24px}section{background:#fff;border-radius:24px;padding:32px;margin:24px 0}a{color:#2563eb}.btn{display:inline-block;background:#2563eb;color:#fff;padding:14px 22px;border-radius:12px;text-decoration:none;font-weight:700}</style>
+</head>
+<body><main>
+<section><p>4Improvements · Sistema IA do Consultor</p><h1>Volta a ser tu a decidir onde vão as tuas horas.</h1><p>Em 21 dias instala um sistema de prompts pt-PT, batching e tarefas diárias para recuperar tempo para visitas, angariação e pessoas.</p><p><strong>€37</strong> · garantia 14 dias</p><a class="btn" href="https://buy.stripe.com/aFa5kF1OFc4D1fNb6mgrS02">Quero o sistema</a></section>
+<section><h2>Um método para executar</h2><p>Baseline no D1, templates e prompts, operação em batch e medição no D21. Tu validas factos, decisões e comunicação final.</p></section>
+<footer><a href="../../termos.html">Termos e Condições</a> · <a href="../../privacidade.html">Política de Privacidade</a></footer>
+</main>
 <script>
-(async function(){
-  try {
-    const parts = ['content.gz.b64.p1','content.gz.b64.p2','content.gz.b64.p3','content.gz.b64.p4','content.gz.b64.p5'];
-    const chunks = await Promise.all(parts.map(p => fetch(p).then(r => r.text())));
-    const b64 = chunks.join('').replace(/\s+/g,'');
-    const bin = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
-    const ds = new DecompressionStream('gzip');
-    const stream = new Blob([bin]).stream().pipeThrough(ds);
-    const html = await new Response(stream).text();
-    document.open(); document.write(html); document.close();
-  } catch (e) {
-    document.body.innerHTML = '<p>Falha ao carregar a página. Atualiza ou contacta suporte.</p>';
-    console.error(e);
-  }
+(function(){
+  var META_PIXEL_ID = "[META_PIXEL_ID]";
+  var key="4i_cookie_consent_v1";
+  var consent=localStorage.getItem(key);
+  if(consent!=="accepted"&&consent!=="rejected"){var b=document.createElement("div");b.innerHTML='<div style="position:fixed;bottom:0;left:0;right:0;background:#0f172a;color:#fff;padding:18px;text-align:center;z-index:9">Usamos cookies para medir campanhas. <button id="reject">Rejeitar</button> <button id="accept">Aceitar</button> · <a style="color:#bfdbfe" href="../../privacidade.html#cookies">Saber mais</a></div>';document.body.appendChild(b);document.getElementById("accept").onclick=function(){localStorage.setItem(key,"accepted");b.remove();load()};document.getElementById("reject").onclick=function(){localStorage.setItem(key,"rejected");b.remove()}}
+  function load(){if(!/^\d+$/.test(META_PIXEL_ID)||window.fbq)return;!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version="2.0";n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,"script","https://connect.facebook.net/en_US/fbevents.js");fbq("consent","grant");fbq("init",META_PIXEL_ID);fbq("track","PageView")}
+  if(consent==="accepted")load();
 })();
 </script></body></html>

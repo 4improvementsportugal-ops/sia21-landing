@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<!-- SIA21 angle: 01-tempo | Stripe early €37 -->
+<html lang="pt-PT" class="scroll-smooth">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Recupera 8+ Horas/Semana com IA — Sistema 21 Dias | 4Improvements</title>
+  <meta name="description" content="Plano de 21 dias para consultores imobiliários PT: emails, Idealista, WhatsApp e follow-up com IA segura. Early €37. Garantia 14 dias." />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
+  <style>
+    @import url('https://api.fontshare.com/v2/css?f[]=plus-jakarta-sans@400,500,600,700,800&display=swap');
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    .checkout-gradient { background: linear-gradient(180deg, #0f172a 0%, #1e3a8a 100%); }
+
+    .purchase-toast {
+      position: fixed; left: 1rem; bottom: 1rem; z-index: 60;
+      max-width: min(22rem, calc(100vw - 2rem));
+      transform: translateY(120%); opacity: 0;
+      transition: transform .4s ease, opacity .4s ease;
+      pointer-events: none;
+    }
+    .purchase-toast.is-visible { transform: translateY(0); opacity: 1; pointer-events: auto; }
+    .prompt-code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: .75rem; line-height: 1.55; white-space: pre-wrap; word-break: break-word;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-900 antialiased selection:bg-blue-200 selection:text-blue-900">
+  <!-- Sticky Nav -->
+  <header class="sticky top-0 z-50 bg-slate-900/95 backdrop-blur-md border-b border-white/10">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16">
+        <div class="text-blue-300 font-bold tracking-widest uppercase text-xs sm:text-sm">
+          4Improvements
+        </div>
+        <a href="#checkout" id="nav-cta-btn" class="inline-flex items-center justify-center px-5 py-2 text-sm font-semibold text-white transition-all bg-blue-600 rounded-full hover:bg-blue-500 hover:shadow-lg hover:shadow-blue-500/25">
+          Quero o sistema
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <section class="relative pt-20 pb-28 lg:pt-28 lg:pb-36 overflow-hidden bg-slate-900">
+    <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCI+CjxwYXRoIGQ9Ik0wIDBoNDB2NDBIMHoiIGZpbGw9Im5vbmUiLz4KPHBhdGggZD0iTTAgMTBoNDBNMTAgMHY0ME0wIDIwaDQwTTIwIDB2NDBNMCAzMGg0ME0zMCAwdjQwIiBzdHJva2U9InJnYmEoMjU1LDI1NSwyNTUsMC4wMykiIHN0cm9rZS13aWR0aD0iMSIvPgo8L3N2Zz4=')] opacity-50"></div>
+    <div class="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-blue-600/20 blur-[120px] rounded-full pointer-events-none"></div>
+    
+    <div class="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+      <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-blue-400/30 bg-blue-400/10 text-blue-300 text-xs font-bold tracking-wide uppercase mb-8">
+        <iconify-icon icon="lucide:sparkles" class="text-sm"></iconify-icon>
+        Ângulo tempo · Consultores imobiliários PT
+      </div>
+      
+      <h1 class="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white tracking-tight leading-tight mb-6">
+        Deixa de perder o dia em admin. <br class="hidden lg:block"/>
+        <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-blue-200">
+          21 Dias para Recuperar 8+ Horas/Semana
+        </span>
+      </h1>
+      
+      <p class="max-w-2xl mx-auto text-lg sm:text-xl text-slate-300 mb-10 leading-relaxed">
+        Em 21 dias montas um sistema de IA prático que te devolve tempo mensurável — emails, Idealista, WhatsApp e follow-up sem jargão e sem risco desnecessário com dados de clientes.
+      </p>
+      
+      <div class="flex flex-col items-center gap-6">
+        <div class="flex flex-wrap items-baseline justify-center gap-x-4 gap-y-2">
+          <span class="text-4xl sm:text-5xl font-extrabold text-white">€37</span>
+          <span class="text-xl text-slate-500 line-through">€47</span>
+          <span class="w-full sm:w-auto text-blue-300 text-sm font-medium">Preço early €37 · depois €47</span>
+        </div>
+        
+        <div class="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto">
+          <a href="#checkout" id="hero-cta-btn" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 text-base font-bold text-white transition-all bg-blue-600 rounded-full hover:bg-blue-500 hover:shadow-xl hover:shadow-blue-500/20">
+            Começar agora — early €37
+            <iconify-icon icon="lucide:arrow-right" class="text-lg"></iconify-icon>
+          </a>
+          <a href="#inclui" id="hero-secondary-btn" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 text-base font-bold text-white transition-all bg-white/5 border border-white/10 rounded-full hover:bg-white/10">
+            Ver o que inclui
+          </a>
+        </div>
+        
+        <div class="flex flex-wrap justify-center gap-x-8 gap-y-4 mt-6 text-sm font-medium text-slate-400">
+          <span class="flex items-center gap-1.5"><iconify-icon icon="lucide:shield-check" class="text-emerald-400"></iconify-icon> Garantia 14 dias</span>
+          <span class="flex items-center gap-1.5"><iconify-icon icon="lucide:file-text" class="text-blue-400"></iconify-icon> 60–80 prompts pt-PT</span>
+          <span class="flex items-center gap-1.5"><iconify-icon icon="lucide:bot" class="text-purple-400"></iconify-icon> ChatGPT & Claude</span>
+          <span class="flex items-center gap-1.5"><iconify-icon icon="lucide:lock" class="text-amber-400"></iconify-icon> RGPD / AMI conscientes</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Pain Section -->
+  <section id="dor" class="py-20 lg:py-28 bg-white">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="max-w-3xl mb-16">
+        <h2 class="text-3xl lg:text-4xl font-bold text-slate-900 mb-4 tracking-tight">O problema não é “não saber IA”</h2>
+        <p class="text-lg text-slate-600 leading-relaxed">É o dia a ser engolido por tarefas repetíveis sem método. Se te reconheces nisto, este sistema é para ti.</p>
+      </div>
+      
+      <div class="grid md:grid-cols-2 gap-6 lg:gap-8">
+        <div class="bg-slate-50 border border-slate-200 rounded-2xl p-8 hover:shadow-lg transition-shadow border-l-4 border-l-slate-400">
+          <div class="w-12 h-12 bg-white rounded-xl shadow-sm flex items-center justify-center text-slate-600 mb-6">
+            <iconify-icon icon="lucide:clock" class="text-2xl"></iconify-icon>
+          </div>
+          <h3 class="text-xl font-bold text-slate-900 mb-3">Admin que come o dia</h3>
+          <p class="text-slate-600 leading-relaxed">Emails, notas de visita, CRM desatualizado e follow-ups esquecidos — enquanto o Idealista pede mais anúncios.</p>
+        </div>
+        
+        <div class="bg-slate-50 border border-slate-200 rounded-2xl p-8 hover:shadow-lg transition-shadow border-l-4 border-l-slate-400">
+          <div class="w-12 h-12 bg-white rounded-xl shadow-sm flex items-center justify-center text-slate-600 mb-6">
+            <iconify-icon icon="lucide:calendar-x" class="text-2xl"></iconify-icon>
+          </div>
+          <h3 class="text-xl font-bold text-slate-900 mb-3">Sem batching, só urgências</h3>
+          <p class="text-slate-600 leading-relaxed">Cada tarefa aparece “já” e nunca há bloco protegido para copy, follow-up ou CRM.</p>
+        </div>
+        
+        <div class="bg-slate-50 border border-slate-200 rounded-2xl p-8 hover:shadow-lg transition-shadow border-l-4 border-l-slate-400">
+          <div class="w-12 h-12 bg-white rounded-xl shadow-sm flex items-center justify-center text-slate-600 mb-6">
+            <iconify-icon icon="lucide:hourglass" class="text-2xl"></iconify-icon>
+          </div>
+          <h3 class="text-xl font-bold text-slate-900 mb-3">Horas a escrever do zero</h3>
+          <p class="text-slate-600 leading-relaxed">Anúncios Idealista/Casa Sapo, posts e WhatsApp reinventados a cada imóvel.</p>
+        </div>
+        
+        <div class="bg-slate-50 border border-slate-200 rounded-2xl p-8 hover:shadow-lg transition-shadow border-l-4 border-l-slate-400">
+          <div class="w-12 h-12 bg-white rounded-xl shadow-sm flex items-center justify-center text-slate-600 mb-6">
+            <iconify-icon icon="lucide:message-square-dashed" class="text-2xl"></iconify-icon>
+          </div>
+          <h3 class="text-xl font-bold text-slate-900 mb-3">ChatGPT sem rotina</h3>
+          <p class="text-slate-600 leading-relaxed">Já abriste a ferramenta… e saíste sem templates pt-PT nem plano semanal.</p>
+        </div>
+            </div>
+    </div>
+  </section>
+
+  <!-- Solution Section -->
+  <section id="solucao" class="py-20 lg:py-28 bg-blue-50">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="max-w-3xl mb-16">
+        <h2 class="text-3xl lg:text-4xl font-bold text-slate-900 mb-4 tracking-tight">A solução: um plano de 21 dias que devolve tempo</h2>
+        <p class="text-lg text-slate-600 leading-relaxed">Fundação segura → admin → copy → angariação → follow-up → rotina estável. Cada dia tem tarefa, tempo estimado e entregável — para recuperares 8+ horas/semana.</p>
+      </div>
+      
+      <div class="grid md:grid-cols-3 gap-6 lg:gap-8">
+        <div class="bg-white rounded-2xl p-8 shadow-sm border border-blue-100 relative overflow-hidden">
+          <div class="absolute top-0 left-0 w-full h-1.5 bg-blue-400"></div>
+          <h3 class="text-xl font-bold text-slate-900 mb-3 mt-2">D1–D3 Fundação</h3>
+          <p class="text-slate-600 leading-relaxed">Setup, regras RGPD/AMI, assistente-base do consultor.</p>
+        </div>
+        
+        <div class="bg-white rounded-2xl p-8 shadow-sm border border-blue-100 relative overflow-hidden">
+          <div class="absolute top-0 left-0 w-full h-1.5 bg-blue-500"></div>
+          <h3 class="text-xl font-bold text-slate-900 mb-3 mt-2">D4–D18 Operação</h3>
+          <p class="text-slate-600 leading-relaxed">Emails, Idealista, WhatsApp, pitch, 7 toques de follow-up.</p>
+        </div>
+        
+        <div class="bg-white rounded-2xl p-8 shadow-sm border border-blue-100 relative overflow-hidden">
+          <div class="absolute top-0 left-0 w-full h-1.5 bg-blue-600"></div>
+          <h3 class="text-xl font-bold text-slate-900 mb-3 mt-2">D19–D21 Sistema</h3>
+          <p class="text-slate-600 leading-relaxed">Rotina semanal para recuperar 8+ horas e checklist de compliance.</p>
+        </div>
+            </div>
+    </div>
+  </section>
+
+
+  <!-- Credibility: Quem está por trás + mercado + prompt + para quem -->
+  <section id="credibilidade" class="py-20 lg:py-28 bg-white">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-16 lg:space-y-20">
+
+      <!-- Quem está por trás -->
+      <div class="grid lg:grid-cols-[1.1fr_1fr] gap-10 lg:gap-14 items-center">
+        <div>
+          <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-slate-200 bg-slate-50 text-slate-600 text-xs font-bold tracking-wide uppercase mb-5">
+            <iconify-icon icon="lucide:user-round" class="text-sm"></iconify-icon>
+            Quem está por trás
+          </div>
+          <h2 class="text-3xl lg:text-4xl font-bold text-slate-900 mb-4 tracking-tight">Pedro Ferreira · 4Improvements</h2>
+          <p class="text-lg text-slate-600 leading-relaxed mb-4">
+            Este sistema foi escrito por <strong class="text-slate-900">Pedro Ferreira</strong> (4Improvements) para consultores imobiliários em Portugal — tom consultor-para-consultor, zero hype, foco em tempo recuperado e processos seguros.
+          </p>
+          <p class="text-slate-600 leading-relaxed mb-6">
+            A 4Improvements especializa-se em IA aplicada ao imobiliário português: Idealista, WhatsApp Business, angariação e rotinas de equipa — sempre com RGPD e deveres AMI em mente.
+          </p>
+          <ul class="space-y-3 text-slate-700">
+            <li class="flex gap-3"><iconify-icon icon="lucide:check" class="text-emerald-500 text-xl shrink-0 mt-0.5"></iconify-icon><span>Método de 21 dias, não “dicas soltas” de Instagram</span></li>
+            <li class="flex gap-3"><iconify-icon icon="lucide:check" class="text-emerald-500 text-xl shrink-0 mt-0.5"></iconify-icon><span>Prompts e templates em português de Portugal</span></li>
+            <li class="flex gap-3"><iconify-icon icon="lucide:check" class="text-emerald-500 text-xl shrink-0 mt-0.5"></iconify-icon><span>Caminho claro do consultor solo à equipa / agência</span></li>
+          </ul>
+        </div>
+        <div class="bg-slate-900 rounded-3xl p-8 sm:p-10 text-white relative overflow-hidden">
+          <div class="absolute -top-10 -right-10 w-40 h-40 bg-blue-500/30 blur-3xl rounded-full"></div>
+          <div class="relative">
+            <div class="w-16 h-16 rounded-2xl bg-blue-500/20 border border-blue-400/30 flex items-center justify-center text-2xl font-extrabold text-blue-200 mb-6">PF</div>
+            <p class="text-xl font-bold mb-1">Pedro Ferreira</p>
+            <p class="text-blue-300 text-sm font-medium mb-6">Fundador · 4Improvements</p>
+            <p class="text-slate-300 leading-relaxed text-sm">
+              «Sem cases inventados. Sem promessas de fecho automático. Tempo recuperado, processos seguros e templates PT — o resto é trabalho teu com método.»
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Contexto de mercado -->
+      <div class="bg-blue-50 border border-blue-100 rounded-3xl p-8 sm:p-10">
+        <div class="flex flex-col lg:flex-row lg:items-start gap-8">
+          <div class="shrink-0">
+            <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-blue-200 bg-white text-blue-800 text-xs font-bold tracking-wide uppercase">
+              <iconify-icon icon="lucide:map" class="text-sm"></iconify-icon>
+              Contexto de mercado
+            </div>
+          </div>
+          <div class="flex-1">
+            <h2 class="text-2xl lg:text-3xl font-bold text-slate-900 mb-3 tracking-tight">Portugal · ~10 mil consultores AMI</h2>
+            <p class="text-slate-700 leading-relaxed mb-4">
+              Em Portugal há da ordem de <strong>~10&nbsp;000 mediadores / consultores</strong> enquadrados no universo AMI. Este produto fala a essa realidade de trincheira — Idealista, Casa Sapo, WhatsApp, follow-ups e angariação — não a um mercado genérico de “cursos de IA”.
+            </p>
+            <p class="text-sm text-slate-500 leading-relaxed border-l-4 border-blue-300 pl-4">
+              Nota: este número é <strong>contexto de mercado</strong>, não uma alegação de clientes ajudados. Não dizemos “já ajudámos X mil” — ainda não há essa prova publicada.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Amostra de prompt -->
+      <div>
+        <div class="max-w-3xl mb-8">
+          <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-slate-200 bg-slate-50 text-slate-600 text-xs font-bold tracking-wide uppercase mb-5">
+            <iconify-icon icon="lucide:terminal" class="text-sm"></iconify-icon>
+            Amostra de prompt
+          </div>
+          <h2 class="text-3xl lg:text-4xl font-bold text-slate-900 mb-3 tracking-tight">Assim começa o Assistente do Consultor</h2>
+          <p class="text-lg text-slate-600 leading-relaxed">Excerto do prompt-base (Cap. 1). No core recebes a biblioteca completa copy-paste em pt-PT.</p>
+        </div>
+        <div class="rounded-2xl overflow-hidden border border-slate-800 shadow-xl bg-slate-950">
+          <div class="flex items-center gap-2 px-4 py-3 bg-slate-900 border-b border-slate-800">
+            <span class="w-2.5 h-2.5 rounded-full bg-red-400/80"></span>
+            <span class="w-2.5 h-2.5 rounded-full bg-amber-400/80"></span>
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-400/80"></span>
+            <span class="ml-3 text-xs font-medium text-slate-400">prompt-base · Assistente do Consultor · pt-PT</span>
+          </div>
+          <pre class="prompt-code text-slate-200 p-5 sm:p-6 overflow-x-auto"><code>És o Assistente do Consultor Imobiliário (Portugal).
+Trabalhas comigo, consultor no mercado português.
+Idioma: português de Portugal (pt-PT). Tom: prático, direto, claro.
+
+Regras obrigatórias:
+1) Nunca inventes factos de imóveis, preços, áreas ou comparáveis.
+   Se faltar dado, usa [PLACEHOLDER] ou pergunta.
+2) Nunca peças nem assumes NIF, IBAN ou documentos de identidade.
+3) “versão Idealista”, “WhatsApp” ou “email” → adapta canal e comprimento.
+4) Sem dados para preço? Recusa estimar e pede comparáveis.
+
+Contexto fixo: [NOME] · [ZONAS] · Idealista / Casa Sapo / WhatsApp
+Confirma em 3 linhas e faz 2 perguntas só se forem críticas.</code></pre>
+        </div>
+      </div>
+
+      <!-- Para quem é / não é -->
+      <div>
+        <div class="max-w-3xl mb-10">
+          <h2 class="text-3xl lg:text-4xl font-bold text-slate-900 mb-3 tracking-tight">Para quem é — e para quem não é</h2>
+          <p class="text-lg text-slate-600 leading-relaxed">Transparência antes da compra. Se não fores o perfil certo, poupa o tempo (e o nosso).</p>
+        </div>
+        <div class="grid md:grid-cols-2 gap-6 lg:gap-8">
+          <div class="bg-emerald-50 border border-emerald-200 rounded-2xl p-8">
+            <div class="flex items-center gap-3 mb-5">
+              <div class="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center">
+                <iconify-icon icon="lucide:thumbs-up" class="text-xl"></iconify-icon>
+              </div>
+              <h3 class="text-xl font-bold text-slate-900">Para quem é</h3>
+            </div>
+            <ul class="space-y-3 text-slate-700">
+              <li class="flex gap-3"><iconify-icon icon="lucide:check-circle-2" class="text-emerald-600 text-lg shrink-0 mt-0.5"></iconify-icon><span>Consultor ativo em Portugal (angariação + venda / arrendamento)</span></li>
+              <li class="flex gap-3"><iconify-icon icon="lucide:check-circle-2" class="text-emerald-600 text-lg shrink-0 mt-0.5"></iconify-icon><span>Já abriste ChatGPT/Claude mas faltou método e templates pt-PT</span></li>
+              <li class="flex gap-3"><iconify-icon icon="lucide:check-circle-2" class="text-emerald-600 text-lg shrink-0 mt-0.5"></iconify-icon><span>Perdes tempo em emails, Idealista, WhatsApp e follow-ups</span></li>
+              <li class="flex gap-3"><iconify-icon icon="lucide:check-circle-2" class="text-emerald-600 text-lg shrink-0 mt-0.5"></iconify-icon><span>Queres um plano de 21 dias, não mais “dicas soltas”</span></li>
+            </ul>
+          </div>
+          <div class="bg-slate-50 border border-slate-200 rounded-2xl p-8">
+            <div class="flex items-center gap-3 mb-5">
+              <div class="w-10 h-10 rounded-xl bg-slate-200 text-slate-600 flex items-center justify-center">
+                <iconify-icon icon="lucide:thumbs-down" class="text-xl"></iconify-icon>
+              </div>
+              <h3 class="text-xl font-bold text-slate-900">Para quem <span class="underline decoration-slate-400">não</span> é</h3>
+            </div>
+            <ul class="space-y-3 text-slate-700">
+              <li class="flex gap-3"><iconify-icon icon="lucide:x-circle" class="text-slate-400 text-lg shrink-0 mt-0.5"></iconify-icon><span>Quem procura atalhos ilegais ou contornar AMI / RGPD</span></li>
+              <li class="flex gap-3"><iconify-icon icon="lucide:x-circle" class="text-slate-400 text-lg shrink-0 mt-0.5"></iconify-icon><span>Quem espera que a IA feche negócios sozinha</span></li>
+              <li class="flex gap-3"><iconify-icon icon="lucide:x-circle" class="text-slate-400 text-lg shrink-0 mt-0.5"></iconify-icon><span>Quem quer “curso de marketing genérico” sem templates PT</span></li>
+              <li class="flex gap-3"><iconify-icon icon="lucide:x-circle" class="text-slate-400 text-lg shrink-0 mt-0.5"></iconify-icon><span>Quem não vai aplicar D1–D7 (a garantia assume aplicação)</span></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- Includes Section -->
+  <section id="inclui" class="py-20 lg:py-28 bg-white">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="text-center max-w-3xl mx-auto mb-16">
+        <h2 class="text-3xl lg:text-4xl font-bold text-slate-900 mb-4 tracking-tight">O que inclui o core (€47 / early €37)</h2>
+      </div>
+      
+      <div class="grid md:grid-cols-2 gap-6 lg:gap-8 mb-12">
+        <div class="bg-slate-50 border border-slate-200 rounded-2xl p-8 lg:p-10">
+          <ul class="space-y-5">
+            <li class="flex gap-4">
+              <iconify-icon icon="lucide:check-circle-2" class="text-2xl text-emerald-500 shrink-0"></iconify-icon>
+              <span class="text-slate-700 font-medium">E-book completo — Sistema IA 21 Dias (PDF)</span>
+            </li>
+            <li class="flex gap-4">
+              <iconify-icon icon="lucide:check-circle-2" class="text-2xl text-emerald-500 shrink-0"></iconify-icon>
+              <span class="text-slate-700 font-medium">Plano acionável D1–D21 (tarefa + tempo + entregável)</span>
+            </li>
+            <li class="flex gap-4">
+              <iconify-icon icon="lucide:check-circle-2" class="text-2xl text-emerald-500 shrink-0"></iconify-icon>
+              <span class="text-slate-700 font-medium">Biblioteca de 60–80 prompts copy-paste em pt-PT</span>
+            </li>
+            <li class="flex gap-4">
+              <iconify-icon icon="lucide:check-circle-2" class="text-2xl text-emerald-500 shrink-0"></iconify-icon>
+              <span class="text-slate-700 font-medium">Checklists imprimíveis (setup, visita, follow-up, compliance)</span>
+            </li>
+            <li class="flex gap-4">
+              <iconify-icon icon="lucide:check-circle-2" class="text-2xl text-emerald-500 shrink-0"></iconify-icon>
+              <span class="text-slate-700 font-medium">Templates Idealista / Casa Sapo / email / redes</span>
+            </li>
+            <li class="flex gap-4">
+              <iconify-icon icon="lucide:check-circle-2" class="text-2xl text-emerald-500 shrink-0"></iconify-icon>
+              <span class="text-slate-700 font-medium">Prompt-base do “Assistente do Consultor”</span>
+            </li>
+          </ul>
+        </div>
+        
+        <div class="bg-slate-50 border border-slate-200 rounded-2xl p-8 lg:p-10">
+          <ul class="space-y-5">
+            <li class="flex gap-4">
+              <iconify-icon icon="lucide:check-circle-2" class="text-2xl text-emerald-500 shrink-0"></iconify-icon>
+              <span class="text-slate-700 font-medium">Regras claras: o que NUNCA colar na IA</span>
+            </li>
+            <li class="flex gap-4">
+              <iconify-icon icon="lucide:check-circle-2" class="text-2xl text-emerald-500 shrink-0"></iconify-icon>
+              <span class="text-slate-700 font-medium">Sequência de follow-up de 7 toques (estrutura)</span>
+            </li>
+            <li class="flex gap-4">
+              <iconify-icon icon="lucide:check-circle-2" class="text-2xl text-emerald-500 shrink-0"></iconify-icon>
+              <span class="text-slate-700 font-medium">Módulo de angariação no core + caminho para o Kit OTO</span>
+            </li>
+            <li class="flex gap-4">
+              <iconify-icon icon="lucide:check-circle-2" class="text-2xl text-emerald-500 shrink-0"></iconify-icon>
+              <span class="text-slate-700 font-medium">Compatível com ChatGPT e Claude</span>
+            </li>
+            <li class="flex gap-4">
+              <iconify-icon icon="lucide:check-circle-2" class="text-2xl text-emerald-500 shrink-0"></iconify-icon>
+              <span class="text-slate-700 font-medium">Garantia 14 dias</span>
+            </li>
+            <li class="flex gap-4">
+              <iconify-icon icon="lucide:check-circle-2" class="text-2xl text-emerald-500 shrink-0"></iconify-icon>
+              <span class="text-slate-700 font-medium">Tom consultor-para-consultor — zero hype</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+      
+      <div class="text-center">
+        <a href="#checkout" id="includes-cta-btn" class="inline-flex items-center justify-center gap-2 px-8 py-4 text-base font-bold text-white transition-all bg-blue-600 rounded-full hover:bg-blue-500 hover:shadow-xl hover:shadow-blue-500/20">
+          Quero o core agora
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Chapters Section -->
+  <section id="capitulos" class="py-20 lg:py-28 bg-slate-900 text-white">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="max-w-3xl mb-16">
+        <h2 class="text-3xl lg:text-4xl font-bold text-white mb-4 tracking-tight">Preview dos 7 capítulos</h2>
+        <p class="text-lg text-slate-400 leading-relaxed">Do setup seguro à escala na equipa — sem theory-porn.</p>
+      </div>
+      
+      <div class="grid md:grid-cols-2 gap-4 lg:gap-6">
+        <div class="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
+          <strong class="block text-lg text-blue-300 mb-2">1. Mentalidade e setup seguro</strong>
+          <span class="text-slate-400">Ferramenta, conta profissional, lista “nunca colar”, prompt-base.</span>
+        </div>
+        <div class="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
+          <strong class="block text-lg text-blue-300 mb-2">2. Assistente admin</strong>
+          <span class="text-slate-400">Emails, CRM, resumos, briefing de visitas em minutos.</span>
+        </div>
+        <div class="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
+          <strong class="block text-lg text-blue-300 mb-2">3. Copy Idealista + redes + WhatsApp</strong>
+          <span class="text-slate-400">Estrutura que converte + biblioteca de templates PT.</span>
+        </div>
+        <div class="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
+          <strong class="block text-lg text-blue-300 mb-2">4. Angariação com IA</strong>
+          <span class="text-slate-400">Pitch, objeções, proposta 1 página, CMA conversacional.</span>
+        </div>
+        <div class="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
+          <strong class="block text-lg text-blue-300 mb-2">5. Follow-up e fecho</strong>
+          <span class="text-slate-400">7 toques, pós-visita, reativação, checklists CPCV.</span>
+        </div>
+        <div class="bg-blue-900/50 border-2 border-blue-400 rounded-xl p-6 ring-2 ring-blue-400/30">
+          <span class="inline-block px-2 py-0.5 mb-2 text-[10px] font-bold uppercase tracking-wider bg-blue-500 text-white rounded">Foco deste ângulo</span>
+          <strong class="block text-lg text-blue-200 mb-2">6. Rotina semanal 8+ horas</strong>
+          <span class="text-slate-300">Batching, calendário tipo, métricas simples.</span>
+        </div>
+        <div class="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
+          <strong class="block text-lg text-blue-300 mb-2">7. Compliance e próximos passos</strong>
+          <span class="text-slate-400">Limites da IA + caminho 4Improvements para agências.</span>
+        </div>
+        <div class="bg-slate-800/50 border border-slate-700 rounded-xl p-6 bg-gradient-to-br from-blue-900/40 to-transparent">
+          <strong class="block text-lg text-white mb-2">+ Blocos finais</strong>
+          <span class="text-slate-400">Plano D1–D21, biblioteca de prompts, checklists imprimíveis.</span>
+        </div>
+            </div>
+    </div>
+  </section>
+
+  <!-- Stack Section -->
+  <section id="stack" class="py-20 lg:py-28 bg-slate-50">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="max-w-3xl mb-16">
+        <h2 class="text-3xl lg:text-4xl font-bold text-slate-900 mb-4 tracking-tight">Stack de oferta (opcional)</h2>
+        <p class="text-lg text-slate-600 leading-relaxed">O core basta para montar o sistema. O bump e o OTO aceleram WhatsApp e angariação.</p>
+      </div>
+      
+      <div class="grid md:grid-cols-2 gap-6 lg:gap-8">
+        <div class="bg-gradient-to-b from-blue-50 to-white border-2 border-blue-200 rounded-2xl p-8 lg:p-10 shadow-sm relative">
+          <span class="inline-block px-3 py-1 bg-blue-100 text-blue-800 text-xs font-bold uppercase tracking-wider rounded-md mb-4">
+            Opcional no Stripe · €27
+          </span>
+          <h3 class="text-2xl font-bold text-slate-900 mb-4">Pack WhatsApp IA</h3>
+          <p class="text-slate-600 leading-relaxed">Sequências prontas: primeiro contacto, visitas, pós-visita, 7 toques, objeções curtas e quick replies para WhatsApp Business.</p>
+        </div>
+        
+        <div class="bg-white border-2 border-slate-800 rounded-2xl p-8 lg:p-10 shadow-sm relative">
+          <span class="inline-block px-3 py-1 bg-slate-800 text-white text-xs font-bold uppercase tracking-wider rounded-md mb-4">
+            OTO · €97 Pro / €47 Lite
+          </span>
+          <h3 class="text-2xl font-bold text-slate-900 mb-4">Kit Angariação com IA</h3>
+          <p class="text-slate-600 leading-relaxed">Pitch 60s + 5 min, 12 objeções com treino, proposta 1 página, CMA conversacional e sequência pós-reunião 7 dias.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- Segurança RGPD / AMI -->
+  <section id="seguranca" class="py-10 bg-slate-900 border-y border-white/5">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex flex-col lg:flex-row lg:items-center gap-6 lg:gap-10">
+        <div class="flex items-center gap-3 shrink-0">
+          <div class="w-12 h-12 rounded-xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center">
+            <iconify-icon icon="lucide:shield" class="text-2xl"></iconify-icon>
+          </div>
+          <h2 class="text-lg font-bold text-white lg:hidden">Segurança RGPD / AMI</h2>
+        </div>
+        <div class="flex-1">
+          <h2 class="hidden lg:block text-lg font-bold text-white mb-2">Segurança RGPD / AMI</h2>
+          <p class="text-slate-300 text-sm sm:text-base leading-relaxed">
+            O Cap. 1 inclui lista clara do que <strong class="text-white">nunca colar</strong> (NIF, IBAN, documentos, contratos completos). Trabalhas com placeholders e dados anonimizados. Este material <strong class="text-white">não substitui</strong> aconselhamento jurídico nem os teus deveres de mediação AMI / RGPD.
+          </p>
+        </div>
+        <div class="flex flex-wrap gap-2 shrink-0">
+          <span class="px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-xs font-semibold text-slate-300">RGPD-aware</span>
+          <span class="px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-xs font-semibold text-slate-300">AMI conscientes</span>
+          <span class="px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-xs font-semibold text-slate-300">Sem dados sensíveis na cloud</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Guarantee Section -->
+  <section id="garantia" class="py-12 bg-emerald-50">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="bg-white border border-emerald-200 rounded-2xl p-8 sm:p-10 text-center shadow-sm">
+        <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 mb-6">
+          <iconify-icon icon="lucide:shield-check" class="text-3xl"></iconify-icon>
+        </div>
+        <h2 class="text-2xl lg:text-3xl font-bold text-slate-900 mb-4">Garantia de 14 dias</h2>
+        <p class="text-lg text-slate-700 mb-4 leading-relaxed">Se nos primeiros 7 dias do sistema não notares uma diferença clara no tempo gasto em admin e copy, devolvemos o valor. Sem perguntas complicadas.</p>
+        <p class="text-slate-500 font-medium">Aplicas D1–D7. Medes. Se não servir, pedes reembolso — sem dramatismo.</p>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- FAQ Section -->
+  <section id="faq" class="py-20 lg:py-28 bg-white">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="text-center mb-16">
+        <h2 class="text-3xl lg:text-4xl font-bold text-slate-900 tracking-tight">FAQ</h2>
+      </div>
+      
+      <div class="space-y-4">
+        <details class="group bg-slate-50 border border-slate-200 rounded-xl [&_summary::-webkit-details-marker]:hidden" open>
+          <summary class="flex items-center justify-between p-6 cursor-pointer text-lg font-bold text-slate-900">
+            Já usei ChatGPT e não me poupou nada.
+            <iconify-icon icon="lucide:chevron-down" class="text-xl text-slate-400 group-open:rotate-180 transition-transform"></iconify-icon>
+          </summary>
+          <div class="px-6 pb-6 text-slate-600">
+            Sem sistema, a IA é conversa. Aqui tens prompts fechados, rotina de 21 dias e checklists — não “experimenta e vê”.
+          </div>
+        </details>
+        
+        <details class="group bg-slate-50 border border-slate-200 rounded-xl [&_summary::-webkit-details-marker]:hidden">
+          <summary class="flex items-center justify-between p-6 cursor-pointer text-lg font-bold text-slate-900">
+            Tenho medo do RGPD / dados de clientes.
+            <iconify-icon icon="lucide:chevron-down" class="text-xl text-slate-400 group-open:rotate-180 transition-transform"></iconify-icon>
+          </summary>
+          <div class="px-6 pb-6 text-slate-600">
+            O Cap. 1 é sobre isso. Há uma lista clara do que nunca colar. Trabalhas com dados anonimizados e templates, não com contratos completos na cloud.
+          </div>
+        </details>
+        
+        <details class="group bg-slate-50 border border-slate-200 rounded-xl [&_summary::-webkit-details-marker]:hidden">
+          <summary class="flex items-center justify-between p-6 cursor-pointer text-lg font-bold text-slate-900">
+            Não sou bom a escrever.
+            <iconify-icon icon="lucide:chevron-down" class="text-xl text-slate-400 group-open:rotate-180 transition-transform"></iconify-icon>
+          </summary>
+          <div class="px-6 pb-6 text-slate-600">
+            Melhor. Os templates Idealista, email e WhatsApp estão prontos em pt-PT. Tu editas factos; a IA estrutura.
+          </div>
+        </details>
+        
+        <details class="group bg-slate-50 border border-slate-200 rounded-xl [&_summary::-webkit-details-marker]:hidden">
+          <summary class="flex items-center justify-between p-6 cursor-pointer text-lg font-bold text-slate-900">
+            A IA inventa coisas.
+            <iconify-icon icon="lucide:chevron-down" class="text-xl text-slate-400 group-open:rotate-180 transition-transform"></iconify-icon>
+          </summary>
+          <div class="px-6 pb-6 text-slate-600">
+            Sim, se a deixares. O sistema ensina a pedir factos só com dados que tu dás, a marcar placeholders e a rever antes de enviar.
+          </div>
+        </details>
+        
+        <details class="group bg-slate-50 border border-slate-200 rounded-xl [&_summary::-webkit-details-marker]:hidden">
+          <summary class="flex items-center justify-between p-6 cursor-pointer text-lg font-bold text-slate-900">
+            €47 por um PDF?
+            <iconify-icon icon="lucide:chevron-down" class="text-xl text-slate-400 group-open:rotate-180 transition-transform"></iconify-icon>
+          </summary>
+          <div class="px-6 pb-6 text-slate-600">
+            Não é um PDF de teoria. É plano de 21 dias + 60–80 prompts + checklists + caminho de rotina semanal. Preço early: €37 nas primeiras 48h.
+          </div>
+        </details>
+        
+        <details class="group bg-slate-50 border border-slate-200 rounded-xl [&_summary::-webkit-details-marker]:hidden">
+          <summary class="flex items-center justify-between p-6 cursor-pointer text-lg font-bold text-slate-900">
+            Funciona com Claude e ChatGPT?
+            <iconify-icon icon="lucide:chevron-down" class="text-xl text-slate-400 group-open:rotate-180 transition-transform"></iconify-icon>
+          </summary>
+          <div class="px-6 pb-6 text-slate-600">
+            Sim. Os prompts são neutros; há notas de adaptação quando a diferença for relevante.
+          </div>
+        </details>
+        
+        <details class="group bg-slate-50 border border-slate-200 rounded-xl [&_summary::-webkit-details-marker]:hidden">
+          <summary class="flex items-center justify-between p-6 cursor-pointer text-lg font-bold text-slate-900">
+            Sou de agência / equipa.
+            <iconify-icon icon="lucide:chevron-down" class="text-xl text-slate-400 group-open:rotate-180 transition-transform"></iconify-icon>
+          </summary>
+          <div class="px-6 pb-6 text-slate-600">
+            Serve. O Cap. 7 aponta o caminho para padronizar o sistema na equipa (oferta 4Improvements para agências).
+          </div>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <!-- Checkout Section -->
+  <section id="checkout" class="py-20 lg:py-28 checkout-gradient text-white">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="grid lg:grid-cols-2 gap-12 lg:gap-20 items-start">
+        <div>
+          <h2 class="text-3xl lg:text-4xl font-bold mb-6 tracking-tight">Começa hoje a recuperar 8+ horas/semana</h2>
+          <p class="text-lg text-slate-300 mb-8 leading-relaxed">
+            Acesso early a €37 (depois €47). Pagamento seguro no Stripe Checkout — recebes o acesso por email e arrancas o plano D1 no mesmo dia.
+          </p>
+          
+          <ul class="space-y-4 mb-8">
+            <li class="flex gap-3 text-slate-200 border-b border-white/10 pb-4">
+              <iconify-icon icon="lucide:check" class="text-xl text-blue-400 shrink-0 mt-0.5"></iconify-icon>
+              <span>Acesso imediato ao PDF do Sistema 21 Dias</span>
+            </li>
+            <li class="flex gap-3 text-slate-200 border-b border-white/10 pb-4">
+              <iconify-icon icon="lucide:check" class="text-xl text-blue-400 shrink-0 mt-0.5"></iconify-icon>
+              <span>Packs opcionais disponíveis no Stripe Checkout</span>
+            </li>
+            <li class="flex gap-3 text-slate-200 border-b border-white/10 pb-4">
+              <iconify-icon icon="lucide:check" class="text-xl text-blue-400 shrink-0 mt-0.5"></iconify-icon>
+              <span>OTO Kit Angariação após a compra</span>
+            </li>
+            <li class="flex gap-3 text-slate-200">
+              <iconify-icon icon="lucide:check" class="text-xl text-blue-400 shrink-0 mt-0.5"></iconify-icon>
+              <span>Garantia 14 dias</span>
+            </li>
+          </ul>
+        </div>
+        
+        <div class="bg-white text-slate-900 rounded-3xl p-6 sm:p-8 shadow-2xl">
+          <h3 class="text-xl font-bold text-slate-900 mb-6">Sistema IA do Consultor — 21 Dias</h3>
+          
+          <div class="flex justify-between items-center py-4 border-b border-slate-200">
+            <span class="text-slate-600 font-medium">Core (early access 48h)</span>
+            <strong class="text-lg">€37</strong>
+          </div>
+          
+          <div class="my-6 p-5 border-2 border-dashed border-blue-200 bg-blue-50/50 rounded-xl">
+            <div class="flex gap-4 items-start">
+              <div class="w-5 h-5 mt-1 rounded border-2 border-blue-300 shrink-0"></div>
+              <div>
+                <strong class="block text-slate-900 mb-1">Pack WhatsApp IA — opcional no Stripe (+€27)</strong>
+                <p class="text-sm text-slate-600 leading-relaxed">Escolhes no Stripe Checkout: sequências WA prontas, visitas, objeções e quick replies.</p>
+              </div>
+            </div>
+          </div>
+          
+          <div class="flex justify-between items-center py-4 border-b border-slate-200">
+            <span class="text-slate-600 font-medium">Pack Follow-up &amp; Visitas — opcional no Stripe</span>
+            <strong class="text-lg">€37</strong>
+          </div>
+          
+          <div class="flex justify-between items-center py-6">
+            <span class="text-xl font-bold text-slate-900">Total hoje</span>
+            <span id="total" class="text-3xl font-extrabold text-blue-600">€37</span>
+          </div>
+          
+          <a href="https://buy.stripe.com/aFa5kF1OFc4D1fNb6mgrS02" target="_blank" rel="noopener" id="checkout-final-btn" class="block w-full text-center py-4 px-6 text-lg font-bold text-white transition-all bg-emerald-600 rounded-xl hover:bg-emerald-500 shadow-lg shadow-emerald-600/20 mb-6">
+            Comprar agora — early €37
+          </a>
+          
+          <div class="space-y-3">
+            <p class="text-xs text-slate-500 text-center">
+              Pagamento seguro no Stripe Checkout. Podes escolher os packs opcionais diretamente no checkout.
+            </p>
+            <p class="text-xs text-slate-400 text-center font-medium">
+              Core €47 / early €37 · Pack WA €27 · Pack Follow-up €37 · OTO Pro €97 / Lite €47.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA Band -->
+  <div class="py-12 bg-white border-b border-slate-200 text-center">
+    <div class="max-w-4xl mx-auto px-4">
+      <p class="text-slate-500 font-medium mb-4">Pronto para recuperar tempo com método?</p>
+      <a href="#checkout" id="bottom-cta-btn" class="inline-flex items-center justify-center px-8 py-3.5 text-base font-bold text-white transition-all bg-blue-600 rounded-full hover:bg-blue-500">
+        Quero o Sistema IA — 21 Dias
+      </a>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="bg-slate-900 py-12 text-slate-400 text-sm">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="space-y-4">
+        <p><strong class="text-white tracking-widest uppercase text-xs">4Improvements</strong> — IA para imobiliário em Portugal.</p>
+        <p>Produto digital · Autor: Pedro Ferreira · Garantia 14 dias · Uso profissional do comprador.</p>
+        <p class="text-slate-500">Preços: Core €47 / early €37 · Pack WA €27 · Pack Follow-up €37 · OTO Pro €97 / Lite €47.</p>
+        <p class="text-slate-500">Aviso: não coloques dados pessoais de clientes em ferramentas de IA. Este material não substitui aconselhamento jurídico nem deveres AMI/RGPD.</p>
+      </div>
+    </div>
+  </footer>
+
+
+  <!-- Purchase toast (demo) -->
+  <div id="purchase-toast" class="purchase-toast" role="status" aria-live="polite" aria-atomic="true" hidden>
+    <div class="bg-white border border-slate-200 shadow-2xl rounded-2xl p-4 flex gap-3 items-start">
+      <div id="toast-avatar" class="w-11 h-11 rounded-full bg-slate-900 text-blue-200 flex items-center justify-center text-sm font-bold shrink-0">—</div>
+      <div class="min-w-0">
+        <p id="toast-text" class="text-sm font-semibold text-slate-900 leading-snug"></p>
+        <p class="text-[11px] text-slate-400 mt-1.5 leading-snug">Notificações de exemplo (demo) — em produção ligar a compras reais</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Purchase toast — demo cycling Portuguese names + cities
+    (function () {
+      const people = [
+        { name: 'Ana Martins', city: 'Lisboa', initials: 'AM' },
+        { name: 'João Silva', city: 'Porto', initials: 'JS' },
+        { name: 'Carla Sousa', city: 'Braga', initials: 'CS' },
+        { name: 'Miguel Costa', city: 'Cascais', initials: 'MC' },
+        { name: 'Sofia Ferreira', city: 'Coimbra', initials: 'SF' },
+        { name: 'Ricardo Alves', city: 'Faro', initials: 'RA' },
+        { name: 'Inês Rodrigues', city: 'Aveiro', initials: 'IR' },
+        { name: 'Tiago Pereira', city: 'Setúbal', initials: 'TP' },
+        { name: 'Beatriz Nunes', city: 'Leiria', initials: 'BN' },
+        { name: 'Pedro Gomes', city: 'Viseu', initials: 'PG' },
+        { name: 'Mariana Dias', city: 'Évora', initials: 'MD' },
+        { name: 'André Ribeiro', city: 'Guimarães', initials: 'AR' }
+      ];
+      const el = document.getElementById('purchase-toast');
+      const text = document.getElementById('toast-text');
+      const avatar = document.getElementById('toast-avatar');
+      if (!el || !text || !avatar) return;
+
+      let idx = 0;
+      let hideTimer = null;
+
+      function shuffle(arr) {
+        for (let i = arr.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          const t = arr[i]; arr[i] = arr[j]; arr[j] = t;
+        }
+        return arr;
+      }
+      shuffle(people);
+
+      function showNext() {
+        const p = people[idx % people.length];
+        idx += 1;
+        text.textContent = p.name + ' (' + p.city + ') acabou de garantir o Sistema IA — 21 Dias';
+        avatar.textContent = p.initials;
+        el.hidden = false;
+        // force reflow for transition
+        void el.offsetWidth;
+        el.classList.add('is-visible');
+        if (hideTimer) clearTimeout(hideTimer);
+        hideTimer = setTimeout(function () {
+          el.classList.remove('is-visible');
+        }, 5200);
+      }
+
+      function schedule() {
+        const delay = 8000 + Math.floor(Math.random() * 6001); // 8–14s
+        setTimeout(function () {
+          showNext();
+          schedule();
+        }, delay);
+      }
+
+      // First toast after a short delay so the page settles
+      setTimeout(function () {
+        showNext();
+        schedule();
+      }, 4500);
+    })();
+  </script>
+</body>
+</html>

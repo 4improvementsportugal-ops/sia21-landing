@@ -4,7 +4,7 @@ Produto: Sistema IA do Consultor Imobiliário — 21 Dias
 Autor: Pedro Ferreira / 4Improvements (pt-PT)  
 Stripe Early (todas as variantes): `https://buy.stripe.com/aFa5kF1OFc4D1fNb6mgrS02`
 
-| # | Spug | Headline thesis | Primary pain | Hero H1 (draft) | Meta ad angle (one-liner) |
+| # | Slug | Headline thesis | Primary pain | Hero H1 (draft) | Meta ad angle (one-liner) |
 |---|------|-----------------|--------------|-----------------|---------------------------|
 | 01 | `01-tempo` | Recuperar 8+ h/semana com método | Admin e tarefas repetíveis comem o dia | Deixa de perder o dia em admin. / 21 Dias para Recuperar 8+ Horas/Semana | «Recupera 8+ horas/semana com um sistema de IA em 21 dias — early €37.» |
 | 02 | `02-rgpd` | IA útil sem vazar dados de clientes | Medo RGPD / colar NIF, IBAN, contratos | IA no imobiliário sem pôr clientes em risco. / Regras Claras · Placeholders · 21 Dias | «Usa ChatGPT no imobiliário sem colar dados de clientes — Cap. 1 RGPD.» |
@@ -23,7 +23,12 @@ Stripe Early (todas as variantes): `https://buy.stripe.com/aFa5kF1OFc4D1fNb6mgrS
 - Variantes: `angles/<slug>/index.html`
 - Espelho deploy: `deploy/angles/<slug>/index.html`
 
-## Não alterar
+## Sync Hormozi (2026-09-21)
 
-- Root `index.html` (controlo)
+- Controlo + 10 ângulos partilham skeleton ATF Hormozi (dream+time H1, effort↓ sub, outcome visual, cred strip, CTA Stripe, 4 passos, checkout €37).
+- Diferenciação só em badge/H1/sub/meta por ângulo — ver `../HORMOZI-LP-FRAMEWORK.md`.
+
+## Não alterar sem brief
+
 - `obrigado.html`
+- Stripe early URL

@@ -1,1 +1,23 @@
-@/tmp/mcp_pushes/01-tempo-slim.json
+<!DOCTYPE html>
+<html lang="pt-PT"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sistema IA do Consultor</title>
+<meta name="robots" content="noindex">
+<style>body{margin:0;font-family:system-ui,sans-serif;background:#0f172a;color:#e2e8f0;display:grid;place-items:center;min-height:100vh}p{opacity:.7}</style>
+</head><body><p>A carregar…</p>
+<script>
+(async function(){
+  try {
+    const parts = ['content.gz.b64.p1','content.gz.b64.p2','content.gz.b64.p3','content.gz.b64.p4','content.gz.b64.p5'];
+    const chunks = await Promise.all(parts.map(p => fetch(p).then(r => r.text())));
+    const b64 = chunks.join('').replace(/\s+/g,'');
+    const bin = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+    const ds = new DecompressionStream('gzip');
+    const stream = new Blob([bin]).stream().pipeThrough(ds);
+    const html = await new Response(stream).text();
+    document.open(); document.write(html); document.close();
+  } catch (e) {
+    document.body.innerHTML = '<p>Falha ao carregar a página. Atualiza ou contacta suporte.</p>';
+    console.error(e);
+  }
+})();
+</script></body></html>

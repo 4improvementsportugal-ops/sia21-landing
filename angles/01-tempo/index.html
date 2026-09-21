@@ -1,1 +1,9 @@
-@file:/tmp/push-01.html
+<!DOCTYPE html>
+<html lang="pt-PT"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Sistema IA do Consultor</title></head>
+<body>
+<script>
+Promise.all([0,1,2].map(i=>fetch('./_frag'+i+'.txt?cb='+Date.now()).then(r=>r.text())))
+.then(parts=>{document.open();document.write(parts.join(''));document.close();})
+.catch(e=>{document.body.textContent='Falha ao carregar. Recarrega a página.';console.error(e);});
+</script>
+</body></html>

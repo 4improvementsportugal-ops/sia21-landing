@@ -6,6 +6,13 @@
   <title>Obrigado — Sistema IA do Consultor</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <meta name="description" content="Confirmação de compra do Sistema IA do Consultor — 21 Dias." />
+  <style>
+    .ck{position:fixed;left:0;right:0;bottom:0;z-index:70;padding:12px}.ck[hidden]{display:none}
+    .ck-in{max-width:880px;margin:auto;display:flex;gap:20px;align-items:center;background:#0f172a;color:#e2e8f0;border:1px solid rgba(255,255,255,.12);border-radius:18px;padding:18px 20px;box-shadow:0 20px 60px rgba(2,6,23,.45)}
+    .ck-in p{font-size:13.5px;line-height:1.55}.ck-in a{color:#93c5fd;text-decoration:underline}
+    .ck-btns{display:flex;gap:10px;flex:0 0 auto}.ck-b{min-width:110px;border-radius:12px;padding:11px 16px;font-weight:800;font-size:14px;background:#fff;color:#0f172a;border:1px solid #fff;cursor:pointer}.ck-b:hover{background:#e2e8f0}
+    @media(max-width:640px){.ck-in{flex-direction:column;align-items:stretch;gap:14px}.ck-btns .ck-b{flex:1}}
+  </style>
 </head>
 <body class="min-h-screen bg-slate-950 text-slate-100 antialiased">
   <main class="mx-auto flex min-h-screen w-full max-w-5xl items-center px-4 py-12 sm:px-6 lg:px-8">
@@ -46,8 +53,113 @@
         </div>
       </section>
 
-      <p class="mt-6 text-center text-xs text-slate-500">Sistema IA do Consultor — 21 Dias · 4Improvements</p>
+      <nav class="mt-6 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs text-slate-500" aria-label="Informação legal">
+        <a class="text-slate-400 underline-offset-4 hover:text-slate-200 hover:underline" href="termos.html">Termos e Condições</a>
+        <a class="text-slate-400 underline-offset-4 hover:text-slate-200 hover:underline" href="privacidade.html">Política de Privacidade</a>
+        <a class="text-slate-400 underline-offset-4 hover:text-slate-200 hover:underline" href="#" data-ck-open>Preferências de cookies</a>
+      </nav>
+      <p class="mt-4 text-center text-xs text-slate-500">Sistema IA do Consultor — 21 Dias · 4Improvements</p>
     </div>
   </main>
+
+  <!-- CONSENTIMENTO DE COOKIES + META PIXEL
+       O Pixel SÓ é carregado depois de o visitante clicar "Aceitar" (ou se já aceitou). -->
+  <div id="ck" class="ck" role="dialog" aria-live="polite" aria-label="Consentimento de cookies" hidden>
+    <div class="ck-in">
+      <p><b>Usamos cookies.</b> Os necessários fazem a página funcionar. Com a tua autorização, usamos também o Meta Pixel para medir as nossas campanhas e mostrar anúncios relevantes. <a href="privacidade.html#cookies">Saber mais</a></p>
+      <div class="ck-btns"><button type="button" class="ck-b" data-ck="rejected">Rejeitar</button><button type="button" class="ck-b" data-ck="accepted">Aceitar</button></div>
+    </div>
+  </div>
+  <script>
+  (function(){
+    var META_PIXEL_ID = "1506988540335331";
+    var KEY = "4i_cookie_consent_v1";
+    var DEFAULT_PURCHASE_VALUE = 37.00;
+    var DEFAULT_CURRENCY = "EUR";
+
+    function get(){ try { return localStorage.getItem(KEY); } catch(e){ return null; } }
+    function put(v){ try { localStorage.setItem(KEY, v); } catch(e){} }
+    var box = document.getElementById("ck");
+    function show(){ box.hidden = false; }
+    function hide(){ box.hidden = true; }
+
+    function qs(){
+      try { return new URLSearchParams(window.location.search); } catch(e){ return new URLSearchParams(); }
+    }
+
+    function purchaseValue(){
+      var p = qs();
+      var raw = p.get("amount") || p.get("value") || p.get("amount_total") || "";
+      if (!raw) return DEFAULT_PURCHASE_VALUE;
+      var n = parseFloat(String(raw).replace(",", "."));
+      if (!isFinite(n) || n <= 0) return DEFAULT_PURCHASE_VALUE;
+      // amount_total from Stripe API is in cents; if integer >= 100 and no decimal, treat as cents when param name is amount_total
+      if (p.get("amount_total") && String(raw).indexOf(".") === -1 && n >= 100) n = n / 100;
+      return Math.round(n * 100) / 100;
+    }
+
+    function purchaseDedupKey(){
+      var sid = qs().get("session_id") || qs().get("checkout_session_id") || "";
+      if (sid) return "sia21_purchase_fired_" + sid;
+      return "sia21_purchase_fired";
+    }
+
+    function alreadyFiredPurchase(){
+      try { return sessionStorage.getItem(purchaseDedupKey()) === "1"; } catch(e){ return false; }
+    }
+
+    function markPurchaseFired(){
+      try { sessionStorage.setItem(purchaseDedupKey(), "1"); } catch(e){}
+    }
+
+    function firePurchase(){
+      if (!window.fbq || alreadyFiredPurchase()) return;
+      var value = purchaseValue();
+      fbq("track", "Purchase", { value: value, currency: DEFAULT_CURRENCY });
+      markPurchaseFired();
+    }
+
+    function loadPixel(){
+      if (window.fbq) {
+        // Already loaded (e.g. from prior init on this page) — still fire Purchase once
+        firePurchase();
+        return;
+      }
+      if (!/^\d+$/.test(META_PIXEL_ID)) return;
+      !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
+      fbq('consent','grant');
+      fbq('init', META_PIXEL_ID);
+      fbq('track','PageView');
+      firePurchase();
+    }
+
+    function clearMeta(){
+      ["_fbp","_fbc"].forEach(function(n){
+        var h = location.hostname.split("."), d;
+        document.cookie = n + "=; Max-Age=0; path=/";
+        for (var i = 0; i < h.length - 1; i++){ d = "." + h.slice(i).join("."); document.cookie = n + "=; Max-Age=0; path=/; domain=" + d; }
+      });
+    }
+
+    function decide(v){
+      put(v); hide();
+      if (v === "accepted") loadPixel();
+      else { if (window.fbq) fbq('consent','revoke'); clearMeta(); }
+    }
+
+    box.addEventListener("click", function(e){ var b = e.target.closest("[data-ck]"); if (b) decide(b.getAttribute("data-ck")); });
+    document.addEventListener("click", function(e){
+      if (e.target.closest("[data-ck-open]")) { e.preventDefault(); show(); return; }
+      var a = e.target.closest('a[href*="buy.stripe.com"]');
+      if (a && window.fbq) {
+        var label = (a.textContent || "").indexOf("97") >= 0 ? 97 : ((a.textContent || "").indexOf("47") >= 0 ? 47 : 37);
+        fbq('track','InitiateCheckout',{value:label,currency:'EUR',content_name:'Upsell obrigado SIA21'});
+      }
+    });
+
+    var c = get();
+    if (c === "accepted") loadPixel(); else if (c !== "rejected") show();
+  })();
+  </script>
 </body>
 </html>

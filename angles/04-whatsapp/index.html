@@ -1,1 +1,11 @@
-@/tmp/exact-04.html
+<!DOCTYPE html>
+<html lang="pt-PT"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Sistema IA do Consultor</title></head>
+<body><script>
+(async()=>{
+  const parts=["g1.txt","g2.txt","g3.txt","g4.txt","g5.txt","g6.txt","g7.txt"];
+  const b64=(await Promise.all(parts.map(f=>fetch(f+location.search).then(r=>{if(!r.ok)throw new Error(f);return r.text();})))).join("");
+  const bin=Uint8Array.from(atob(b64),c=>c.charCodeAt(0));
+  const html=new TextDecoder().decode(await new Response(new Blob([bin]).stream().pipeThrough(new DecompressionStream("gzip"))).arrayBuffer());
+  document.open(); document.write(html); document.close();
+})().catch(e=>{document.body.textContent="Recarrega a página."; console.error(e);});
+</script></body></html>

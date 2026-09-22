@@ -1,13 +1,8 @@
 <!DOCTYPE html>
 <html lang="pt-PT"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Sistema IA do Consultor</title></head>
-<body>
-<script>
+<body><script>
 (async()=>{
-  const SRC="https://cdn.jsdelivr.net/gh/4improvementsportugal-ops/sia21-landing@5b32250b370ee0ed85f8103321650f0d989d2406/angles/10-visitas-ops/index.html";
-  const REPL=[["early atual · garantia 14 dias", "early atual · pagamento único"], ["<div><b>14 dias</b><span>garantia</span></div>", "<div><b>Acesso</b><span>imediato após pagamento</span></div>"], ["<li>Garantia de 14 dias</li>", "<li>Acesso imediato após pagamento</li>"], ["E tens 14 dias de garantia.", "Começas no Dia 1 no próprio dia."], ["<b>14 dias</b><span>Garantia de 14 dias. A IA não decide por ti — tu validas tudo.</span>", "<b>Controlo</b><span>A IA não decide por ti — tu validas tudo.</span>"], ["<h2 class=\"mt-3\">Garantia de 14 dias.</h2><p class=\"lead mt-4\">Mantemos apenas a garantia indicada na oferta. Sem condições inventadas, sem promessas de resultados comerciais.</p>", "<h2 class=\"mt-3\">Método com entregáveis claros.</h2><p class=\"lead mt-4\">Cada dia tem tarefa, tempo e entregável. Sem condições inventadas, sem promessas de resultados comerciais.</p>"], ["Preço early atual · pagamento único · garantia 14 dias", "Preço early atual · pagamento único"], ["early · 14 dias", "early · pagamento único"], ["<div class=\"touch\"><b>14 dias</b><span>garantia</span></div>", "<div class=\"touch\"><b>Acesso</b><span>imediato após pagamento</span></div>"], ["<li>Tens 14 dias para avaliar sem risco</li>", "<li>Começas com acesso imediato após o pagamento</li>"], ["com 14 dias para avaliar.", "com acesso imediato após o pagamento."], ["Com 14 dias de garantia, o único risco real de entrar hoje é descobrires", "O único risco real de entrar hoje é descobrires"], ["plano, prompts, checklists e garantia.", "plano, prompts e checklists."], ["Garantia 14 dias. Sem escassez inventada", "Sem escassez inventada"], ["os prompts, as checklists e a garantia mantêm-se.", "os prompts e as checklists mantêm-se."]];
-  let html=await fetch(SRC).then(r=>{if(!r.ok)throw new Error("src "+r.status);return r.text();});
-  for(const [a,b] of REPL) html=html.split(a).join(b);
-  document.open(); document.write(html); document.close();
-})().catch(e=>{document.body.textContent="Recarrega a página."; console.error(e);});
-</script>
-</body></html>
+  const [a,b]=await Promise.all(["a1.txt","a2.txt"].map(f=>fetch(f+location.search).then(r=>r.text())));
+  document.write(new TextDecoder().decode(Uint8Array.from(atob(a+b),c=>c.charCodeAt(0))));
+})().catch(e=>{document.body.textContent="Recarrega a página.";console.error(e);});
+</script></body></html>

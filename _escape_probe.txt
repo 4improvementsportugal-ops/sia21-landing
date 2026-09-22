@@ -1,0 +1,2 @@
+cookie-test: document.cookie=n+="; Max-Age=0; path=/"; WRONG
+cookie-test-correct: document.cookie=n+"=; Max-Age=0; path=/"; RIGHT

@@ -13,6 +13,18 @@
     .ck-btns{display:flex;gap:10px;flex:0 0 auto}.ck-b{min-width:110px;border-radius:12px;padding:11px 16px;font-weight:800;font-size:14px;background:#fff;color:#0f172a;border:1px solid #fff;cursor:pointer}.ck-b:hover{background:#e2e8f0}
     @media(max-width:640px){.ck-in{flex-direction:column;align-items:stretch;gap:14px}.ck-btns .ck-b{flex:1}}
   </style>
+  <!--
+    META PURCHASE FLOW (SIA21 thank-you)
+    1) Pixel ID 1506988540335331 is NOT loaded until cookie consent key 4i_cookie_consent_v1 === "accepted".
+    2) Stripe Payment Links redirect here with ?session_id={CHECKOUT_SESSION_ID}&amount=<EUR>.
+    3) On accept: PageView + Purchase with value (amount URL or default 37), currency EUR,
+       content_name "Sistema IA Consultor 21 Dias", content_ids, eventID = session_id (CAPI dedup).
+    4) If consent undecided AND session_id present: show banner with clearer copy — never auto-accept.
+    5) Past sales without browser consent / without params will not appear in Pixel retroactively.
+  -->
+  <noscript>
+    <!-- Sem JS: sem Meta Pixel. Consentimento e Purchase exigem JavaScript. -->
+  </noscript>
 </head>
 <body class="min-h-screen bg-slate-950 text-slate-100 antialiased">
   <main class="mx-auto flex min-h-screen w-full max-w-5xl items-center px-4 py-12 sm:px-6 lg:px-8">
@@ -63,10 +75,12 @@
   </main>
 
   <!-- CONSENTIMENTO DE COOKIES + META PIXEL
-       O Pixel SÓ é carregado depois de o visitante clicar "Aceitar" (ou se já aceitou). -->
+       O Pixel SÓ é carregado depois de o visitante clicar "Aceitar" (ou se já aceitou).
+       Nunca auto-aceitamos. Em retorno de checkout (session_id na URL), o banner explica
+       que Aceitar permite confirmar a compra nas métricas das campanhas. -->
   <div id="ck" class="ck" role="dialog" aria-live="polite" aria-label="Consentimento de cookies" hidden>
     <div class="ck-in">
-      <p><b>Usamos cookies.</b> Os necessários fazem a página funcionar. Com a tua autorização, usamos também o Meta Pixel para medir as nossas campanhas e mostrar anúncios relevantes. <a href="privacidade.html#cookies">Saber mais</a></p>
+      <p id="ck-copy"><b>Usamos cookies.</b> Os necessários fazem a página funcionar. Com a tua autorização, usamos também o Meta Pixel para medir as nossas campanhas e mostrar anúncios relevantes. <a href="privacidade.html#cookies">Saber mais</a></p>
       <div class="ck-btns"><button type="button" class="ck-b" data-ck="rejected">Rejeitar</button><button type="button" class="ck-b" data-ck="accepted">Aceitar</button></div>
     </div>
   </div>
@@ -76,6 +90,8 @@
     var KEY = "4i_cookie_consent_v1";
     var DEFAULT_PURCHASE_VALUE = 37.00;
     var DEFAULT_CURRENCY = "EUR";
+    var CONTENT_NAME = "Sistema IA Consultor 21 Dias";
+    var CONTENT_IDS = ["sia21-core"];
 
     function get(){ try { return localStorage.getItem(KEY); } catch(e){ return null; } }
     function put(v){ try { localStorage.setItem(KEY, v); } catch(e){} }
@@ -85,6 +101,10 @@
 
     function qs(){
       try { return new URLSearchParams(window.location.search); } catch(e){ return new URLSearchParams(); }
+    }
+
+    function sessionId(){
+      return qs().get("session_id") || qs().get("checkout_session_id") || "";
     }
 
     function purchaseValue(){
@@ -98,8 +118,15 @@
       return Math.round(n * 100) / 100;
     }
 
+    function contentIdsForValue(value){
+      if (value >= 90) return ["sia21-ang-pro"];
+      if (value >= 45 && value < 50) return ["sia21-core-standard", "sia21-ang-lite"];
+      if (value >= 35 && value < 40) return ["sia21-core-early"];
+      return CONTENT_IDS.slice();
+    }
+
     function purchaseDedupKey(){
-      var sid = qs().get("session_id") || qs().get("checkout_session_id") || "";
+      var sid = sessionId();
       if (sid) return "sia21_purchase_fired_" + sid;
       return "sia21_purchase_fired";
     }
@@ -115,7 +142,17 @@
     function firePurchase(){
       if (!window.fbq || alreadyFiredPurchase()) return;
       var value = purchaseValue();
-      fbq("track", "Purchase", { value: value, currency: DEFAULT_CURRENCY });
+      var sid = sessionId();
+      var payload = {
+        value: value,
+        currency: DEFAULT_CURRENCY,
+        content_name: CONTENT_NAME,
+        content_ids: contentIdsForValue(value),
+        content_type: "product"
+      };
+      var opts = sid ? { eventID: sid } : undefined;
+      if (opts) fbq("track", "Purchase", payload, opts);
+      else fbq("track", "Purchase", payload);
       markPurchaseFired();
     }
 
@@ -147,6 +184,14 @@
       else { if (window.fbq) fbq('consent','revoke'); clearMeta(); }
     }
 
+    function setCheckoutBannerCopy(){
+      // Real checkout return: clarify that Aceitar enables confirmation tracking — do NOT auto-accept.
+      if (!sessionId()) return;
+      var el = document.getElementById("ck-copy");
+      if (!el) return;
+      el.innerHTML = "<b>Pagamento confirmado.</b> Para confirmarmos a compra nas métricas das campanhas (Meta Pixel), clica <b>Aceitar</b>. Os cookies necessários já fazem a página funcionar. Podes <b>Rejeitar</b> — o teu acesso por email não depende disto. <a href=\"privacidade.html#cookies\">Saber mais</a>";
+    }
+
     box.addEventListener("click", function(e){ var b = e.target.closest("[data-ck]"); if (b) decide(b.getAttribute("data-ck")); });
     document.addEventListener("click", function(e){
       if (e.target.closest("[data-ck-open]")) { e.preventDefault(); show(); return; }
@@ -158,7 +203,12 @@
     });
 
     var c = get();
-    if (c === "accepted") loadPixel(); else if (c !== "rejected") show();
+    if (c === "accepted") {
+      loadPixel();
+    } else if (c !== "rejected") {
+      setCheckoutBannerCopy();
+      show();
+    }
   })();
   </script>
 </body>

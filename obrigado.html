@@ -14,13 +14,15 @@
     @media(max-width:640px){.ck-in{flex-direction:column;align-items:stretch;gap:14px}.ck-btns .ck-b{flex:1}}
   </style>
   <!--
-    META PURCHASE FLOW (SIA21 thank-you)
+    META PURCHASE FLOW (SIA21 thank-you) — Human-Gated (MTHD)
     1) Pixel ID 1506988540335331 is NOT loaded until cookie consent key 4i_cookie_consent_v1 === "accepted".
     2) Stripe Payment Links redirect here with ?session_id={CHECKOUT_SESSION_ID}&amount=<EUR>.
-    3) On accept: PageView + Purchase with value (amount URL or default 37), currency EUR,
-       content_name "Sistema IA Consultor 21 Dias", content_ids, eventID = session_id (CAPI dedup).
-    4) If consent undecided AND session_id present: show banner with clearer copy — never auto-accept.
-    5) Past sales without browser consent / without params will not appear in Pixel retroactively.
+    3) On accept: SIA21_startHumanGatedPixel → init → onInit fires Purchase; PageView is INSTANT
+       because pathname contains /obrigado.html (indexOf !== -1; works on /sia21-landing/obrigado.html).
+    4) Purchase: value (amount URL or default 37), currency EUR, content_name "Sistema IA Consultor 21 Dias",
+       content_ids, eventID = session_id (CAPI dedup).
+    5) If consent undecided AND session_id present: show banner with clearer copy — never auto-accept.
+    6) Past sales without browser consent / without params will not appear in Pixel retroactively.
   -->
   <noscript>
     <!-- Sem JS: sem Meta Pixel. Consentimento e Purchase exigem JavaScript. -->
@@ -84,6 +86,7 @@
       <div class="ck-btns"><button type="button" class="ck-b" data-ck="rejected">Rejeitar</button><button type="button" class="ck-b" data-ck="accepted">Aceitar</button></div>
     </div>
   </div>
+  <script src="assets/mthd-pixel.js"></script>
   <script>
   (function(){
     var META_PIXEL_ID = "1506988540335331";
@@ -113,7 +116,6 @@
       if (!raw) return DEFAULT_PURCHASE_VALUE;
       var n = parseFloat(String(raw).replace(",", "."));
       if (!isFinite(n) || n <= 0) return DEFAULT_PURCHASE_VALUE;
-      // amount_total from Stripe API is in cents; if integer >= 100 and no decimal, treat as cents when param name is amount_total
       if (p.get("amount_total") && String(raw).indexOf(".") === -1 && n >= 100) n = n / 100;
       return Math.round(n * 100) / 100;
     }
@@ -156,18 +158,15 @@
       markPurchaseFired();
     }
 
-    function loadPixel(){
-      if (window.fbq) {
-        // Already loaded (e.g. from prior init on this page) — still fire Purchase once
-        firePurchase();
-        return;
-      }
-      if (!/^\d+$/.test(META_PIXEL_ID)) return;
-      !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
-      fbq('consent','grant');
-      fbq('init', META_PIXEL_ID);
-      fbq('track','PageView');
-      firePurchase();
+    function startMTHD(){
+      if (typeof window.SIA21_startHumanGatedPixel !== "function") return;
+      // Instant PageView: pathname contains /obrigado.html (e.g. /sia21-landing/obrigado.html)
+      // Purchase fires in onInit right after fbq init — does not wait for PageView.
+      window.SIA21_startHumanGatedPixel({
+        pixelId: META_PIXEL_ID,
+        instantPaths: ["/obrigado.html", "/obrigado"],
+        onInit: function(){ firePurchase(); }
+      });
     }
 
     function clearMeta(){
@@ -180,12 +179,11 @@
 
     function decide(v){
       put(v); hide();
-      if (v === "accepted") loadPixel();
+      if (v === "accepted") startMTHD();
       else { if (window.fbq) fbq('consent','revoke'); clearMeta(); }
     }
 
     function setCheckoutBannerCopy(){
-      // Real checkout return: clarify that Aceitar enables confirmation tracking — do NOT auto-accept.
       if (!sessionId()) return;
       var el = document.getElementById("ck-copy");
       if (!el) return;
@@ -204,7 +202,7 @@
 
     var c = get();
     if (c === "accepted") {
-      loadPixel();
+      startMTHD();
     } else if (c !== "rejected") {
       setCheckoutBannerCopy();
       show();

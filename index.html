@@ -144,6 +144,7 @@
 </div>
 </div>
 <script src="assets/mthd-pixel.js"></script>
+<script src="assets/sia21-conv.js"></script>
 <script>
 (function(){
   var META_PIXEL_ID="1506988540335331",KEY="4i_cookie_consent_v1";
@@ -164,8 +165,6 @@
   box.addEventListener("click",function(e){var b=e.target.closest("[data-ck]");if(b)decide(b.getAttribute("data-ck"))});
   document.addEventListener("click",function(e){
     if(e.target.closest("[data-ck-open]")){e.preventDefault();show();return}
-    var a=e.target.closest('a[href*="buy.stripe.com"]');
-    if(a&&window.fbq)fbq("track","InitiateCheckout",{value:37,currency:"EUR",content_name:"Sistema IA do Consultor"});
   });
   var c=get();
   if(c==="accepted")startMTHD();

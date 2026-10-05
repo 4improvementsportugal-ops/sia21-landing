@@ -15,10 +15,10 @@
 | Dream outcome | ↑ | H1: recuperar **8+ h/semana** (não o nome do produto) |
 | Time delay | ↓ | **em 21 dias** no H1 + plano D1–D21 |
 | Effort / sacrifice | ↓ | Sub: **sem** jargão / prompts vazios / risco RGPD; prompts prontos |
-| Perceived likelihood | ↑ | Só prova real: Pedro/4I, amostra de prompt, ~10k AMI (contexto), garantia 14 dias, visual de processo |
+| Perceived likelihood | ↑ | Só prova real: Pedro/4I, amostra de prompt, ~10k AMI (contexto), visual de processo |
 
 **Proibido:** fake testimonials, HeyGen UGC fingido, “X mil clientes ajudados”, cases inventados.  
-**Toast de compra:** mantido como **demo** (label explícito).
+**Toast de compra:** pool ilustrativo em `assets/sia21-conv.js` (comentário no código: não são compradores reais). Sem label de demo no ecrã. Sem contagem inventada de clientes.
 
 ---
 
@@ -31,14 +31,14 @@
 | 1 | Headline = Dream + Time | **Recupera 8+ horas por semana / em 21 dias** |
 | 2 | Sub = Effort↓ | Sem jargão, sem prompts vazios, sem pôr dados em risco — setup seguro + prompts pt-PT |
 | 3 | Hero = outcome visual | Antes/depois de processo (admin → rotina); *não* UGC |
-| 4 | Credibility strip | Garantia 14 dias · pt-PT · Idealista/WA · RGPD |
+| 4 | Credibility strip | pt-PT · Idealista/WA · RGPD |
 | 5 | CTA único | `#checkout` → Stripe early €37 |
 
 ### Below the fold
 
 | # | Elemento | Secção / id |
 |---|----------|-------------|
-| 1 | Social proof stacking (sem fake) | `#como-fica-o-dia` + `#credibilidade` (Pedro, ~10k AMI *contexto*, amostra prompt, para quem é) + `#garantia` |
+| 1 | Social proof stacking (sem fake) | `#como-fica-o-dia` + `#credibilidade` (Pedro, ~10k AMI *contexto*, amostra prompt, para quem é) |
 | 2 | How it works **4 passos** | `#como-funciona` |
 | 3 | Dream outcome nos H2 | ex.: “Tudo o que precisas para recuperar 8+ h”, “Garante as tuas 8+ horas/semana” |
 | 4 | Checkout last | `#checkout` early €37 + Stripe link |
@@ -54,7 +54,7 @@
 
 ## Ordem de secções (controlo + ângulos)
 
-`hero` → `como-fica-o-dia` → `dor` → `como-funciona` → `credibilidade` → `inclui` → `capitulos` → `stack` → `seguranca` → `garantia` → `faq` → **`checkout`** → footer / toast demo
+`hero` → `como-fica-o-dia` → `dor` → `como-funciona` → `credibilidade` → `inclui` → `capitulos` → `stack` → `seguranca` → `faq` → **`checkout`** → footer / toast ilustrativo
 
 ---
 

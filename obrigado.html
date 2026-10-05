@@ -21,9 +21,10 @@
        because pathname contains /obrigado.html (indexOf !== -1; works on /sia21-landing/obrigado.html).
     4) Purchase: value (amount URL or default 37), currency EUR, content_name "Sistema IA Consultor 21 Dias",
        content_ids, eventID = session_id (CAPI dedup).
-       Early Bird €33 (SIA21_EARLY_33 in assets/sia21-conv.js) redirects here with
-       obrigado.html?session_id={CHECKOUT_SESSION_ID}&amount=33
-       Then content_ids is sia21-core-early-33 and value is 33. Without amount, value stays 37.
+       Primary Early Bird €37 (SIA21_EARLY_37) is the default when amount is missing.
+       Exit €33 (SIA21_EARLY_33) should redirect with amount=33 → content_ids sia21-core-early-33.
+       Final exit €14 (SIA21_EARLY_14) should redirect with amount=14 → content_ids sia21-core-early-14.
+       Without amount, value stays 37.
     5) If consent undecided AND session_id present: show banner with clearer copy — never auto-accept.
     6) Past sales without browser consent / without params will not appear in Pixel retroactively.
   -->
@@ -128,6 +129,7 @@
       if (value >= 45 && value < 50) return ["sia21-core-standard", "sia21-ang-lite"];
       if (value >= 35 && value < 40) return ["sia21-core-early"];
       if (value >= 30 && value < 35) return ["sia21-core-early-33"];
+      if (value >= 13 && value < 16) return ["sia21-core-early-14"];
       return CONTENT_IDS.slice();
     }
 

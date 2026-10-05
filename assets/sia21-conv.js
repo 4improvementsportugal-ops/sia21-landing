@@ -8,13 +8,13 @@
  * Checkout config (one place for the last-chance URL):
  *   window.SIA21_EARLY_33
  *   window.SIA21_CHECKOUT.early33
- * Funil: replace the early33 string with the real Stripe Payment Link.
- * Expected Payment Link after_completion redirect (Dashboard, no API keys):
- *   https://4improvementsportugal-ops.github.io/sia21-landing/obrigado.html?session_id={CHECKOUT_SESSION_ID}&amount=33
- * {CHECKOUT_SESSION_ID} is Stripe's Payment Link variable, same pattern as the €37 link.
+ * Live Payment Link plink_1UNDwtRxjA6FBfLNiukJ9u1l
+ *   price_id price_1UNDwkRxjA6FBfLNnl6hiuCf (€33, product prod_VIVUJFWdjT8zAQ)
+ *   metadata sku sia21-core-early-33
+ * after_completion already set on that link:
+ *   obrigado.html?session_id={CHECKOUT_SESSION_ID}&amount=33
  * amount=33 makes obrigado.html report Purchase value 33 (otherwise it defaults to 37).
- * Stripe hosted Payment Links cannot render this page's HTML next to the card fields.
- * Optional: set Payment Link custom_text in the Dashboard if that field is available.
+ * custom_text.submit on the hosted page already carries the retorno copy.
  */
 (function (w, d) {
   "use strict";
@@ -23,7 +23,7 @@
   w.__SIA21_CONV_LOADED = true;
 
   var EARLY_37 = "https://buy.stripe.com/aFa5kF1OFc4D1fNb6mgrS02";
-  var EARLY_33 = "https://buy.stripe.com/REPLACE_SIA21_EARLY_33";
+  var EARLY_33 = "https://buy.stripe.com/fZueVf1OFc4D7Eb1vMgrS04";
 
   var ANGLES = {
     "01-tempo": "Tempo",

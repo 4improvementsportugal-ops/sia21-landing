@@ -21,7 +21,7 @@
        because pathname contains /obrigado.html (indexOf !== -1; works on /sia21-landing/obrigado.html).
     4) Purchase: value (amount URL or default 37), currency EUR, content_name "Sistema IA Consultor 21 Dias",
        content_ids, eventID = session_id (CAPI dedup).
-       Early Bird €33 (SIA21_EARLY_33 in assets/sia21-conv.js) should use the same success URL plus amount:
+       Early Bird €33 (SIA21_EARLY_33 in assets/sia21-conv.js) redirects here with
        obrigado.html?session_id={CHECKOUT_SESSION_ID}&amount=33
        Then content_ids is sia21-core-early-33 and value is 33. Without amount, value stays 37.
     5) If consent undecided AND session_id present: show banner with clearer copy — never auto-accept.

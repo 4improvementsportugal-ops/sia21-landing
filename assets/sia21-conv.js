@@ -618,16 +618,17 @@
       startTimer();
     }
 
-    function canOpen() {
+    function canOpen(opts) {
+      opts = opts || {};
       if (!root.hidden) return false;
       if (exitStep() >= 2) return false;
       if (Date.now() - openedAt < minAge()) return false;
-      if (Date.now() < cooldownUntil) return false;
+      if (!opts.ignoreCooldown && Date.now() < cooldownUntil) return false;
       return true;
     }
 
-    function openNext() {
-      if (!canOpen()) return false;
+    function openNext(opts) {
+      if (!canOpen(opts)) return false;
       var which = exitStep() === 0 ? 1 : 2;
       setExitStep(which);
       disarmIdle();
@@ -680,7 +681,7 @@
           }
           try { w.history.pushState({ sia21Exit: 1 }, "", w.location.href); } catch (err3) {}
           fromBack = true;
-          openNext();
+          openNext({ ignoreCooldown: true });
         });
       }, minAge());
 

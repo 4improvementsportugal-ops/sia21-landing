@@ -287,13 +287,8 @@ button:focus-visible {
   order: 1;
 }
 
-.hero-copy .sia21-setup,
 .hero-copy .sia21-retorno {
   order: 2;
-}
-
-.hero-copy .sia21-setup {
-  margin-top: var(--space-5);
 }
 
 .hero-lead {

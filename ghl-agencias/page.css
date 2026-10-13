@@ -9,6 +9,25 @@
   overflow: hidden;
 }
 
+.thanks {
+  min-height: calc(100vh - 4rem);
+  display: flex;
+  align-items: center;
+}
+
+.thanks .wrap {
+  width: min(40rem, calc(100% - 2rem));
+  text-align: center;
+}
+
+.thanks .btn {
+  margin-top: var(--space-6);
+}
+
+a.brand {
+  text-decoration: none;
+}
+
 .hero::before {
   content: "";
   position: absolute;

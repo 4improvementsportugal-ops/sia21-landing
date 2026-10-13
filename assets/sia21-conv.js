@@ -16,6 +16,8 @@
  * InitiateCheckout value matches the link: 37 / 33 / 14. ViewContent is 37.
  * Exit step lives in sessionStorage (sia21_exit_step_v2): 0 none, 1 saw €33, 2 saw €14.
  * Each step shows once per session. obrigado.html reads amount from the URL.
+ * PostHog (snippet in <head>) records stripe_checkout_click plus the €33/€14
+ * exit events. Those captures never change the ladder, copy, or Stripe links.
  */
 (function (w, d) {
   "use strict";
@@ -83,6 +85,34 @@
     return "Home";
   }
 
+  function angleSlug() {
+    var path = w.location.pathname || "";
+    var keys = Object.keys(ANGLES);
+    for (var i = 0; i < keys.length; i++) {
+      if (path.indexOf("/" + keys[i]) !== -1) return keys[i];
+    }
+    if (path.indexOf("obrigado") !== -1) return "obrigado";
+    return "home";
+  }
+
+  function capturePh(name, props) {
+    try {
+      if (w.posthog && typeof w.posthog.capture === "function") {
+        w.posthog.capture(name, props);
+      }
+    } catch (e) {}
+  }
+
+  function stripePrice(anchor) {
+    var href = (anchor && anchor.getAttribute && anchor.getAttribute("href")) || "";
+    var offer = (anchor && anchor.getAttribute && anchor.getAttribute("data-sia21-offer")) || "";
+    if (offer === "early-14" || href.indexOf(EARLY_14) !== -1) return 14;
+    if (offer === "early-33" || href.indexOf(EARLY_33) !== -1) return 33;
+    if (href.indexOf("14A9AVgJz9Wve2zfmCgrS00") !== -1) return 97;
+    if (href.indexOf("dRm00lbpf5Gf1fNb6mgrS01") !== -1) return 47;
+    return 37;
+  }
+
   function pixelReady() {
     return !!(w.fbq && w.__SIA21_MTHD_STARTED);
   }
@@ -124,7 +154,9 @@
 
   function onCheckoutClick(e) {
     var anchor = e.target && e.target.closest ? e.target.closest('a[href*="buy.stripe.com"]') : null;
-    if (!anchor || !pixelReady() || isThankYou()) return;
+    if (!anchor) return;
+    capturePh("stripe_checkout_click", { angle: angleSlug(), price: stripePrice(anchor) });
+    if (!pixelReady() || isThankYou()) return;
     var value = checkoutValue(anchor);
     var payload = {
       value: value,
@@ -579,7 +611,12 @@
       deal.rel = "noopener";
       if (offer) deal.setAttribute("data-sia21-offer", offer);
       deal.textContent = label;
-      deal.addEventListener("click", function () { closeDialog(); });
+      deal.addEventListener("click", function () {
+        var currentOffer = deal.getAttribute("data-sia21-offer") || "";
+        if (currentOffer === "early-33") capturePh("exit_offer_33_click", { angle: angleSlug(), price: 33 });
+        else if (currentOffer === "early-14") capturePh("last_offer_14_click", { angle: angleSlug(), price: 14 });
+        closeDialog();
+      });
       return deal;
     }
 
@@ -641,6 +678,8 @@
       d.addEventListener("keydown", onKey);
       var primary = actions.querySelector(".sia21-exit-primary");
       if (primary) primary.focus();
+      if (which === 1) capturePh("exit_offer_33_shown", { angle: angleSlug(), price: 33 });
+      else capturePh("last_offer_14_shown", { angle: angleSlug(), price: 14 });
       return true;
     }
 

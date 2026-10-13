@@ -69,6 +69,41 @@
   grid-column: auto;
 }
 
+.guarantee {
+  margin-top: var(--space-5);
+  padding: 1.15rem 1.25rem;
+  border: 1px solid rgba(191, 219, 254, 0.55);
+  border-left: 4px solid #bfdbfe;
+  border-radius: 0.9rem;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--on-navy);
+  font-size: 1.0625rem;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.section .guarantee {
+  border-color: var(--blue);
+  border-left-color: var(--blue);
+  background: var(--ink);
+  color: var(--on-navy);
+  font-size: 1.125rem;
+}
+
+.faq details.faq-guarantee {
+  margin-top: var(--space-2);
+  padding: 1rem 1.15rem;
+  border: 1px solid #bfdbfe;
+  border-radius: 1rem;
+  background: #eff6ff;
+}
+
+.faq details.faq-guarantee p {
+  color: var(--ink);
+  font-size: 1.0625rem;
+  font-weight: 700;
+}
+
 .optional {
   margin-top: var(--space-5);
   padding: 1.25rem 1.5rem;

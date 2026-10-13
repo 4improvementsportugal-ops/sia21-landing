@@ -43,8 +43,7 @@
   };
 
   var RETORNO_LEAD = "Retorno esperado:";
-  var RETORNO_BODY = " Não levas só o sistema: a Early Bird inclui 1 sessão gratuita de setup com a nossa equipa. Em ~21 dias ficas operacional com IA para criar anúncios (Idealista e restantes) mais rápido, com processo repetível. Nós ajudamos-te a montar o setup.";
-  var SETUP_LINE = "Inclui 1 sessão gratuita de setup com a nossa equipa. Nós ajudamos-te a montar o sistema.";
+  var RETORNO_BODY = " Em ~21 dias ficas operacional com IA para criar anúncios (Idealista e restantes) mais rápido, com processo repetível.";
   var PROOF_LINE = "Já confiam em nós mais de 1.000 consultores imobiliários.";
 
   var STEP_KEY = "sia21_exit_step_v2";
@@ -228,8 +227,6 @@
       ".sia21-exit-timer[hidden]{display:none!important}",
       ".sia21-exit-timer span{display:block;font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#64748b}",
       ".sia21-exit-timer b{display:block;margin-top:4px;font-variant-numeric:tabular-nums;font-size:2.25rem;line-height:1;font-weight:800;letter-spacing:.04em;color:#b91c1c}",
-      ".sia21-setup{box-sizing:border-box;margin:0 0 14px;max-width:40rem;padding:10px 14px;border-radius:14px;background:#ecfdf5;border:1px solid #6ee7b7;color:#064e3b;font-size:14.5px;line-height:1.5;font-weight:700}",
-      ".sia21-setup--on-dark{background:rgba(16,185,129,.14);border-color:rgba(110,231,183,.45);color:#d1fae5}",
       ".sia21-sticky[hidden]{display:none!important}",
       ".sia21-sticky{position:fixed;z-index:58;left:50%;transform:translateX(-50%);width:min(720px,calc(100vw - 32px));display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px 16px;padding:12px 14px;border-radius:16px;background:#0f172a;color:#e2e8f0;border:1px solid rgba(255,255,255,.12);box-shadow:0 16px 40px rgba(2,6,23,.35)}",
       ".sia21-sticky p{margin:0;font-size:14px;line-height:1.4;font-weight:600;color:#e2e8f0}",
@@ -364,27 +361,6 @@
     schedule(debugMode() ? 800 : rand(12000, 25000));
   }
 
-  function placeHeroSetup() {
-    var hero = d.querySelector(".hero") || d.querySelector("section.bg-slate-900");
-    if (!hero || hero.querySelector("#sia21-hero-setup")) return;
-    if (hero.textContent.indexOf("1 sessão gratuita de setup com a nossa equipa") !== -1) return;
-    var anchor = hero.querySelector('a[href*="' + EARLY_37 + '"]');
-    if (!anchor || anchor.closest("header, .mobile-cta")) return;
-    var parent = anchor.parentElement;
-    var host = parent;
-    var before = anchor;
-    if (parent && parent.classList && (parent.classList.contains("flex") || parent.classList.contains("inline-flex")) && parent.childElementCount <= 6) {
-      host = parent.parentElement;
-      before = parent;
-    }
-    if (!host || !before) return;
-    var note = d.createElement("p");
-    note.id = "sia21-hero-setup";
-    note.className = "sia21-setup" + (onDark(host) ? " sia21-setup--on-dark" : "");
-    note.textContent = SETUP_LINE;
-    host.insertBefore(note, before);
-  }
-
   function placeProof() {
     if (d.getElementById("sia21-proof")) return;
     if ((d.body.textContent || "").indexOf("mais de 1.000 consultores") !== -1) return;
@@ -399,21 +375,6 @@
     }
     var cred = d.getElementById("credibilidade");
     if (cred) cred.insertBefore(el, cred.firstChild);
-  }
-
-  function placeSetupOffer() {
-    var grid = d.querySelector(".offer-grid");
-    if (!grid || grid.querySelector(".sia21-setup-item")) return;
-    if (grid.textContent.indexOf("sessão de setup") !== -1) return;
-    var item = d.createElement("div");
-    item.className = "offer-item sia21-setup-item";
-    var title = d.createElement("b");
-    title.textContent = "1 sessão de setup";
-    var detail = d.createElement("span");
-    detail.textContent = "gratuita, com a nossa equipa. Nós ajudamos-te a montar o sistema.";
-    item.appendChild(title);
-    item.appendChild(detail);
-    grid.appendChild(item);
   }
 
   function mobileBarVisible() {
@@ -636,7 +597,7 @@
       if (which === 1) {
         kicker.textContent = "Early Bird €33";
         title.textContent = "Garante o Early Bird antes de sair";
-        copy.textContent = "Não levas só o sistema. A Early Bird inclui 1 sessão gratuita de setup com a nossa equipa. Nós ajudamos-te a montar o setup. Volta ao pagamento: €37 passa a €33.";
+        copy.textContent = "Volta ao pagamento: €37 passa a €33.";
         actions.appendChild(makeLink(payLink(33), "early-33", "Volta ao pagamento a €33"));
         actions.appendChild(makeSecondary("Quero mesmo sair", function () { closeDialog(); }));
         return;
@@ -754,9 +715,7 @@
     if (w.__SIA21_UX_BOOTED || isThankYou()) return;
     w.__SIA21_UX_BOOTED = true;
     injectCss();
-    placeHeroSetup();
     placeProof();
-    placeSetupOffer();
     placeRetorno();
     mountToast();
     mountSticky();

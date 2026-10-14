@@ -117,6 +117,7 @@ posthog.init('phc_knF2fZccBcGVgHcayHbPfcYfXguFx3jzxaBksdduz9R3',{api_host:'https
     var href=link.getAttribute("href")||"";
     var position=link.getAttribute("data-cta")||"";
     if(href.indexOf("buy.stripe.com")!==-1){
+      if(window.__SIA21_CHECKOUT_OK!==true)return;
       captureGhl("stripe_checkout_click",{price:497,value:497,angle:"ghl-agencias"});
       if(window.__SIA21_HUMAN&&window.__SIA21_MTHD_STARTED&&window.fbq){
         fbq("track","InitiateCheckout",{value:497,currency:"EUR",content_name:"Configuração Go High Level",content_ids:["ghl-agencias-497"],content_type:"product"});

@@ -457,6 +457,44 @@ async function main() {
       );
       await context.close();
     }
+
+    {
+      const context = await browser.newContext({ userAgent: HUMAN_UA, viewport: { width: 1280, height: 800 } });
+      await arm(context, "visible");
+      const hits = await trackStripe(context);
+      const page = await context.newPage();
+      const requests = watch(page);
+      const response = await page.goto(ORIGIN + "/ghl-agencias/index.html", { waitUntil: "load", timeout: 30000 });
+      if (!response || response.status() === 404) {
+        report("ghl stripe gate", false, "ghl-agencias/index.html missing");
+      } else {
+        await page.evaluate(() => {
+          var link = document.createElement("a");
+          link.id = "ghl-stripe-test";
+          link.href = "https://buy.stripe.com/test_ghl_497";
+          link.target = "_blank";
+          link.textContent = "Pagar 497";
+          document.body.appendChild(link);
+          link.click();
+        });
+        await sleep(400);
+        const blockedEvents = checkoutNoise(requests);
+        const blockedNav = hits.length === 0;
+        await page.mouse.move(420, 320);
+        await page.mouse.wheel(0, 1600);
+        await page.waitForFunction(() => window.__SIA21_ENGAGED === true && window.scrollY > 80);
+        const remain = await page.evaluate(() => Math.max(0, window.__SIA21_CHECKOUT_MIN_MS - (Date.now() - window.__SIA21_PAGE_AT) + 80));
+        await sleep(remain);
+        await page.click("#ghl-stripe-test");
+        const sent = await waitUntil(() => hits.length > 0 && requests.some((r) => hasPosthogEvent(r, "stripe_checkout_click")), 8000);
+        report(
+          "ghl checkout link ignores a bare click and opens after scroll",
+          blockedNav && blockedEvents.length === 0 && sent,
+          "blockedNav=" + blockedNav + " blockedEvents=" + blockedEvents.length + " sent=" + sent + " stripeNav=" + hits.length
+        );
+      }
+      await context.close();
+    }
   } finally {
     await browser.close();
     server.kill("SIGTERM");

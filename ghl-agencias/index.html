@@ -1,18 +1,10 @@
 <!DOCTYPE html>
-<html lang="pt-PT">
+<html lang="pt-PT" data-hero="preco">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <script>
 const DEMO_BOOKING_URL = "https://api.leadconnectorhq.com/widget/bookings/4improvements";
-document.addEventListener("DOMContentLoaded", function () {
-  var links = document.querySelectorAll("[data-booking]");
-  for (var i = 0; i < links.length; i++) {
-    links[i].href = DEMO_BOOKING_URL;
-    links[i].target = "_blank";
-    links[i].rel = "noopener noreferrer";
-  }
-});
 </script>
 <meta name="theme-color" content="#0f172a">
 <meta name="robots" content="noindex, nofollow">
@@ -21,153 +13,111 @@ document.addEventListener("DOMContentLoaded", function () {
 <meta property="og:title" content="Os teus leads respondidos na hora | 4Improvements">
 <meta property="og:description" content="497 €, pagamento único. Antes de avançar fazemos sempre uma call de avaliação para ver se é o fit certo para ti.">
 <meta property="og:locale" content="pt_PT">
-<link rel="stylesheet" href="../angles-v2/v2.css">
 <link rel="stylesheet" href="page.css">
 <script>
 !function(t,e){var o,n,p,r;e.__SV||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.crossOrigin="anonymous",p.async=!0,p.src=s.api_host.replace(".i.posthog.com","-assets.i.posthog.com")+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],Object.defineProperty(u,"toString",{configurable:!0,enumerable:!0,writable:!0,value:function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e}}),Object.defineProperty(u.people,"toString",{configurable:!0,enumerable:!0,writable:!0,value:function(){return u.toString(1)+".people (stub)"}}),o="init capture register register_once register_for_session unregister unregister_for_session getFeatureFlag getFeatureFlagResult isFeatureEnabled reloadFeatureFlags updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures on onFeatureFlags onSessionId getSurveys getActiveMatchingSurveys renderSurvey canRenderSurvey getNextSurveyStep identify setPersonProperties group resetGroups setPersonPropertiesForFlags resetPersonPropertiesForFlags setGroupPropertiesForFlags resetGroupPropertiesForFlags reset get_distinct_id getGroups get_session_id get_session_replay_url alias set_config startSessionRecording stopSessionRecording sessionRecordingStarted captureException loadToolbar get_property getSessionProperty createPersonProfile opt_in_capturing opt_out_capturing has_opted_in_capturing has_opted_out_capturing clear_opt_in_out_capturing debug".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
 posthog.init('phc_knF2fZccBcGVgHcayHbPfcYfXguFx3jzxaBksdduz9R3',{api_host:'https://eu.i.posthog.com',person_profiles:'identified_only',capture_pageview:true,capture_pageleave:true,autocapture:true,enable_heatmaps:true,disable_session_recording:false})
 </script>
+<script>
+posthog.onFeatureFlags(function () {
+  var flag = posthog.getFeatureFlag("ghl497-hero");
+  document.documentElement.setAttribute("data-hero", flag === "clausulas" ? "clausulas" : "preco");
+});
+</script>
 </head>
 <body>
+<a class="skip" href="#calendario">Ir para o calendário</a>
+<svg class="sprite" aria-hidden="true">
+<symbol id="mark" viewBox="0 0 16 16"><path d="M3.5 8.2 6.4 11.2 12.5 4.8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+</svg>
 <header class="site-header">
 <div class="wrap header-bar">
-<div class="brand">4Improvements</div>
+<a class="brand" href="#topo">4Improvements</a>
 <div class="header-cta">
-<a class="btn btn-nav" data-booking>Quero explorar as minhas opções deste sistema</a>
+<a class="btn" href="#calendario" data-cta="cabecalho">Quero explorar as minhas opções deste sistema</a>
 <p class="cta-micro">Call de avaliação, sem compromisso</p>
 </div>
 </div>
 </header>
-<main>
-<section class="hero">
-<div class="wrap hero-grid">
-<div class="hero-copy">
-<div class="idpill">Consultor individual ou equipa</div>
-<h1>Os teus leads respondidos na hora, sejas consultor individual ou tenhas equipa.</h1>
-<p class="hero-lead">A equipa humana da 4Improvements configura a tua conta Go High Level em 3 h, com agente comercial e follow-up automático, e faz 2 h de formação. O preço é o mesmo nos dois casos.</p>
-<p class="guarantee">Garantia: o sistema fica todo a funcionar.</p>
-<div class="price-act">
-<div class="price-block">
-<p class="price-line"><b class="price-now">497 €</b></p>
+<main id="topo">
+<div class="wrap">
+<article class="deed">
+<div class="deed-price">
+<p class="price-now">497 €</p>
 <p class="fit-note">497 €, pagamento único. Antes de avançar fazemos sempre uma call de avaliação para ver se é o fit certo para ti. Não é uma compra direta.</p>
 <p class="price-note">O mesmo preço para os dois. 5 vagas.</p>
-</div>
 <div class="cta-stack">
-<a class="btn" data-booking>Quero explorar as minhas opções deste sistema</a>
+<a class="btn" href="#calendario" data-cta="hero">Quero explorar as minhas opções deste sistema</a>
 <p class="cta-micro">Call de avaliação, sem compromisso</p>
 </div>
 </div>
+<div class="deed-head">
+<h1>Os teus leads respondidos na hora, sejas consultor individual ou tenhas equipa.</h1>
+<p class="lead">Consultor individual ou equipa. A equipa humana da 4Improvements configura a tua conta Go High Level em 3 h, com agente comercial e follow-up automático, e faz 2 h de formação. O preço é o mesmo nos dois casos.</p>
+<p class="guarantee">Garantia: o sistema fica todo a funcionar.</p>
 </div>
-<div class="hero-card">
-<div class="micro">Nos 497 €</div>
-<h2 class="card-title">Tudo isto por 497 €, pagamento único.</h2>
-<ul class="inclui">
-<li>Configuração total do CRM GoHighLevel</li>
-<li>Configuração total de um agente de IA com RAG: memória de todos os imóveis que tens no teu site</li>
-<li>Follow-up automático</li>
-<li>Configuração do pipeline</li>
-<li>Perguntas de qualificação por perfil: investidor, comprador, vendedor e arrendatário</li>
-<li>Análise de áudio, imagem e voz</li>
-<li>Marcações automáticas no calendário</li>
-<li>Notificações de leads novas, qualificadas, sem resposta, sem interesse e paradas há mais de X dias</li>
-<li>3 h de setup + 2 h de formação</li>
-<li>Garantia: o sistema fica todo a funcionar</li>
-</ul>
-<p class="card-note">Feito pela equipa humana da 4Improvements.</p>
-</div>
-</div>
-</section>
-<section class="proof-band">
-<div class="wrap">
-<p class="proof-line">Tudo isto por 497 €, pagamento único.</p>
-<p class="fit-note">497 €, pagamento único. Antes de avançar fazemos sempre uma call de avaliação para ver se é o fit certo para ti. Não é uma compra direta.</p>
-<ul class="inclui">
-<li>Configuração total do CRM GoHighLevel</li>
-<li>Configuração total de um agente de IA com RAG: memória de todos os imóveis que tens no teu site</li>
-<li>Follow-up automático</li>
-<li>Configuração do pipeline</li>
-<li>Perguntas de qualificação por perfil: investidor, comprador, vendedor e arrendatário</li>
-<li>Análise de áudio, imagem e voz</li>
-<li>Marcações automáticas no calendário</li>
-<li>Notificações de leads novas, qualificadas, sem resposta, sem interesse e paradas há mais de X dias</li>
-<li>3 h de setup + 2 h de formação</li>
-<li>Garantia: o sistema fica todo a funcionar</li>
-</ul>
-<p class="band-note">O mesmo preço para consultor individual e para equipa. 5 vagas. Se quiseres, 97 €/mês por 1 h de acompanhamento, depois da configuração e com a conta Meta ligada.</p>
-</div>
-</section>
-<section class="section blue" id="incluido">
-<div class="wrap offer-layout">
-<div class="offer-pitch">
-<div class="micro label-blue">O que inclui</div>
+<div class="deed-clauses" id="incluido">
 <h2>Tudo isto por 497 €, pagamento único.</h2>
 <p class="lead">A equipa humana da 4Improvements faz o setup de 3 h e a formação de 2 h, para um consultor individual ou para uma equipa. O preço é o mesmo nos dois casos.</p>
-<p class="value-line">Tudo isto por 497 €, pagamento único.</p>
-<p class="fit-note">497 €, pagamento único. Antes de avançar fazemos sempre uma call de avaliação para ver se é o fit certo para ti. Não é uma compra direta.</p>
-<div class="offer-cta">
-<div class="cta-stack">
-<a class="btn" data-booking>Quero explorar as minhas opções deste sistema</a>
-<p class="cta-micro">Call de avaliação, sem compromisso</p>
-</div>
-</div>
-</div>
-<div class="offer">
-<div class="micro">Nos 497 €</div>
+<p class="fit-note">Tudo isto por 497 €, pagamento único.</p>
 <ul class="inclui">
-<li>Configuração total do CRM GoHighLevel</li>
-<li>Configuração total de um agente de IA com RAG: memória de todos os imóveis que tens no teu site</li>
-<li>Follow-up automático</li>
-<li>Configuração do pipeline</li>
-<li>Perguntas de qualificação por perfil: investidor, comprador, vendedor e arrendatário</li>
-<li>Análise de áudio, imagem e voz</li>
-<li>Marcações automáticas no calendário</li>
-<li>Notificações de leads novas, qualificadas, sem resposta, sem interesse e paradas há mais de X dias</li>
-<li>3 h de setup + 2 h de formação</li>
-<li>Garantia: o sistema fica todo a funcionar</li>
+<li><svg aria-hidden="true"><use href="#mark"/></svg>Configuração total do CRM GoHighLevel</li>
+<li><svg aria-hidden="true"><use href="#mark"/></svg>Configuração total de um agente de IA com RAG: memória de todos os imóveis que tens no teu site</li>
+<li><svg aria-hidden="true"><use href="#mark"/></svg>Follow-up automático</li>
+<li><svg aria-hidden="true"><use href="#mark"/></svg>Configuração do pipeline</li>
+<li><svg aria-hidden="true"><use href="#mark"/></svg>Perguntas de qualificação por perfil: investidor, comprador, vendedor e arrendatário</li>
+<li><svg aria-hidden="true"><use href="#mark"/></svg>Análise de áudio, imagem e voz</li>
+<li><svg aria-hidden="true"><use href="#mark"/></svg>Marcações automáticas no calendário</li>
+<li><svg aria-hidden="true"><use href="#mark"/></svg>Notificações de leads novas, qualificadas, sem resposta, sem interesse e paradas há mais de X dias</li>
+<li><svg aria-hidden="true"><use href="#mark"/></svg>3 h de setup + 2 h de formação</li>
+<li><svg aria-hidden="true"><use href="#mark"/></svg>Garantia: o sistema fica todo a funcionar</li>
 </ul>
-</div>
-</div>
-<div class="wrap">
+<p class="card-note">Feito pela equipa humana da 4Improvements. O mesmo preço para consultor individual e para equipa. 5 vagas. Se quiseres, 97 €/mês por 1 h de acompanhamento, depois da configuração e com a conta Meta ligada.</p>
 <p class="guarantee">Garantia: o sistema fica todo a funcionar.</p>
 <div class="optional">
 <b>Acompanhamento opcional: 97 €/mês</b>
 <p>Depois da configuração, e com a conta Meta do cliente ligada, podes acrescentar 1 h por mês.</p>
 </div>
+<div class="cta-stack">
+<a class="btn" href="#calendario" data-cta="clausulas">Quero explorar as minhas opções deste sistema</a>
+<p class="cta-micro">Call de avaliação, sem compromisso</p>
 </div>
-</section>
+</div>
+</article>
+</div>
 <section class="section" id="como-funciona">
 <div class="wrap">
-<div class="section-head">
-<div class="micro label-blue">Como funciona</div>
 <h2>Três passos: call de avaliação do fit, configuração de 3 h e formação de 2 h.</h2>
 <p class="lead">O primeiro passo é uma call de avaliação. Só se for o fit certo para ti avançamos para a configuração de 3 h e a formação de 2 h, feitas pela equipa humana da 4Improvements.</p>
-</div>
 <ol class="steps">
-<li class="step">
+<li class="step is-now">
 <span class="step-n">1</span>
+<div>
 <h3>Call de avaliação do fit</h3>
 <p>Antes de avançar fazemos sempre uma call para ver se é o fit certo para ti, sejas consultor individual ou tenhas equipa. Não é uma compra direta.</p>
+</div>
 </li>
 <li class="step">
 <span class="step-n">2</span>
+<div>
 <h3>Configuração de 3 h</h3>
 <p>A equipa humana da 4Improvements configura, uma vez, a conta Go High Level, com agente comercial e follow-up automático.</p>
+</div>
 </li>
 <li class="step">
 <span class="step-n">3</span>
+<div>
 <h3>Formação de 2 h</h3>
 <p>A equipa humana da 4Improvements treina-te a ti, se trabalhas sozinho, ou à tua equipa.</p>
+</div>
 </li>
 </ol>
 </div>
 </section>
-<section class="section soft" id="para-quem">
+<section class="section" id="para-quem">
 <div class="wrap">
-<div class="section-head">
-<div class="micro label-blue">Para quem</div>
 <h2>Para quem é.</h2>
 <p class="lead">O mesmo sistema e o mesmo preço, 497 €, quer trabalhes sozinho ou com equipa. Há 5 vagas.</p>
-</div>
 <div class="who">
 <article>
 <h3>Consultor individual</h3>
@@ -182,33 +132,65 @@ posthog.init('phc_knF2fZccBcGVgHcayHbPfcYfXguFx3jzxaBksdduz9R3',{api_host:'https
 </section>
 <section class="section" id="exemplos">
 <div class="wrap">
-<div class="section-head">
-<div class="micro label-blue">Exemplos de uso</div>
 <h2>Exemplos de uso</h2>
 <p class="lead">Servem para ver o sistema em uso. Não são casos de clientes nem resultados reais.</p>
-</div>
 <div class="examples">
 <article class="example">
-<div class="micro label-blue">Exemplo</div>
 <h3>Consultor individual</h3>
-<p>Um lead do Idealista chega às 22h. O agente responde e marca a visita.</p>
+<p>Exemplo. Um lead do Idealista chega às 22h. O agente responde e marca a visita.</p>
 </article>
 <article class="example">
-<div class="micro label-blue">Exemplo</div>
 <h3>Team leader ou equipa</h3>
-<p>Numa equipa de 6, cada lead é distribuído e acompanhado até à visita.</p>
+<p>Exemplo. Numa equipa de 6, cada lead é distribuído e acompanhado até à visita.</p>
 </article>
 </div>
 </div>
 </section>
-<section class="section soft" id="faq">
+<section class="section" id="sistema">
 <div class="wrap">
-<div class="section-head">
-<div class="micro label-blue">Perguntas frequentes</div>
-<h2>Antes da call.</h2>
+<h2>Como fica o teu sistema</h2>
+<p class="lead">Os lugares abaixo ficam para material real. Ainda não há imagem nem vídeo para mostrar.</p>
+<div class="placeholders">
+<div class="todo">
+<p>TODO: screenshot real do GoHighLevel</p>
 </div>
+<div class="todo">
+<p>TODO: vídeo de 60 s</p>
+</div>
+</div>
+</div>
+</section>
+<section class="section" id="calendario">
+<div class="wrap">
+<h2>Marcar a call de avaliação</h2>
+<p class="lead">Call de avaliação, sem compromisso. Não é uma compra direta.</p>
+<div class="calendar-frame">
+<iframe title="Calendário para marcar a call de avaliação" src="https://api.leadconnectorhq.com/widget/bookings/4improvements" loading="lazy" referrerpolicy="strict-origin-when-cross-origin"></iframe>
+</div>
+<p><a class="fallback" data-cta="recurso" href="https://api.leadconnectorhq.com/widget/bookings/4improvements" target="_blank" rel="noopener noreferrer">Se o calendário não abrir, marca a call aqui. A marcação abre numa nova aba.</a></p>
+</div>
+</section>
+<section class="section" id="faq">
+<div class="wrap">
+<h2>Antes da call.</h2>
 <div class="faq">
-<details class="faq-guarantee" open>
+<details>
+<summary>Já tenho CRM.</summary>
+<p>A configuração é da conta GoHighLevel. Na call de avaliação vemos como trabalhas hoje, sozinho ou com equipa, e se este sistema é o fit certo para ti.</p>
+</details>
+<details>
+<summary>Não tenho tempo.</summary>
+<p>A equipa humana da 4Improvements faz as 3 h de setup e as 2 h de formação. O primeiro passo é uma call de avaliação, sem compromisso.</p>
+</details>
+<details>
+<summary>E se não funcionar?</summary>
+<p>Garantia: o sistema fica todo a funcionar.</p>
+</details>
+<details>
+<summary>O que acontece na call?</summary>
+<p>Antes de avançar fazemos sempre uma call para ver se é o fit certo para ti, sejas consultor individual ou tenhas equipa. Não é uma compra direta. O calendário está nesta página.</p>
+</details>
+<details open>
 <summary>Qual é a garantia?</summary>
 <p>Garantia: o sistema fica todo a funcionar.</p>
 </details>
@@ -242,45 +224,28 @@ posthog.init('phc_knF2fZccBcGVgHcayHbPfcYfXguFx3jzxaBksdduz9R3',{api_host:'https
 </details>
 <details>
 <summary>Onde marco a call?</summary>
-<p>Nos botões desta página. É uma call de avaliação, sem compromisso, para ver se é o fit certo para ti. A marcação abre numa nova aba. Não é uma compra direta.</p>
+<p>No calendário desta página. É uma call de avaliação, sem compromisso, para ver se é o fit certo para ti. Se o calendário não abrir, o link de recurso abre numa nova aba. Não é uma compra direta.</p>
 </details>
 </div>
 </div>
 </section>
 <section class="section close">
 <div class="wrap">
-<div class="kicker">4Improvements</div>
 <h2>Os teus leads respondidos na hora, sejas consultor individual ou tenhas equipa.</h2>
-<p class="value-line">Tudo isto por 497 €, pagamento único.</p>
-<ul class="inclui">
-<li>Configuração total do CRM GoHighLevel</li>
-<li>Configuração total de um agente de IA com RAG: memória de todos os imóveis que tens no teu site</li>
-<li>Follow-up automático</li>
-<li>Configuração do pipeline</li>
-<li>Perguntas de qualificação por perfil: investidor, comprador, vendedor e arrendatário</li>
-<li>Análise de áudio, imagem e voz</li>
-<li>Marcações automáticas no calendário</li>
-<li>Notificações de leads novas, qualificadas, sem resposta, sem interesse e paradas há mais de X dias</li>
-<li>3 h de setup + 2 h de formação</li>
-<li>Garantia: o sistema fica todo a funcionar</li>
-</ul>
-<div class="close-price">
-<p class="price-line"><b class="price-now">497 €</b></p>
+<p class="fit-note">Tudo isto por 497 €, pagamento único.</p>
+<p class="price-now">497 €</p>
 <p class="fit-note">497 €, pagamento único. Antes de avançar fazemos sempre uma call de avaliação para ver se é o fit certo para ti. Não é uma compra direta.</p>
 <p class="price-note">O mesmo preço para os dois. 5 vagas.</p>
-</div>
-<p class="close-lead">Se quiseres, 97 €/mês por 1 h de acompanhamento, depois da configuração e com a conta Meta ligada. Há 5 vagas.</p>
-<div class="close-cta">
+<p class="prose">Se quiseres, 97 €/mês por 1 h de acompanhamento, depois da configuração e com a conta Meta ligada. Há 5 vagas.</p>
 <div class="cta-stack">
-<a class="btn" data-booking>Quero explorar as minhas opções deste sistema</a>
+<a class="btn" href="#calendario" data-cta="fecho">Quero explorar as minhas opções deste sistema</a>
 <p class="cta-micro">Call de avaliação, sem compromisso</p>
-<p class="contact-note">A marcação abre numa nova aba.</p>
-</div>
 </div>
 </div>
 </section>
 </main>
 <footer class="site-footer">
+<div class="wrap">
 <nav class="legal-nav" aria-label="Informação legal">
 <a href="../termos.html">Termos e Condições</a>
 <a href="../privacidade.html">Política de Privacidade</a>
@@ -288,10 +253,11 @@ posthog.init('phc_knF2fZccBcGVgHcayHbPfcYfXguFx3jzxaBksdduz9R3',{api_host:'https
 <a href="#" data-ck-open>Preferências de cookies</a>
 </nav>
 <p>4Improvements, Lda. · Configuração Go High Level para consultores e equipas · Portugal</p>
+</div>
 </footer>
 <div class="mobile-spacer" aria-hidden="true"></div>
 <div class="mobile-cta">
-<a class="btn" data-booking>Quero explorar as minhas opções deste sistema</a>
+<a class="btn" href="#calendario" data-cta="barra">Quero explorar as minhas opções deste sistema</a>
 <p class="cta-micro">Call de avaliação, sem compromisso</p>
 </div>
 <div id="ck" class="ck" role="dialog" aria-live="polite" aria-label="Consentimento de cookies" hidden><div class="ck-in"><p><b>Usamos cookies.</b> Necessários para a página. Com autorização, o Meta Pixel mede campanhas. <a href="../privacidade.html#cookies">Saber mais</a></p><div class="ck-btns"><button type="button" class="ck-b" data-ck="rejected">Rejeitar</button><button type="button" class="ck-b" data-ck="accepted">Aceitar</button></div></div></div>
@@ -314,8 +280,23 @@ posthog.init('phc_knF2fZccBcGVgHcayHbPfcYfXguFx3jzxaBksdduz9R3',{api_host:'https
   function decide(v){put(v);hide();if(v==="accepted")startMTHD();else{if(window.fbq)fbq("consent","revoke");clearMeta()}}
   box.addEventListener("click",function(e){var b=e.target.closest("[data-ck]");if(b)decide(b.getAttribute("data-ck"))});
   document.addEventListener("click",function(e){
-    if(e.target.closest("[data-ck-open]")){e.preventDefault();show();return}
+    var cta=e.target.closest("[data-cta]");
+    if(cta&&window.posthog&&posthog.capture){
+      posthog.capture("ghl497_cta_click",{placement:cta.getAttribute("data-cta")});
+    }
+    if(e.target.closest("[data-ck-open]")){e.preventDefault();show()}
   });
+  var cal=document.getElementById("calendario");
+  if(cal&&"IntersectionObserver" in window){
+    var seen=false;
+    var io=new IntersectionObserver(function(entries){
+      if(seen||!entries[0].isIntersecting)return;
+      seen=true;
+      if(window.posthog&&posthog.capture)posthog.capture("ghl497_calendar_view");
+      io.disconnect();
+    },{threshold:0.35});
+    io.observe(cal);
+  }
   var c=get();
   if(c==="accepted")startMTHD();
   else if(c!=="rejected")show();

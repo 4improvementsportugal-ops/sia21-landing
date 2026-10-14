@@ -5,21 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <script>
 const DEMO_BOOKING_URL = "https://api.leadconnectorhq.com/widget/bookings/4improvements";
-document.addEventListener("DOMContentLoaded", function () {
-  var links = document.querySelectorAll("[data-booking]");
-  for (var i = 0; i < links.length; i++) {
-    links[i].href = DEMO_BOOKING_URL;
-    links[i].target = "_blank";
-    links[i].rel = "noopener noreferrer";
-  }
-});
 </script>
 <meta name="theme-color" content="#0f172a">
 <meta name="robots" content="noindex, nofollow">
 <title>Pagamento confirmado. Obrigado! | 4Improvements</title>
 <meta name="description" content="Pagamento confirmado. O próximo passo é marcar a sessão de configuração de 3 h. A equipa entra em contacto em 24 h úteis.">
 <meta property="og:locale" content="pt_PT">
-<link rel="stylesheet" href="../angles-v2/v2.css">
 <link rel="stylesheet" href="page.css">
 <script>
 !function(t,e){var o,n,p,r;e.__SV||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.crossOrigin="anonymous",p.async=!0,p.src=s.api_host.replace(".i.posthog.com","-assets.i.posthog.com")+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],Object.defineProperty(u,"toString",{configurable:!0,enumerable:!0,writable:!0,value:function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e}}),Object.defineProperty(u.people,"toString",{configurable:!0,enumerable:!0,writable:!0,value:function(){return u.toString(1)+".people (stub)"}}),o="init capture register register_once register_for_session unregister unregister_for_session getFeatureFlag getFeatureFlagResult isFeatureEnabled reloadFeatureFlags updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures on onFeatureFlags onSessionId getSurveys getActiveMatchingSurveys renderSurvey canRenderSurvey getNextSurveyStep identify setPersonProperties group resetGroups setPersonPropertiesForFlags resetPersonPropertiesForFlags setGroupPropertiesForFlags resetGroupPropertiesForFlags reset get_distinct_id getGroups get_session_id get_session_replay_url alias set_config startSessionRecording stopSessionRecording sessionRecordingStarted captureException loadToolbar get_property getSessionProperty createPersonProfile opt_in_capturing opt_out_capturing has_opted_in_capturing has_opted_out_capturing clear_opt_in_out_capturing debug".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
@@ -32,18 +23,27 @@ posthog.init('phc_knF2fZccBcGVgHcayHbPfcYfXguFx3jzxaBksdduz9R3',{api_host:'https
 <a class="brand" href="index.html">4Improvements</a>
 </div>
 </header>
-<main>
-<section class="hero thanks">
+<main class="thanks">
 <div class="wrap">
-<p class="kicker">4Improvements</p>
+<article class="deed">
 <h1>Pagamento confirmado. Obrigado!</h1>
-<p class="hero-lead">O próximo passo é marcar a sessão de configuração de 3 h.</p>
-<a class="btn" data-booking>Marcar a sessão de configuração de 3 h</a>
-<p class="contact-note">A equipa entra em contacto em 24 h úteis.</p>
+<p class="lead">O próximo passo é marcar a sessão de configuração de 3 h.</p>
+<p class="prose">A equipa entra em contacto em 24 h úteis.</p>
+<div class="cta-stack">
+<a class="btn" href="#calendario" data-cta="obrigado">Marcar a sessão de configuração de 3 h</a>
+<p class="cta-micro">Call de avaliação, sem compromisso</p>
 </div>
-</section>
+<div id="calendario">
+<div class="calendar-frame">
+<iframe title="Calendário para marcar a sessão de configuração de 3 h" src="https://api.leadconnectorhq.com/widget/bookings/4improvements" loading="lazy" referrerpolicy="strict-origin-when-cross-origin"></iframe>
+</div>
+<p><a class="fallback" data-cta="recurso" href="https://api.leadconnectorhq.com/widget/bookings/4improvements" target="_blank" rel="noopener noreferrer">Se o calendário não abrir, marca a sessão aqui. A marcação abre numa nova aba.</a></p>
+</div>
+</article>
+</div>
 </main>
 <footer class="site-footer">
+<div class="wrap">
 <nav class="legal-nav" aria-label="Informação legal">
 <a href="../termos.html">Termos e Condições</a>
 <a href="../privacidade.html">Política de Privacidade</a>
@@ -51,6 +51,7 @@ posthog.init('phc_knF2fZccBcGVgHcayHbPfcYfXguFx3jzxaBksdduz9R3',{api_host:'https
 <a href="#" data-ck-open>Preferências de cookies</a>
 </nav>
 <p>4Improvements, Lda. · Configuração Go High Level para consultores e equipas · Portugal</p>
+</div>
 </footer>
 <div id="ck" class="ck" role="dialog" aria-live="polite" aria-label="Consentimento de cookies" hidden><div class="ck-in"><p id="ck-copy"><b>Usamos cookies.</b> Necessários para a página. Com autorização, o Meta Pixel mede campanhas. <a href="../privacidade.html#cookies">Saber mais</a></p><div class="ck-btns"><button type="button" class="ck-b" data-ck="rejected">Rejeitar</button><button type="button" class="ck-b" data-ck="accepted">Aceitar</button></div></div></div>
 <script src="../assets/mthd-pixel.js"></script>
@@ -102,8 +103,23 @@ posthog.init('phc_knF2fZccBcGVgHcayHbPfcYfXguFx3jzxaBksdduz9R3',{api_host:'https
   }
   box.addEventListener("click",function(e){var b=e.target.closest("[data-ck]");if(b)decide(b.getAttribute("data-ck"))});
   document.addEventListener("click",function(e){
-    if(e.target.closest("[data-ck-open]")){e.preventDefault();show();return}
+    var cta=e.target.closest("[data-cta]");
+    if(cta&&window.posthog&&posthog.capture){
+      posthog.capture("ghl497_cta_click",{placement:cta.getAttribute("data-cta")});
+    }
+    if(e.target.closest("[data-ck-open]")){e.preventDefault();show()}
   });
+  var cal=document.getElementById("calendario");
+  if(cal&&"IntersectionObserver" in window){
+    var seen=false;
+    var io=new IntersectionObserver(function(entries){
+      if(seen||!entries[0].isIntersecting)return;
+      seen=true;
+      if(window.posthog&&posthog.capture)posthog.capture("ghl497_calendar_view");
+      io.disconnect();
+    },{threshold:0.35});
+    io.observe(cal);
+  }
   var c=get();
   if(c==="accepted")startMTHD();
   else if(c!=="rejected"){setCheckoutBannerCopy();show()}

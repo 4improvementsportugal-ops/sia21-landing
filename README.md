@@ -21,4 +21,8 @@ PostHog inicia com `capture_pageview: false`, `autocapture: false` e `disable_se
 
 Eventos custom (`stripe_checkout_click`, `calendar_cta_click`, `exit_offer_*`, `last_offer_*`) entram por `SIA21_capturePh` / `SIA21_captureWhenHuman`, que os guarda até ao sinal humano e os descarta no `pagehide` se o sinal não chegou.
 
+Popups de saída (`exit_offer_*`, `last_offer_*`) não aparecem e não disparam eventos sem um sinal **anterior** ao gesto de saída: scroll acima de 80px, mais de 3 movimentos do rato, ou os 6 segundos com o separador visível. Um clique não chega. Com `navigator.webdriver === true` o popup nunca abre. A função é `SIA21_mayShowExit()`.
+
+Links `buy.stripe.com` (€37, €33, €14 e upsells) só navegam quando, ao mesmo tempo, há um sinal humano anterior a esse clique (o próprio clique não conta), a página está aberta há pelo menos 1,5 s, e `navigator.webdriver === false`. Se falhar, o visitante fica na página, o clique faz scroll até ao CTA, e o clique seguinte já pode seguir quando o tempo e o webdriver o permitirem. Quem fez scroll e depois clica entra directo, sem segundo clique. `stripe_checkout_click` e `InitiateCheckout` seguem a mesma regra: não disparam no clique bloqueado. Nas páginas de obrigado o Purchase continua imediato; os upsells seguem esta regra de checkout.
+
 Página nova: copiar `templates/landing-template.html` e seguir `CHECKLIST-NOVA-PAGINA.md`. `bash scripts/check-antibot.sh` falha se algum `.html` fora de `templates/` não carregar `human-gate.js`.

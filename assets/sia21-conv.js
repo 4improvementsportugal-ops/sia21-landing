@@ -22,6 +22,10 @@
  * stripe_checkout_click plus the €33/€14 exit events. Those captures never
  * change the ladder, copy, or Stripe links. They are queued until
  * window.__SIA21_HUMAN and dropped on pagehide if that signal never comes.
+ * Exit popups stay closed until SIA21_mayShowExit() (scroll, mouse movement
+ * or visible dwell already happened, and navigator.webdriver is false).
+ * A click is not enough. stripe_checkout_click and InitiateCheckout fire
+ * only when human-gate.js let this click through to buy.stripe.com.
  */
 (function (w, d) {
   "use strict";
@@ -165,6 +169,7 @@
   function onCheckoutClick(e) {
     var anchor = e.target && e.target.closest ? e.target.closest('a[href*="buy.stripe.com"]') : null;
     if (!anchor) return;
+    if (w.__SIA21_CHECKOUT_OK !== true) return;
     capturePh("stripe_checkout_click", { angle: angleSlug(), price: stripePrice(anchor) });
     if (!w.__SIA21_HUMAN || !pixelReady() || isThankYou()) return;
     var value = checkoutValue(anchor);
@@ -635,6 +640,7 @@
 
     function canOpen(opts) {
       opts = opts || {};
+      if (typeof w.SIA21_mayShowExit !== "function" || !w.SIA21_mayShowExit()) return false;
       if (!root.hidden) return false;
       if (exitStep() >= 2) return false;
       if (Date.now() - openedAt < minAge()) return false;

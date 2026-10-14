@@ -21,7 +21,7 @@ const require = createRequire("/tmp/node_modules/playwright/package.json");
 const { chromium } = require("playwright");
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const PORT = 9891;
+const PORT = 9921;
 const ORIGIN = `http://127.0.0.1:${PORT}`;
 const HUMAN_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36";
 
@@ -187,7 +187,8 @@ async function main() {
       const page = await context.newPage();
       const requests = watch(page);
       await page.goto(ORIGIN + "/index.html", { waitUntil: "load", timeout: 30000 });
-      await page.evaluate(() => window.scrollTo(0, 400));
+      await page.mouse.move(480, 320);
+      await page.mouse.wheel(0, 1200);
       const found = await waitUntil(() => {
         return (
           requests.some((r) => hasMetaEvent(r, "PageView")) &&
@@ -239,6 +240,220 @@ async function main() {
         "6s visible dwell sends PageView and $pageview",
         found && human,
         "found=" + found + " __SIA21_HUMAN=" + human
+      );
+      await context.close();
+    }
+
+    async function trackStripe(context) {
+      const hits = [];
+      await context.route(/buy\.stripe\.com/i, (route) => {
+        hits.push(route.request().url());
+        return route.abort();
+      });
+      return hits;
+    }
+
+    function checkoutNoise(requests) {
+      return requests.filter((r) => {
+        const blob = bodyText(r);
+        return /stripe_checkout_click|InitiateCheckout|exit_offer_|last_offer_/.test(blob);
+      });
+    }
+
+    // Immediate synthetic clicks are what the review bots did: no scroll, no dwell.
+    {
+      const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+      await arm(context, "raw-bot");
+      const hits = await trackStripe(context);
+      const page = await context.newPage();
+      const requests = watch(page);
+      await page.goto(ORIGIN + "/index.html", { waitUntil: "load", timeout: 30000 });
+      await page.evaluate(() => {
+        var link = document.querySelector('a[href*="buy.stripe.com"]');
+        link.click();
+        link.click();
+      });
+      await sleep(1200);
+      const state = await page.evaluate(() => ({
+        engaged: window.__SIA21_ENGAGED === true,
+        exitHidden: !document.getElementById("sia21-exit") || document.getElementById("sia21-exit").hidden === true
+      }));
+      const noise = checkoutNoise(requests);
+      report(
+        "bot click on the CTA does not open Stripe or fire checkout events",
+        hits.length === 0 && noise.length === 0 && !state.engaged && state.exitHidden,
+        "stripeNav=" + hits.length + " events=" + noise.length + " " + JSON.stringify(state)
+      );
+      await context.close();
+    }
+
+    // Same click without webdriver (Meta review browsers often leave webdriver false).
+    {
+      const context = await browser.newContext({ userAgent: HUMAN_UA, viewport: { width: 1280, height: 800 } });
+      await arm(context, "visible");
+      const hits = await trackStripe(context);
+      const page = await context.newPage();
+      const requests = watch(page);
+      await page.goto(ORIGIN + "/index.html", { waitUntil: "load", timeout: 30000 });
+      await page.evaluate(() => document.querySelector('a[href*="buy.stripe.com"]').click());
+      await sleep(400);
+      const noise = checkoutNoise(requests);
+      const engaged = await page.evaluate(() => window.__SIA21_ENGAGED === true);
+      report(
+        "click with webdriver off and no prior signal stays on the page",
+        hits.length === 0 && noise.length === 0 && !engaged,
+        "stripeNav=" + hits.length + " events=" + noise.length + " engaged=" + engaged
+      );
+      await context.close();
+    }
+
+    {
+      const context = await browser.newContext({ userAgent: HUMAN_UA, viewport: { width: 1280, height: 800 } });
+      await arm(context, "visible");
+      const hits = await trackStripe(context);
+      const page = await context.newPage();
+      const requests = watch(page);
+      await page.goto(ORIGIN + "/index.html", { waitUntil: "load", timeout: 30000 });
+      await page.mouse.move(480, 360);
+      await page.mouse.wheel(0, 1400);
+      await page.waitForFunction(() => window.__SIA21_ENGAGED === true && window.scrollY > 80);
+      await waitUntil(() => requests.some((r) => hasMetaEvent(r, "PageView")), 12000);
+      const remain = await page.evaluate(() => Math.max(0, window.__SIA21_CHECKOUT_MIN_MS - (Date.now() - window.__SIA21_PAGE_AT) + 80));
+      await sleep(remain);
+      await page.click('a[href*="buy.stripe.com"]');
+      const sent = await waitUntil(() => {
+        return hits.length > 0 && requests.some((r) => hasPosthogEvent(r, "stripe_checkout_click")) && requests.some((r) => hasMetaEvent(r, "InitiateCheckout"));
+      }, 8000);
+      report(
+        "scroll then one click opens Stripe and sends checkout events",
+        sent && hits.length > 0,
+        "stripeNav=" + hits.length + " sent=" + sent
+      );
+      await context.close();
+    }
+
+    // First click is not a signal. The next click, after 1.5s, is the recovery path.
+    {
+      const context = await browser.newContext({ userAgent: HUMAN_UA, viewport: { width: 1280, height: 800 } });
+      await arm(context, "visible");
+      const hits = await trackStripe(context);
+      const page = await context.newPage();
+      await page.goto(ORIGIN + "/index.html", { waitUntil: "load", timeout: 30000 });
+      await page.evaluate(() => document.querySelector('a[href*="buy.stripe.com"]').click());
+      const early = hits.length;
+      const remain = await page.evaluate(() => Math.max(0, window.__SIA21_CHECKOUT_MIN_MS - (Date.now() - window.__SIA21_PAGE_AT) + 80));
+      await sleep(remain);
+      await page.evaluate(() => {
+        var link = document.querySelector('a[href*="buy.stripe.com"]');
+        link.target = "_self";
+        link.click();
+      });
+      await sleep(500);
+      const url = page.url();
+      report(
+        "second click after 1.5s reaches Stripe without a scroll",
+        early === 0 && (hits.length > 0 || url.includes("buy.stripe.com")),
+        "early=" + early + " stripeNav=" + hits.length + " url=" + url
+      );
+      await context.close();
+    }
+
+    {
+      const context = await browser.newContext({ userAgent: HUMAN_UA, viewport: { width: 1280, height: 800 } });
+      await arm(context, "visible");
+      const page = await context.newPage();
+      const requests = watch(page);
+      await page.goto(ORIGIN + "/index.html?sia21_debug=1", { waitUntil: "load", timeout: 30000 });
+      await sleep(500);
+      await page.evaluate(() => {
+        document.dispatchEvent(new MouseEvent("mouseout", { bubbles: true, clientX: 40, clientY: 0 }));
+      });
+      await sleep(300);
+      const state = await page.evaluate(() => {
+        var box = document.getElementById("sia21-exit");
+        return { hidden: !box || box.hidden === true, engaged: window.__SIA21_ENGAGED === true };
+      });
+      const noise = checkoutNoise(requests);
+      report(
+        "exit intent without a prior signal stays closed",
+        state.hidden && !state.engaged && noise.length === 0,
+        JSON.stringify(state) + " events=" + noise.length
+      );
+      await context.close();
+    }
+
+    {
+      const context = await browser.newContext({ userAgent: HUMAN_UA, viewport: { width: 1280, height: 800 } });
+      await arm(context, "visible");
+      const page = await context.newPage();
+      const requests = watch(page);
+      await page.goto(ORIGIN + "/index.html?sia21_debug=1", { waitUntil: "load", timeout: 30000 });
+      await page.mouse.move(480, 360);
+      await page.mouse.wheel(0, 1400);
+      await page.waitForFunction(() => window.__SIA21_ENGAGED === true && window.scrollY > 80);
+      await sleep(400);
+      await page.evaluate(() => {
+        document.dispatchEvent(new MouseEvent("mouseout", { bubbles: true, clientX: 40, clientY: 0 }));
+      });
+      const opened = await page.waitForFunction(() => {
+        var box = document.getElementById("sia21-exit");
+        return box && box.hidden === false;
+      }, null, { timeout: 2000 }).then(() => true).catch(() => false);
+      const sent = await waitUntil(() => requests.some((r) => hasPosthogEvent(r, "exit_offer_33_shown")), 8000);
+      report(
+        "exit intent after scroll shows the €33 offer",
+        opened && sent,
+        "opened=" + opened + " sent=" + sent
+      );
+      await context.close();
+    }
+
+    {
+      const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+      await arm(context, "raw-bot");
+      const hits = await trackStripe(context);
+      const page = await context.newPage();
+      await page.goto(ORIGIN + "/index.html?sia21_debug=1", { waitUntil: "load", timeout: 30000 });
+      await page.mouse.move(480, 360);
+      await page.mouse.wheel(0, 1400);
+      await sleep(1600);
+      await page.evaluate(() => {
+        document.dispatchEvent(new MouseEvent("mouseout", { bubbles: true, clientX: 40, clientY: 0 }));
+      });
+      await page.click('a[href*="buy.stripe.com"]').catch(() => {});
+      await sleep(400);
+      const state = await page.evaluate(() => {
+        var box = document.getElementById("sia21-exit");
+        return { hidden: !box || box.hidden === true, webdriver: navigator.webdriver === true };
+      });
+      report(
+        "webdriver never opens exit intent or Stripe",
+        hits.length === 0 && state.hidden && state.webdriver,
+        "stripeNav=" + hits.length + " " + JSON.stringify(state)
+      );
+      await context.close();
+    }
+
+    {
+      const context = await browser.newContext({ userAgent: HUMAN_UA, viewport: { width: 1280, height: 800 } });
+      await arm(context, "visible");
+      const hits = await trackStripe(context);
+      const page = await context.newPage();
+      await page.goto(ORIGIN + "/obrigado.html", { waitUntil: "load", timeout: 30000 });
+      await page.evaluate(() => document.querySelector('a[href*="buy.stripe.com"]').click());
+      await sleep(300);
+      const blocked = hits.length === 0;
+      await page.mouse.move(400, 400);
+      await page.mouse.wheel(0, 800);
+      await page.waitForFunction(() => window.__SIA21_ENGAGED === true);
+      const remain = await page.evaluate(() => Math.max(0, window.__SIA21_CHECKOUT_MIN_MS - (Date.now() - window.__SIA21_PAGE_AT) + 80));
+      await sleep(remain);
+      await page.click('a[href*="buy.stripe.com"]');
+      await sleep(500);
+      report(
+        "obrigado upsell waits for a prior signal, then a scroll and click goes through",
+        blocked && hits.length > 0,
+        "afterBot=" + (blocked ? 0 : hits.length) + " afterHuman=" + hits.length
       );
       await context.close();
     }

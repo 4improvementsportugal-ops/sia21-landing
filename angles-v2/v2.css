@@ -855,11 +855,11 @@ button:focus-visible {
 }
 
 .mobile-spacer {
-  height: 5.75rem;
+  height: calc(4.5rem + var(--ck-offset, 0px));
 }
 
 .ck-b {
-  min-height: 2.75rem;
+  min-height: 2.25rem;
 }
 
 @media (max-width: 380px) {
@@ -875,6 +875,41 @@ button:focus-visible {
 }
 
 @media (max-width: 640px) {
+  .hero-fold {
+    padding: 1rem 0 0.75rem;
+  }
+
+  .hero-fold h1 {
+    margin-top: 0.4rem;
+    font-size: 1.7rem;
+    line-height: 1.12;
+  }
+
+  .hero-fold .hero-copy .price-act {
+    order: 1;
+    margin-top: 0.85rem;
+  }
+
+  .hero-fold .hero-copy .hero-lead {
+    order: 2;
+    margin-top: 0.7rem;
+    font-size: 0.95rem;
+    line-height: 1.4;
+  }
+
+  .hero-fold .hero-copy .sia21-retorno {
+    order: 3;
+  }
+
+  .hero-fold .price-now {
+    font-size: 1.75rem;
+  }
+
+  .hero-fold .price-act .btn {
+    min-height: 3.25rem;
+    font-size: 1.0625rem;
+  }
+
   .price-act,
   .offer-cta {
     flex-direction: column;
@@ -890,9 +925,9 @@ button:focus-visible {
   .mobile-cta {
     position: fixed;
     right: 0;
-    bottom: 0;
+    bottom: var(--ck-offset, 0px);
     left: 0;
-    z-index: 50;
+    z-index: 60;
     display: flex;
     align-items: center;
     justify-content: space-between;

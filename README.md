@@ -17,7 +17,7 @@ Sinais que abrem o gate (`window.__SIA21_HUMAN`, `SIA21_onHuman(cb)` e o evento 
 
 O consentimento de cookies (`4i_cookie_consent_v1 === "accepted"`) continua a ser a porta de fora do Pixel. O gate humano arranca sempre, mesmo sem consentimento. Sem sinal humano não há PageView, ViewContent, InitiateCheckout, Lead, Schedule, nem eventos PostHog.
 
-PostHog inicia com `capture_pageview: false`, `autocapture: false` e `disable_session_recording: true` (`capture_pageleave` e heatmaps também ficam desligados até ao sinal). `SIA21_armTracking()` faz `posthog.capture('$pageview')`, liga o autocapture e começa a gravação de sessão.
+PostHog inicia com `capture_pageview: false`, `autocapture: false` e `disable_session_recording: true` (`capture_pageleave` e heatmaps também ficam desligados até ao sinal). `SIA21_armTracking()` faz `posthog.capture('$pageview', {}, { timestamp })` com o instante real de abertura da página (`performance.timeOrigin`), liga o autocapture e começa a gravação de sessão. No `pagehide`, depois do sinal humano, envia `$pageleave` com `$prev_pageview_duration` contado desde essa abertura. Sem isto a duração média fica 0 s: o PostHog mede o tempo entre o primeiro e o último evento, e o gate só emitia `$pageview` no momento do sinal, no mesmo instante em que ligava o relógio do pageleave.
 
 Eventos custom (`stripe_checkout_click`, `calendar_cta_click`, `exit_offer_*`, `last_offer_*`) entram por `SIA21_capturePh` / `SIA21_captureWhenHuman`, que os guarda até ao sinal humano e os descarta no `pagehide` se o sinal não chegou.
 

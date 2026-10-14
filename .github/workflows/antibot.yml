@@ -1,0 +1,13 @@
+name: anti-bot gate
+
+on:
+  pull_request:
+  push:
+
+jobs:
+  human-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Every published HTML page loads the human gate
+        run: bash scripts/check-antibot.sh

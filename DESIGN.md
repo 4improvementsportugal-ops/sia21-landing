@@ -16,5 +16,6 @@ Visual world for `/ghl-agencias/`: a Portuguese deed on white paper. The price i
 ## Do not
 
 - Do not list exclusions.
-- Do not invent screenshots, video, or testimonials. Placeholders stay labeled TODO.
+- Conversation frames are labeled Exemplo ilustrativo and use fictional names and properties.
+- The reel is self-hosted. The caption is Pedro Ferreira, 4Talks.
 - Do not use a second accent, a side border, or an eyebrow above a heading.

@@ -34,8 +34,8 @@ posthog.init('phc_knF2fZccBcGVgHcayHbPfcYfXguFx3jzxaBksdduz9R3',{api_host:'https
 <p class="cta-micro">Call de avaliação, sem compromisso</p>
 </div>
 <div id="calendario">
-<div class="calendar-frame">
-<iframe title="Calendário para marcar a sessão de configuração de 3 h" src="https://api.leadconnectorhq.com/widget/bookings/4improvements" loading="lazy" referrerpolicy="strict-origin-when-cross-origin"></iframe>
+<div class="calendar-frame" id="ghl-book">
+<iframe id="4improvements_booking_obrigado" title="Calendário para marcar a sessão de configuração de 3 h" data-src="https://api.leadconnectorhq.com/widget/bookings/4improvements" style="width:100%;border:none;overflow:hidden" scrolling="no" loading="lazy" referrerpolicy="strict-origin-when-cross-origin"></iframe>
 </div>
 <p><a class="fallback" data-cta="recurso" href="https://api.leadconnectorhq.com/widget/bookings/4improvements" target="_blank" rel="noopener noreferrer">Se o calendário não abrir, marca a sessão aqui. A marcação abre numa nova aba.</a></p>
 </div>
@@ -109,6 +109,27 @@ posthog.init('phc_knF2fZccBcGVgHcayHbPfcYfXguFx3jzxaBksdduz9R3',{api_host:'https
     }
     if(e.target.closest("[data-ck-open]")){e.preventDefault();show()}
   });
+  function mountCalendar(){
+    var frame=document.querySelector("#ghl-book iframe");
+    if(!frame||frame.getAttribute("src"))return;
+    frame.src=frame.getAttribute("data-src");
+    if(!document.querySelector("script[data-ghl-embed]")){
+      var s=document.createElement("script");
+      s.src="https://link.msgsndr.com/js/form_embed.js";
+      s.async=true;
+      s.setAttribute("data-ghl-embed","1");
+      document.body.appendChild(s);
+    }
+  }
+  var book=document.getElementById("ghl-book");
+  if(book&&"IntersectionObserver" in window){
+    var lazy=new IntersectionObserver(function(entries){
+      if(!entries[0].isIntersecting)return;
+      mountCalendar();
+      lazy.disconnect();
+    },{rootMargin:"240px"});
+    lazy.observe(book);
+  } else mountCalendar();
   var cal=document.getElementById("calendario");
   if(cal&&"IntersectionObserver" in window){
     var seen=false;

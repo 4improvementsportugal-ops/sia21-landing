@@ -2,8 +2,10 @@
  * SIA21 conversion helper: Meta events, retorno copy, FOMO toast, exit intent.
  *
  * Loaded on index.html and angles/01..10 only. Purchase stays on obrigado.html.
- * Meta events fire only after cookie consent (4i_cookie_consent_v1 === "accepted")
- * and SIA21_startHumanGatedPixel has started the pixel.
+ * Meta events fire only after cookie consent (4i_cookie_consent_v1 === "accepted"),
+ * SIA21_startHumanGatedPixel has started the pixel, and the human gate is open
+ * (window.__SIA21_HUMAN / SIA21_onHuman). ViewContent is not tied to onInit.
+ * PostHog custom events wait on SIA21_captureWhenHuman and are dropped on leave.
  *
  * Price ladder (match creatives). Ads promise Standard €47 (strike price on the LP).
  *   window.SIA21_EARLY_37  primary Early Bird €37
@@ -16,8 +18,14 @@
  * InitiateCheckout value matches the link: 37 / 33 / 14. ViewContent is 37.
  * Exit step lives in sessionStorage (sia21_exit_step_v2): 0 none, 1 saw €33, 2 saw €14.
  * Each step shows once per session. obrigado.html reads amount from the URL.
- * PostHog (snippet in <head>) records stripe_checkout_click plus the €33/€14
- * exit events. Those captures never change the ladder, copy, or Stripe links.
+ * PostHog (snippet in <head>, armed only after the human gate) records
+ * stripe_checkout_click plus the €33/€14 exit events. Those captures never
+ * change the ladder, copy, or Stripe links. They are queued until
+ * window.__SIA21_HUMAN and dropped on pagehide if that signal never comes.
+ * Exit popups stay closed until SIA21_mayShowExit() (scroll, mouse movement
+ * or visible dwell already happened, and navigator.webdriver is false).
+ * A click is not enough. stripe_checkout_click and InitiateCheckout fire
+ * only when human-gate.js let this click through to buy.stripe.com.
  */
 (function (w, d) {
   "use strict";
@@ -95,12 +103,19 @@
   }
 
   function capturePh(name, props) {
-    try {
-      if (w.posthog && typeof w.posthog.capture === "function") {
-        w.posthog.capture(name, props);
-      }
-    } catch (e) {}
+    if (typeof w.SIA21_captureWhenHuman === "function") {
+      w.SIA21_captureWhenHuman(name, props);
+      return;
+    }
+    if (typeof w.SIA21_onHuman === "function") {
+      w.SIA21_onHuman(function () {
+        try {
+          if (w.posthog && typeof w.posthog.capture === "function") w.posthog.capture(name, props);
+        } catch (e) {}
+      });
+    }
   }
+  w.SIA21_capturePh = capturePh;
 
   function stripePrice(anchor) {
     var href = (anchor && anchor.getAttribute && anchor.getAttribute("href")) || "";
@@ -138,7 +153,7 @@
   }
 
   function fireViewContent() {
-    if (w.__SIA21_VC_FIRED || isThankYou() || !pixelReady()) return;
+    if (w.__SIA21_VC_FIRED || isThankYou() || !pixelReady() || !w.__SIA21_HUMAN) return;
     w.__SIA21_VC_FIRED = true;
     var payload = {
       content_name: angleName(),
@@ -154,8 +169,9 @@
   function onCheckoutClick(e) {
     var anchor = e.target && e.target.closest ? e.target.closest('a[href*="buy.stripe.com"]') : null;
     if (!anchor) return;
+    if (w.__SIA21_CHECKOUT_OK !== true) return;
     capturePh("stripe_checkout_click", { angle: angleSlug(), price: stripePrice(anchor) });
-    if (!pixelReady() || isThankYou()) return;
+    if (!w.__SIA21_HUMAN || !pixelReady() || isThankYou()) return;
     var value = checkoutValue(anchor);
     var payload = {
       value: value,
@@ -180,13 +196,19 @@
         if (typeof userOnInit === "function") {
           try { userOnInit(); } catch (e) {}
         }
-        fireViewContent();
+        scheduleViewContent();
       };
       return orig(options);
     }
     w.SIA21_startHumanGatedPixel = wrapped;
     w.SIA21_loadMTHDPixel = wrapped;
     return true;
+  }
+
+  function scheduleViewContent() {
+    function go() { fireViewContent(); }
+    if (typeof w.SIA21_onHuman === "function") w.SIA21_onHuman(go);
+    else w.addEventListener("sia21:human", go);
   }
 
   function bindCheckoutClicks() {
@@ -618,6 +640,7 @@
 
     function canOpen(opts) {
       opts = opts || {};
+      if (typeof w.SIA21_mayShowExit !== "function" || !w.SIA21_mayShowExit()) return false;
       if (!root.hidden) return false;
       if (exitStep() >= 2) return false;
       if (Date.now() - openedAt < minAge()) return false;
@@ -720,7 +743,7 @@
     mountToast();
     mountSticky();
     mountExit();
-    if (w.__SIA21_MTHD_STARTED) fireViewContent();
+    scheduleViewContent();
   }
 
   bindCheckoutClicks();

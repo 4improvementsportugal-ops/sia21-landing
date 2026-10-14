@@ -1,14 +1,17 @@
 /**
  * SIA21 Human-Gated Meta Pixel (MTHD)
- * Cookie consent is the OUTER gate — call this only after 4i_cookie_consent_v1 === "accepted".
- * Instant PageView when pathname contains any instantPaths entry (indexOf !== -1),
- * so /sia21-landing/obrigado.html matches '/obrigado.html' and '/obrigado'.
+ * Cookie consent is the OUTER gate. Call this only after 4i_cookie_consent_v1 === "accepted".
+ * PageView waits for assets/human-gate.js (SIA21_onHuman / window.__SIA21_HUMAN).
+ * Instant PageView when the human gate matches INSTANT_PATHS
+ * (/obrigado.html, /obrigado, /ghl-agencias/obrigado.html), including prefixed
+ * paths such as /sia21-landing/obrigado.html (indexOf !== -1).
+ * Purchase on thank-you pages stays in onInit and does not wait for PageView.
  */
 (function (w, d) {
   "use strict";
 
   var DEFAULT_PIXEL_ID = "1506988540335331";
-  var DEFAULT_INSTANT_PATHS = ["/obrigado.html", "/obrigado"];
+  var DEFAULT_INSTANT_PATHS = ["/obrigado.html", "/obrigado", "/ghl-agencias/obrigado.html"];
 
   function ensureFbqStub() {
     if (w.fbq) return;
@@ -43,7 +46,8 @@
    * @param {object} options
    * @param {string} [options.pixelId]
    * @param {string[]} [options.instantPaths]  match with pathname.indexOf(entry) !== -1
-   * @param {function} [options.onInit]  called once right after fbq init (before/alongside PageView schedule)
+   * @param {function} [options.onInit]  called once right after fbq init (before PageView)
+   * @param {function} [options.onHuman] called when the human gate opens, alongside PageView
    */
   w.SIA21_startHumanGatedPixel = function (options) {
     options = options || {};
@@ -55,7 +59,6 @@
 
     if (!/^\d+$/.test(pixelId)) return;
 
-    // Idempotent: if already started for this page, still invoke onInit once per call only if not yet inited
     if (w.__SIA21_MTHD_STARTED) {
       if (typeof options.onInit === "function" && !w.__SIA21_MTHD_ONINIT_DONE) {
         w.__SIA21_MTHD_ONINIT_DONE = true;
@@ -79,57 +82,23 @@
       if (pageViewFired) return;
       pageViewFired = true;
       try { w.fbq("track", "PageView"); } catch (e) {}
-      cleanup();
     }
 
-    var cleaned = false;
-    var moveCount = 0;
-    var timerId = null;
-
-    function onScroll() {
-      var y = w.scrollY || d.documentElement.scrollTop || d.body.scrollTop || 0;
-      if (y > 80) firePageView();
-    }
-    function onWheel() { firePageView(); }
-    function onKey() { firePageView(); }
-    function onClick() { firePageView(); }
-    function onTouch() { firePageView(); }
-    function onMove() {
-      moveCount += 1;
-      if (moveCount > 3) firePageView();
-    }
-
-    function cleanup() {
-      if (cleaned) return;
-      cleaned = true;
-      if (timerId) { clearTimeout(timerId); timerId = null; }
-      w.removeEventListener("scroll", onScroll, true);
-      w.removeEventListener("wheel", onWheel, true);
-      w.removeEventListener("keydown", onKey, true);
-      w.removeEventListener("click", onClick, true);
-      w.removeEventListener("touchstart", onTouch, true);
-      w.removeEventListener("mousemove", onMove, true);
-    }
-
-    if (pathMatchesInstant(w.location.pathname, instantPaths)) {
+    function onHumanSignal() {
+      if (typeof options.onHuman === "function") {
+        try { options.onHuman(); } catch (e) {}
+      }
       firePageView();
+    }
+
+    if (typeof w.SIA21_onHuman === "function") {
+      w.SIA21_onHuman(onHumanSignal);
       return;
     }
 
-    w.addEventListener("scroll", onScroll, true);
-    w.addEventListener("wheel", onWheel, true);
-    w.addEventListener("keydown", onKey, true);
-    w.addEventListener("click", onClick, true);
-    w.addEventListener("touchstart", onTouch, true);
-    w.addEventListener("mousemove", onMove, true);
-
-    timerId = setTimeout(function () {
-      try {
-        if (d.hasFocus && d.hasFocus()) firePageView();
-      } catch (e) {}
-    }, 6000);
+    // Gate script missing: thank-you paths still fire. Every other page stays silent.
+    if (pathMatchesInstant(w.location.pathname, instantPaths)) onHumanSignal();
   };
 
-  // Alias used in some call sites
   w.SIA21_loadMTHDPixel = w.SIA21_startHumanGatedPixel;
 })(window, document);

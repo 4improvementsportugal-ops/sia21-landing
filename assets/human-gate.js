@@ -55,6 +55,11 @@
   var phDropped = false;
   var checkoutArmed = false;
   var startedAt = Date.now();
+  try {
+    if (w.performance && typeof w.performance.timeOrigin === "number" && w.performance.timeOrigin > 0) {
+      startedAt = w.performance.timeOrigin;
+    }
+  } catch (e) {}
 
   w.__SIA21_HUMAN = false;
   w.__SIA21_ENGAGED = false;
@@ -175,20 +180,34 @@
   w.SIA21_armTracking = function () {
     if (w.__SIA21_PH_ARMED) return;
     w.__SIA21_PH_ARMED = true;
+    var startMs = w.__SIA21_PAGE_AT || startedAt;
     w.SIA21_onHuman(function () {
       var ph = w.posthog;
       if (!ph || w.__SIA21_PH_PAGEVIEW) return;
       w.__SIA21_PH_PAGEVIEW = true;
-      try { ph.capture("$pageview"); } catch (e) {}
+      // Backdate the first event to navigation start. PostHog session duration
+      // is last event minus first event, and $prev_pageview_duration is measured
+      // from when the SDK clock starts. The gate used to emit $pageview only
+      // after the human signal, in the same turn that enabled pageleave, so
+      // both timestamps collapsed and the average time on page was 0s.
+      try { ph.capture("$pageview", {}, { timestamp: new Date(startMs) }); } catch (e) {}
       try {
         ph.set_config({
           autocapture: true,
-          capture_pageleave: true,
+          capture_pageleave: false,
           enable_heatmaps: true,
           disable_session_recording: false
         });
-      } catch (e) {}
-      try { ph.startSessionRecording(); } catch (e) {}
+      } catch (e2) {}
+      try { ph.startSessionRecording(); } catch (e3) {}
+    });
+    w.addEventListener("pagehide", function () {
+      if (!w.__SIA21_HUMAN || !w.__SIA21_PH_PAGEVIEW || w.__SIA21_PH_LEAVE) return;
+      var ph = w.posthog;
+      if (!ph || typeof ph.capture !== "function") return;
+      w.__SIA21_PH_LEAVE = true;
+      var seconds = Math.round(((Date.now() - startMs) / 1000) * 10) / 10;
+      try { ph.capture("$pageleave", { $prev_pageview_duration: seconds }); } catch (e) {}
     });
   };
 
@@ -250,6 +269,7 @@
     if (checkoutAllowed()) {
       checkoutArmed = false;
       w.__SIA21_CHECKOUT_OK = true;
+      try { w.sessionStorage.setItem("sia21_stripe_left_at_v1", String(Date.now())); } catch (err) {}
       return;
     }
     holdCheckout(e, anchor);
@@ -267,6 +287,25 @@
     dwellTimer = setInterval(sampleDwell, 250);
     onScroll();
   }
+
+  function syncCookieOffset() {
+    var ck = d.getElementById("ck");
+    var height = 0;
+    if (ck && !ck.hidden) height = Math.ceil(ck.getBoundingClientRect().height);
+    d.documentElement.style.setProperty("--ck-offset", height + "px");
+  }
+
+  function watchCookieBar() {
+    syncCookieOffset();
+    var ck = d.getElementById("ck");
+    if (ck && w.MutationObserver) {
+      new MutationObserver(syncCookieOffset).observe(ck, { attributes: true, attributeFilter: ["hidden"] });
+    }
+    w.addEventListener("resize", syncCookieOffset);
+  }
+
+  if (d.readyState === "loading") d.addEventListener("DOMContentLoaded", watchCookieBar);
+  else watchCookieBar();
 
   if (pathMatchesInstant(w.location.pathname)) {
     markHuman();

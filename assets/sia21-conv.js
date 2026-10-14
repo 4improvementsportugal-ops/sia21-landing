@@ -17,6 +17,9 @@
  * €10 is not part of this ladder.
  * InitiateCheckout value matches the link: 37 / 33 / 14. ViewContent is 37.
  * Exit step lives in sessionStorage (sia21_exit_step_v2): 0 none, 1 saw €33, 2 saw €14.
+ * €14 opens only after the visitor dismissed €33 (close, Escape, or "Quero mesmo sair").
+ * A checkout click is not a dismissal. Back navigation or bfcache from Stripe
+ * (sia21_stripe_left_at_v1) does not open the next offer.
  * Each step shows once per session. obrigado.html reads amount from the URL.
  * PostHog (snippet in <head>, armed only after the human gate) records
  * stripe_checkout_click plus the €33/€14 exit events. Those captures never
@@ -55,6 +58,8 @@
   var PROOF_LINE = "Já confiam em nós mais de 1.000 consultores imobiliários.";
 
   var STEP_KEY = "sia21_exit_step_v2";
+  var DISMISS_KEY = "sia21_exit_33_dismissed_v1";
+  var STRIPE_LEFT_KEY = "sia21_stripe_left_at_v1";
   var DEADLINE_KEY = "sia21_exit14_deadline_v1";
   var OFFER_MS = 5 * 60 * 1000;
 
@@ -320,17 +325,22 @@
   }
 
   function toastOffset() {
-    var extra = 16;
-    var ck = d.getElementById("ck");
-    if (ck && !ck.hidden) extra = Math.max(extra, ck.offsetHeight + 12);
-    var mob = d.querySelector(".mobile-cta");
-    if (mob) {
-      var display = w.getComputedStyle(mob).display;
-      if (display !== "none") extra = Math.max(extra, mob.offsetHeight + 12);
+    var floor = w.innerHeight;
+    function consider(el) {
+      if (!el) return;
+      var shown = true;
+      if (el.hidden) shown = false;
+      try {
+        if (w.getComputedStyle(el).display === "none") shown = false;
+      } catch (e) {}
+      if (!shown) return;
+      var top = el.getBoundingClientRect().top;
+      if (top < floor) floor = top;
     }
-    var sticky = d.getElementById("sia21-sticky");
-    if (sticky && !sticky.hidden) extra = Math.max(extra, sticky.offsetHeight + 12);
-    return extra;
+    consider(d.getElementById("ck"));
+    consider(d.querySelector(".mobile-cta"));
+    consider(d.getElementById("sia21-sticky"));
+    return Math.max(16, Math.round(w.innerHeight - floor) + 12);
   }
 
   function mountToast() {
@@ -454,6 +464,20 @@
     try { w.sessionStorage.setItem(STEP_KEY, String(n)); } catch (e) {}
   }
 
+  function dismissed33() {
+    if (w.__SIA21_EXIT_33_DISMISSED) return true;
+    try { return w.sessionStorage.getItem(DISMISS_KEY) === "1"; } catch (e) { return false; }
+  }
+
+  function markDismissed33() {
+    w.__SIA21_EXIT_33_DISMISSED = true;
+    try { w.sessionStorage.setItem(DISMISS_KEY, "1"); } catch (e) {}
+  }
+
+  function stripeLeftAt() {
+    try { return parseInt(w.sessionStorage.getItem(STRIPE_LEFT_KEY) || "0", 10) || 0; } catch (e) { return 0; }
+  }
+
   function isCoarse() {
     try {
       if (w.matchMedia("(pointer: coarse)").matches) return true;
@@ -487,6 +511,8 @@
     var cooldownUntil = 0;
     var idle = false;
     var peakY = w.scrollY || 0;
+    var returnQuietUntil = 0;
+    var sawPageHide = false;
 
     function minAge() {
       return debugMode() ? 300 : 8000;
@@ -549,8 +575,9 @@
       timerHandle = setInterval(paintTimer, 250);
     }
 
-    function closeDialog() {
+    function closeDialog(reason) {
       if (root.hidden) return;
+      if (exitStep() === 1 && reason !== "checkout" && reason !== "return") markDismissed33();
       root.hidden = true;
       stopTimer();
       desktopRearmed = false;
@@ -598,7 +625,7 @@
         var currentOffer = deal.getAttribute("data-sia21-offer") || "";
         if (currentOffer === "early-33") capturePh("exit_offer_33_click", { angle: angleSlug(), price: 33 });
         else if (currentOffer === "early-14") capturePh("last_offer_14_click", { angle: angleSlug(), price: 14 });
-        closeDialog();
+        closeDialog("checkout");
       });
       return deal;
     }
@@ -648,10 +675,22 @@
       return true;
     }
 
+    function armStripeReturnQuiet() {
+      if (!stripeLeftAt()) return false;
+      returnQuietUntil = Date.now() + (debugMode() ? 700 : 8000);
+      try { w.sessionStorage.removeItem(STRIPE_LEFT_KEY); } catch (e) {}
+      if (!root.hidden) closeDialog("return");
+      return true;
+    }
+
     function openNext(opts) {
       if (!canOpen(opts)) return false;
-      var which = exitStep() === 0 ? 1 : 2;
-      setExitStep(which);
+      if (Date.now() < returnQuietUntil) return false;
+      var step = exitStep();
+      var which = step >= 1 && dismissed33() ? 2 : 1;
+      if (which === 2 && step >= 2) return false;
+      var repeat = which === 1 && step === 1;
+      if (!repeat) setExitStep(which);
       disarmIdle();
       lastFocus = d.activeElement;
       fill(which);
@@ -662,8 +701,10 @@
       d.addEventListener("keydown", onKey);
       var primary = actions.querySelector(".sia21-exit-primary");
       if (primary) primary.focus();
-      if (which === 1) capturePh("exit_offer_33_shown", { angle: angleSlug(), price: 33 });
-      else capturePh("last_offer_14_shown", { angle: angleSlug(), price: 14 });
+      if (!repeat) {
+        if (which === 1) capturePh("exit_offer_33_shown", { angle: angleSlug(), price: 33 });
+        else capturePh("last_offer_14_shown", { angle: angleSlug(), price: 14 });
+      }
       return true;
     }
 
@@ -683,15 +724,31 @@
       openNext();
     });
 
+    w.addEventListener("pagehide", function () { sawPageHide = true; });
+    w.addEventListener("pageshow", function (e) {
+      if (!stripeLeftAt()) return;
+      var nav = w.performance && w.performance.getEntriesByType ? w.performance.getEntriesByType("navigation")[0] : null;
+      var back = !!(e && e.persisted) || sawPageHide || (nav && nav.type === "back_forward");
+      if (!back) return;
+      armStripeReturnQuiet();
+    });
+
     if (isCoarse()) {
       // Back trap waits out the same minimum delay as the popup, so a fast
       // bounce still leaves. Each leave attempt re-arms one history entry.
       // "Sair na mesma" on the final offer steps back past the trap.
+      // A back/bfcache return from Stripe is not a dismissal and must not
+      // advance from €33 to €14.
       setTimeout(function () {
         if (leaving || exitStep() >= 2) return;
         try { w.history.pushState({ sia21Exit: 1 }, "", w.location.href); } catch (e) { return; }
         w.addEventListener("popstate", function () {
           if (leaving) return;
+          if (sawPageHide && stripeLeftAt()) {
+            armStripeReturnQuiet();
+            try { w.history.pushState({ sia21Exit: 1 }, "", w.location.href); } catch (errQuiet) {}
+            return;
+          }
           if (!root.hidden) {
             closeDialog();
             try { w.history.pushState({ sia21Exit: 1 }, "", w.location.href); } catch (err) {}

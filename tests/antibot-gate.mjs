@@ -457,6 +457,89 @@ async function main() {
       );
       await context.close();
     }
+
+    {
+      const context = await browser.newContext({ userAgent: HUMAN_UA, viewport: { width: 1280, height: 800 } });
+      await arm(context, "visible");
+      const page = await context.newPage();
+      const requests = watch(page);
+      await page.goto(ORIGIN + "/index.html", { waitUntil: "load", timeout: 30000 });
+      await sleep(2500);
+      await page.mouse.move(480, 360);
+      await page.mouse.wheel(0, 1400);
+      const found = await waitUntil(() => requests.some((r) => hasPosthogEvent(r, "$pageview")), 12000);
+      const raw = requests.filter((r) => hasPosthogEvent(r, "$pageview")).map((r) => bodyText(r)).join("\n");
+      const stamp = raw.match(/"timestamp":"([^"]+)"/);
+      const eventAt = stamp ? Date.parse(stamp[1]) : 0;
+      const started = await page.evaluate(() => window.__SIA21_PAGE_AT);
+      report(
+        "$pageview timestamp is the page start, not the human signal",
+        found && eventAt > 0 && Math.abs(eventAt - started) < 2000 && Date.now() - eventAt > 2000,
+        "found=" + found + " eventAt=" + eventAt + " pageAt=" + started + " lagMs=" + (Date.now() - eventAt)
+      );
+      await context.close();
+    }
+
+    {
+      const context = await browser.newContext({ userAgent: HUMAN_UA, viewport: { width: 1280, height: 800 } });
+      await arm(context, "visible");
+      const page = await context.newPage();
+      await page.goto(ORIGIN + "/angles-v2/01-tempo/index.html?sia21_debug=1", { waitUntil: "load", timeout: 30000 });
+      await page.mouse.move(480, 360);
+      await page.mouse.wheel(0, 1400);
+      await page.waitForFunction(() => window.__SIA21_ENGAGED === true);
+      await sleep(400);
+      await page.evaluate(() => {
+        document.dispatchEvent(new MouseEvent("mouseout", { bubbles: true, clientX: 40, clientY: 0 }));
+      });
+      await page.waitForFunction(() => {
+        var box = document.getElementById("sia21-exit");
+        return box && box.hidden === false && /€33/.test(box.textContent || "");
+      });
+      await page.evaluate(() => {
+        sessionStorage.setItem("sia21_stripe_left_at_v1", String(Date.now()));
+        window.dispatchEvent(new PageTransitionEvent("pagehide", { persisted: true }));
+        window.dispatchEvent(new PageTransitionEvent("pageshow", { persisted: true }));
+      });
+      const afterReturn = await page.evaluate(() => {
+        var box = document.getElementById("sia21-exit");
+        return {
+          hidden: !box || box.hidden === true,
+          text: box ? box.textContent : "",
+          dismissed: sessionStorage.getItem("sia21_exit_33_dismissed_v1")
+        };
+      });
+      await sleep(800);
+      await page.mouse.move(200, 200);
+      await page.evaluate(() => {
+        document.dispatchEvent(new MouseEvent("mouseout", { bubbles: true, clientX: 40, clientY: 0 }));
+      });
+      await sleep(300);
+      const afterQuiet = await page.evaluate(() => {
+        var box = document.getElementById("sia21-exit");
+        return { hidden: !box || box.hidden === true, text: (box && box.textContent) || "" };
+      });
+      await page.evaluate(() => {
+        var btn = document.querySelector("#sia21-exit .sia21-exit-secondary");
+        if (btn) btn.click();
+      });
+      await sleep(500);
+      await page.mouse.move(220, 180);
+      await page.evaluate(() => {
+        document.dispatchEvent(new MouseEvent("mouseout", { bubbles: true, clientX: 20, clientY: 0 }));
+      });
+      const fourteen = await page.waitForFunction(() => {
+        var box = document.getElementById("sia21-exit");
+        return box && box.hidden === false && /€14/.test(box.textContent || "");
+      }, null, { timeout: 2000 }).then(() => true).catch(() => false);
+      const ok = afterReturn.hidden && afterReturn.dismissed !== "1" && !/€14/.test(afterReturn.text) && !/€14/.test(afterQuiet.text) && /€33/.test(afterQuiet.text) && fourteen;
+      report(
+        "€14 only after dismissing €33, not on return from Stripe",
+        ok,
+        JSON.stringify({ afterReturn, afterQuiet, fourteen })
+      );
+      await context.close();
+    }
   } finally {
     await browser.close();
     server.kill("SIGTERM");

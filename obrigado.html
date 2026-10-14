@@ -7,11 +7,10 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <meta name="description" content="Confirmação de compra do Sistema IA do Consultor: 21 Dias." />
   <style>
-    .ck{position:fixed;left:0;right:0;bottom:0;z-index:70;padding:12px}.ck[hidden]{display:none}
-    .ck-in{max-width:880px;margin:auto;display:flex;gap:20px;align-items:center;background:#0f172a;color:#e2e8f0;border:1px solid rgba(255,255,255,.12);border-radius:18px;padding:18px 20px;box-shadow:0 20px 60px rgba(2,6,23,.45)}
-    .ck-in p{font-size:13.5px;line-height:1.55}.ck-in a{color:#93c5fd;text-decoration:underline}
-    .ck-btns{display:flex;gap:10px;flex:0 0 auto}.ck-b{min-width:110px;border-radius:12px;padding:11px 16px;font-weight:800;font-size:14px;background:#fff;color:#0f172a;border:1px solid #fff;cursor:pointer}.ck-b:hover{background:#e2e8f0}
-    @media(max-width:640px){.ck-in{flex-direction:column;align-items:stretch;gap:14px}.ck-btns .ck-b{flex:1}}
+    .ck{position:fixed;left:0;right:0;bottom:0;z-index:80;box-sizing:border-box;max-height:15dvh;overflow:hidden;padding:6px 8px calc(6px + env(safe-area-inset-bottom))}.ck[hidden]{display:none}
+    .ck-in{max-width:880px;max-height:100%;margin:auto;display:flex;flex-direction:row;align-items:center;gap:8px;background:#0f172a;color:#e2e8f0;border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:8px 10px;box-shadow:0 12px 32px rgba(2,6,23,.35)}
+    .ck-in p{margin:0;flex:1 1 auto;min-width:0;font-size:12px;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.ck-in a{color:#93c5fd;text-decoration:underline}
+    .ck-btns{display:flex;flex-direction:row;gap:6px;flex:0 0 auto}.ck-b{min-width:0;border-radius:10px;padding:8px 10px;font-weight:800;font-size:13px;background:#fff;color:#0f172a;border:1px solid #fff;cursor:pointer}.ck-b:hover{background:#e2e8f0}
   </style>
   <!--
     META PURCHASE FLOW (SIA21 thank-you) — Human-Gated (MTHD)
@@ -95,7 +94,7 @@ posthog.init('phc_knF2fZccBcGVgHcayHbPfcYfXguFx3jzxaBksdduz9R3',{api_host:'https
        que Aceitar permite confirmar a compra nas métricas das campanhas. -->
   <div id="ck" class="ck" role="dialog" aria-live="polite" aria-label="Consentimento de cookies" hidden>
     <div class="ck-in">
-      <p id="ck-copy"><b>Usamos cookies.</b> Os necessários fazem a página funcionar. Com a tua autorização, usamos também o Meta Pixel para medir as nossas campanhas e mostrar anúncios relevantes. <a href="privacidade.html#cookies">Saber mais</a></p>
+      <p id="ck-copy"><b>Usamos cookies.</b> Necessários para a página. Com autorização, o Meta Pixel mede campanhas. <a href="privacidade.html#cookies">Saber mais</a></p>
       <div class="ck-btns"><button type="button" class="ck-b" data-ck="rejected">Rejeitar</button><button type="button" class="ck-b" data-ck="accepted">Aceitar</button></div>
     </div>
   </div>

@@ -19,3 +19,7 @@ Visual world for `/ghl-agencias/`: a Portuguese deed on white paper. The price i
 - Conversation frames are labeled Exemplo ilustrativo and use fictional names and properties.
 - The reel is self-hosted. The caption is Pedro Ferreira, 4Talks.
 - Do not use a second accent, a side border, or an eyebrow above a heading.
+
+## Premium port
+
+The live page follows Superdesign direction A (night stage). Headlines are Fraunces, UI is Source Sans 3, night `#070b14`, paper `#f4f7fb`, accent `#1d4ed8`. Tailwind utilities were compiled into `page.css`. The thank-you page keeps `obrigado.css`.

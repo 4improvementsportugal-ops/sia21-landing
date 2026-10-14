@@ -20,8 +20,9 @@
     3) On accept: SIA21_startHumanGatedPixel → init → onInit fires Purchase immediately.
        PageView is INSTANT because assets/human-gate.js treats this pathname as an
        INSTANT_PATH (/obrigado.html, /obrigado, /ghl-agencias/obrigado.html).
-       Upsell InitiateCheckout and stripe_checkout_click wait for __SIA21_HUMAN
-       (already true here) and, for the pixel, __SIA21_MTHD_STARTED.
+       Upsell InitiateCheckout and stripe_checkout_click follow the Stripe
+       gate: a prior engagement signal, 1.5s on the page, and webdriver false.
+       The instant path does not bypass that. Purchase in onInit stays immediate.
     4) Purchase: value (amount URL or default 37), currency EUR, content_name "Sistema IA Consultor 21 Dias",
        content_ids, eventID = session_id (CAPI dedup).
        Primary Early Bird €37 (SIA21_EARLY_37) is the default when amount is missing.
@@ -209,6 +210,7 @@ posthog.init('phc_knF2fZccBcGVgHcayHbPfcYfXguFx3jzxaBksdduz9R3',{api_host:'https
       if (e.target.closest("[data-ck-open]")) { e.preventDefault(); show(); return; }
       var a = e.target.closest('a[href*="buy.stripe.com"]');
       if (!a) return;
+      if (window.__SIA21_CHECKOUT_OK !== true) return;
       var label = (a.textContent || "").indexOf("97") >= 0 ? 97 : ((a.textContent || "").indexOf("47") >= 0 ? 47 : 37);
       if (typeof window.SIA21_capturePh === "function") {
         window.SIA21_capturePh("stripe_checkout_click", { angle: "obrigado", price: label });

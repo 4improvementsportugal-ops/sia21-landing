@@ -58,6 +58,41 @@ if ! grep -q 'ghl-agencias/obrigado.html' assets/human-gate.js; then
   echo "FAIL INSTANT_PATHS must include /ghl-agencias/obrigado.html"
   fail=1
 fi
+if ! grep -q 'SIA21_mayShowExit' assets/human-gate.js; then
+  echo "FAIL assets/human-gate.js must expose SIA21_mayShowExit"
+  fail=1
+fi
+if ! grep -q 'buy.stripe.com' assets/human-gate.js; then
+  echo "FAIL assets/human-gate.js must gate buy.stripe.com clicks"
+  fail=1
+fi
+if ! grep -q 'CHECKOUT_MIN_MS = 1500' assets/human-gate.js; then
+  echo "FAIL assets/human-gate.js must wait 1500ms before Stripe navigation"
+  fail=1
+fi
+if ! grep -q '__SIA21_ENGAGED' assets/human-gate.js; then
+  echo "FAIL assets/human-gate.js must record engagement separately from a click"
+  fail=1
+fi
+if ! grep -q 'SIA21_mayShowExit' assets/sia21-conv.js; then
+  echo "FAIL assets/sia21-conv.js must keep exit offers behind SIA21_mayShowExit"
+  fail=1
+fi
+if ! grep -q '__SIA21_CHECKOUT_OK' assets/sia21-conv.js; then
+  echo "FAIL assets/sia21-conv.js must emit checkout events only after the Stripe gate"
+  fail=1
+fi
+
+while IFS= read -r -d '' f; do
+  rel="${f#./}"
+  case "$rel" in
+    templates/*|tests/*) continue ;;
+  esac
+  if grep -q 'stripe_checkout_click' "$f" && ! grep -q '__SIA21_CHECKOUT_OK' "$f"; then
+    echo "FAIL $rel fires stripe_checkout_click without the Stripe gate"
+    fail=1
+  fi
+done < <(find . -type f \( -name '*.html' -o -name '*.js' \) -not -path './.git/*' -print0)
 
 if [[ "$fail" -ne 0 ]]; then
   echo "anti-bot check failed"

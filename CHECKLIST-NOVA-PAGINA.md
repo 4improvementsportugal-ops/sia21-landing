@@ -9,5 +9,7 @@ Copia `templates/landing-template.html` e ajusta o caminho relativo de `assets/`
 - [ ] `instantPaths` inclui `/obrigado.html`, `/obrigado` e `/ghl-agencias/obrigado.html`.
 - [ ] ViewContent, InitiateCheckout, Lead e Schedule só com `window.__SIA21_HUMAN` (e, no pixel, `window.__SIA21_MTHD_STARTED`). Nas páginas de obrigado o Purchase continua imediato no `onInit`.
 - [ ] Eventos PostHog (`stripe_checkout_click`, `calendar_cta_click`, `exit_offer_*`, `last_offer_*` e os outros) passam por `SIA21_capturePh` / `SIA21_captureWhenHuman` ou por `SIA21_onHuman`. Não chames `posthog.capture` directo.
+- [ ] Popups de saída só abrem com `SIA21_mayShowExit()` (scroll, movimento do rato ou dwell visível **antes** do gesto; nunca com `navigator.webdriver`). Um clique não mostra `exit_offer_*` nem `last_offer_*`.
+- [ ] Links `buy.stripe.com` não levam o `href` solto a navegar sem o handler de `human-gate.js`: sinal anterior ao clique, cerca de 1,5 s na página, e `webdriver === false`. Caso contrário o clique fica na página e faz scroll ao CTA. `stripe_checkout_click` e `InitiateCheckout` só no clique que realmente navega.
 - [ ] Página de obrigado (`/obrigado.html`, `/obrigado`, `/ghl-agencias/obrigado.html`) está em `INSTANT_PATHS` dentro de `assets/human-gate.js`, para o gate abrir logo. O Purchase não espera por scroll.
 - [ ] `bash scripts/check-antibot.sh` passa. O check falha se algum `.html` fora de `templates/` não carregar `human-gate.js`.

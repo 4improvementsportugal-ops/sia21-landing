@@ -13,6 +13,9 @@
   3. Pixel só depois de 4i_cookie_consent_v1 === "accepted", via SIA21_startHumanGatedPixel.
   4. Eventos custom: SIA21_capturePh / SIA21_onHuman. Nunca posthog.capture directo.
   5. Páginas de obrigado entram em INSTANT_PATHS (human-gate.js). Purchase fica imediato.
+  6. Exit/last offer só com SIA21_mayShowExit() (scroll, rato ou dwell antes; nunca com webdriver).
+  7. buy.stripe.com só navega com sinal anterior ao clique, 1,5 s na página e webdriver false.
+     stripe_checkout_click e InitiateCheckout seguem esse clique. O handler está em human-gate.js.
   Se copiares este ficheiro para uma subpasta, corrige os src (../assets, ../../assets, …).
 -->
 <script src="../assets/human-gate.js"></script>

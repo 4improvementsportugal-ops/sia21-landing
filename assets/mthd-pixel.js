@@ -51,6 +51,11 @@
    */
   w.SIA21_startHumanGatedPixel = function (options) {
     options = options || {};
+    if (typeof w.SIA21_allowCapture === "function" && !w.SIA21_allowCapture()) return;
+    if (!w.__SIA21_HUMAN && typeof w.SIA21_onHuman === "function") {
+      w.SIA21_onHuman(function () { w.SIA21_startHumanGatedPixel(options); });
+      return;
+    }
     var pixelId = String(options.pixelId || DEFAULT_PIXEL_ID);
     var instantPaths = options.instantPaths && options.instantPaths.length
       ? options.instantPaths

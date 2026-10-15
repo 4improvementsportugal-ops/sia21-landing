@@ -18,10 +18,11 @@
  * InitiateCheckout value matches the link: 37 / 33 / 14. ViewContent is 37.
  * Exit step lives in sessionStorage (sia21_exit_step_v2): 0 none, 1 saw €33, 2 saw €14.
  * €14 opens only after the visitor dismissed €33 (close, Escape, or "Quero mesmo sair").
- * A checkout click is not a dismissal. Back navigation or bfcache from Stripe
- * (sia21_stripe_left_at_v1) does not open an offer on the return itself.
- * The next leave, after the pointer comes back into the page, shows €33
- * unless €33 was already dismissed.
+ * A checkout click is not a dismissal. Coming back from Stripe without paying
+ * opens €33, or €14 only if €33 was already dismissed. Return is detected from
+ * visibility, focus, pageshow/bfcache, and a later load that still has
+ * sia21_stripe_left_at_v1. target=_blank (and in-app browsers that keep this
+ * document alive) does not emit pageshow, so a hide then show counts.
  * Each step shows once per session. obrigado.html reads amount from the URL.
  * PostHog (snippet in <head>, armed only after the human gate) records
  * stripe_checkout_click plus the €33/€14 exit events. Those captures never
@@ -62,6 +63,7 @@
   var STEP_KEY = "sia21_exit_step_v2";
   var DISMISS_KEY = "sia21_exit_33_dismissed_v1";
   var STRIPE_LEFT_KEY = "sia21_stripe_left_at_v1";
+  var STRIPE_AWAY_KEY = "sia21_stripe_away_v1";
   var DEADLINE_KEY = "sia21_exit14_deadline_v1";
   var OFFER_MS = 5 * 60 * 1000;
 
@@ -677,17 +679,97 @@
       return true;
     }
 
-    function noteStripeReturn() {
-      if (!stripeLeftAt()) return false;
-      blockExitUntilGesture = true;
+    var awayLatched = false;
+    var awayTimer = null;
+
+    function isAutomatedBrowser() {
+      try { return w.navigator.webdriver === true; } catch (e) { return false; }
+    }
+
+    function pendingStripe() {
+      return !!(stripeLeftAt() || w.__SIA21_STRIPE_CLICKED_HERE);
+    }
+
+    function storedAway() {
+      try { return w.sessionStorage.getItem(STRIPE_AWAY_KEY) === "1"; } catch (e) { return false; }
+    }
+
+    function engagedForExit() {
+      if (typeof w.SIA21_mayShowExit === "function" && w.SIA21_mayShowExit()) return true;
+      try {
+        if (w.sessionStorage.getItem("sia21_engaged_v1") === "1" && !isAutomatedBrowser()) return true;
+      } catch (e) {}
+      return false;
+    }
+
+    function stillAway() {
+      if (d.visibilityState === "hidden" || d.hidden) return true;
+      try { if (!d.hasFocus()) return true; } catch (e) {}
+      return false;
+    }
+
+    function latchAway() {
+      if (!pendingStripe()) return;
+      awayLatched = true;
+      try { w.sessionStorage.setItem(STRIPE_AWAY_KEY, "1"); } catch (e) {}
+    }
+
+    function markStripeAway() {
+      if (!pendingStripe()) return;
+      if (awayLatched || awayTimer) return;
+      // Ignore the blur that happens in the same moment as the click.
+      // A real trip to Checkout keeps the page hidden or unfocused.
+      awayTimer = setTimeout(function () {
+        awayTimer = null;
+        if (!pendingStripe()) return;
+        if (!stillAway()) return;
+        latchAway();
+      }, 400);
+    }
+
+    function clearStripePending() {
+      awayLatched = false;
+      if (awayTimer) {
+        clearTimeout(awayTimer);
+        awayTimer = null;
+      }
+      w.__SIA21_STRIPE_CLICKED_HERE = false;
       try { w.sessionStorage.removeItem(STRIPE_LEFT_KEY); } catch (e) {}
-      if (!root.hidden) closeDialog("return");
+      try { w.sessionStorage.removeItem(STRIPE_AWAY_KEY); } catch (e2) {}
+    }
+
+    function handleStripeReturn() {
+      if (!pendingStripe()) return false;
+      if (!awayLatched && !storedAway()) return false;
+      blockExitUntilGesture = false;
+      if (!root.hidden) {
+        clearStripePending();
+        return true;
+      }
+      if (!openNext({ fromStripe: true, ignoreCooldown: true })) return false;
+      clearStripePending();
       return true;
     }
 
+    function markStripeBack() {
+      if (awayTimer && !stillAway()) {
+        clearTimeout(awayTimer);
+        awayTimer = null;
+      }
+      if (stillAway()) return;
+      handleStripeReturn();
+    }
+
     function openNext(opts) {
-      if (!canOpen(opts)) return false;
-      if (blockExitUntilGesture) return false;
+      opts = opts || {};
+      if (opts.fromStripe) {
+        if (isAutomatedBrowser()) return false;
+        if (!root.hidden) return false;
+        if (exitStep() >= 2) return false;
+        if (!engagedForExit()) return false;
+      } else if (!canOpen(opts) || blockExitUntilGesture) {
+        return false;
+      }
       var step = exitStep();
       var which = step >= 1 && dismissed33() ? 2 : 1;
       if (which === 2 && step >= 2) return false;
@@ -730,14 +812,36 @@
       openNext();
     });
 
-    w.addEventListener("pagehide", function () { sawPageHide = true; });
-    w.addEventListener("pageshow", function (e) {
-      if (!stripeLeftAt()) return;
-      var nav = w.performance && w.performance.getEntriesByType ? w.performance.getEntriesByType("navigation")[0] : null;
-      var back = !!(e && e.persisted) || sawPageHide || (nav && nav.type === "back_forward");
-      if (!back) return;
-      noteStripeReturn();
+    w.addEventListener("pagehide", function () {
+      sawPageHide = true;
+      if (!pendingStripe()) return;
+      latchAway();
     });
+    w.addEventListener("pageshow", function (e) {
+      if (!pendingStripe() && !storedAway()) return;
+      var nav = w.performance && w.performance.getEntriesByType ? w.performance.getEntriesByType("navigation")[0] : null;
+      var back = !!(e && e.persisted) || sawPageHide || (nav && nav.type === "back_forward") || storedAway();
+      if (!back) return;
+      if (storedAway()) awayLatched = true;
+      handleStripeReturn();
+    });
+    d.addEventListener("visibilitychange", function () {
+      if (d.visibilityState === "hidden") markStripeAway();
+      else markStripeBack();
+    });
+    w.addEventListener("blur", markStripeAway);
+    w.addEventListener("focus", markStripeBack);
+    w.addEventListener("freeze", latchAway);
+    w.addEventListener("resume", function () {
+      if (storedAway()) awayLatched = true;
+      markStripeBack();
+    });
+    // Full reload after Stripe (in-app back that does not restore bfcache).
+    // pageshow may already have fired if this script ran late.
+    if (storedAway() && stripeLeftAt() && !w.__SIA21_STRIPE_CLICKED_HERE) {
+      awayLatched = true;
+      setTimeout(function () { handleStripeReturn(); }, 0);
+    }
 
     if (isCoarse()) {
       // Back trap waits out the same minimum delay as the popup, so a fast
@@ -750,8 +854,9 @@
         try { w.history.pushState({ sia21Exit: 1 }, "", w.location.href); } catch (e) { return; }
         w.addEventListener("popstate", function () {
           if (leaving) return;
-          if (sawPageHide && stripeLeftAt()) {
-            noteStripeReturn();
+          if ((sawPageHide || awayLatched || storedAway()) && pendingStripe()) {
+            if (storedAway()) awayLatched = true;
+            handleStripeReturn();
             try { w.history.pushState({ sia21Exit: 1 }, "", w.location.href); } catch (errQuiet) {}
             return;
           }

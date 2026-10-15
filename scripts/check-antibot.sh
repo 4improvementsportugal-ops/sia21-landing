@@ -21,30 +21,18 @@ while IFS= read -r -d '' f; do
     fail=1
   fi
   if grep -q 'posthog.init' "$f"; then
-    if ! grep -q 'capture_pageview:false' "$f"; then
-      echo "FAIL $rel PostHog init must set capture_pageview:false"
-      fail=1
-    fi
-    if ! grep -q 'autocapture:false' "$f"; then
-      echo "FAIL $rel PostHog init must set autocapture:false"
-      fail=1
-    fi
-    if ! grep -q 'disable_session_recording:true' "$f"; then
-      echo "FAIL $rel PostHog init must set disable_session_recording:true"
-      fail=1
-    fi
-    if ! grep -q 'SIA21_armTracking' "$f"; then
-      echo "FAIL $rel must call SIA21_armTracking() after posthog.init"
-      fail=1
-    fi
-    gate_line="$(grep -n 'human-gate.js' "$f" | head -1 | cut -d: -f1)"
-    ph_line="$(grep -n 'posthog.init' "$f" | head -1 | cut -d: -f1)"
-    if [[ -n "$gate_line" && -n "$ph_line" && "$gate_line" -gt "$ph_line" ]]; then
-      echo "FAIL $rel loads human-gate.js after posthog.init"
-      fail=1
-    fi
+    echo "FAIL $rel must not call posthog.init; SIA21_bootPosthog runs after the human gate"
+    fail=1
   fi
-done < <(find . -name '*.html' -not -path './.git/*' -print0)
+  if ! grep -q 'SIA21_bootPosthog' "$f"; then
+    echo "FAIL $rel must call SIA21_bootPosthog from SIA21_onHuman"
+    fail=1
+  fi
+  if ! grep -q 'SIA21_onHuman' "$f"; then
+    echo "FAIL $rel must wait for SIA21_onHuman before booting PostHog"
+    fail=1
+  fi
+done < <(find . -name '*.html' -not -path './.git/*' -not -path './node_modules/*' -not -path './test-results/*' -print0)
 
 if ! grep -q 'SIA21_onHuman' assets/human-gate.js; then
   echo "FAIL assets/human-gate.js must expose SIA21_onHuman"
@@ -82,6 +70,42 @@ if ! grep -q '__SIA21_CHECKOUT_OK' assets/sia21-conv.js; then
   echo "FAIL assets/sia21-conv.js must emit checkout events only after the Stripe gate"
   fail=1
 fi
+if ! grep -q 'capture_pageview: false' assets/human-gate.js; then
+  echo "FAIL assets/human-gate.js must init PostHog with capture_pageview: false"
+  fail=1
+fi
+if ! grep -q 'autocapture: false' assets/human-gate.js; then
+  echo "FAIL assets/human-gate.js must init PostHog with autocapture: false"
+  fail=1
+fi
+if ! grep -q 'disable_session_recording: true' assets/human-gate.js; then
+  echo "FAIL assets/human-gate.js must init PostHog with disable_session_recording: true"
+  fail=1
+fi
+if ! grep -q 'SIA21_armTracking' assets/human-gate.js; then
+  echo "FAIL assets/human-gate.js must call SIA21_armTracking from SIA21_bootPosthog"
+  fail=1
+fi
+if ! grep -q 'SIA21_allowCapture' assets/human-gate.js; then
+  echo "FAIL assets/human-gate.js must expose SIA21_allowCapture"
+  fail=1
+fi
+if ! grep -q '4improvementsportugal-ops.github.io' assets/human-gate.js; then
+  echo "FAIL assets/human-gate.js must limit capture to the production host"
+  fail=1
+fi
+if ! grep -q 'sia21_qa_v1' assets/human-gate.js; then
+  echo "FAIL assets/human-gate.js must honour the qa opt-out flag"
+  fail=1
+fi
+if ! grep -q 'sia21_scroll' assets/human-gate.js; then
+  echo "FAIL assets/human-gate.js must emit sia21_scroll"
+  fail=1
+fi
+if ! grep -q 'SIA21_allowCapture' assets/mthd-pixel.js; then
+  echo "FAIL assets/mthd-pixel.js must stay silent unless SIA21_allowCapture"
+  fail=1
+fi
 
 while IFS= read -r -d '' f; do
   rel="${f#./}"
@@ -92,7 +116,7 @@ while IFS= read -r -d '' f; do
     echo "FAIL $rel fires stripe_checkout_click without the Stripe gate"
     fail=1
   fi
-done < <(find . -type f \( -name '*.html' -o -name '*.js' \) -not -path './.git/*' -print0)
+done < <(find . -type f \( -name '*.html' -o -name '*.js' \) -not -path './.git/*' -not -path './node_modules/*' -not -path './test-results/*' -print0)
 
 if [[ "$fail" -ne 0 ]]; then
   echo "anti-bot check failed"

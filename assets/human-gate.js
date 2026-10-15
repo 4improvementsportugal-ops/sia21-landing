@@ -33,6 +33,15 @@
  * autocapture and session recording on at that moment.
  * window.SIA21_captureWhenHuman(name, props) queues custom PostHog events
  * and drops them on pagehide if no human signal arrived.
+ *
+ * PostHog and the Meta Pixel only start on the production host
+ * (4improvementsportugal-ops.github.io). ?qa=1 stores sia21_qa_v1 and
+ * sia21_internal_v1 and keeps both SDKs off. SIA21_bootPosthog() is what
+ * pages call, and only from SIA21_onHuman.
+ *
+ * Scroll depth is sia21_scroll (25/50/75/100, plus section ids when the
+ * page has them), queued behind the same human gate. $pageleave is flushed
+ * on visibilitychange (hidden), pagehide and freeze, with sendBeacon.
  */
 (function (w, d) {
   "use strict";
@@ -43,6 +52,11 @@
   var INSTANT_PATHS = ["/obrigado.html", "/obrigado", "/ghl-agencias/obrigado.html"];
   var DWELL_MS = 6000;
   var CHECKOUT_MIN_MS = 1500;
+  var PROD_HOST = "4improvementsportugal-ops.github.io";
+  var QA_KEY = "sia21_qa_v1";
+  var INTERNAL_KEY = "sia21_internal_v1";
+  var ENGAGED_KEY = "sia21_engaged_v1";
+  var PH_TOKEN = "phc_knF2fZccBcGVgHcayHbPfcYfXguFx3jzxaBksdduz9R3";
   var listeners = [];
   var fired = false;
   var cleaned = false;
@@ -65,6 +79,58 @@
   w.__SIA21_ENGAGED = false;
   w.__SIA21_PAGE_AT = startedAt;
   w.__SIA21_CHECKOUT_MIN_MS = CHECKOUT_MIN_MS;
+  w.__SIA21_MAX_SCROLL = 0;
+
+  function syncQaFlag() {
+    var search = "";
+    try { search = w.location.search || ""; } catch (e) { search = ""; }
+    try {
+      if (/[?&]qa=1(?:&|$)/.test(search)) {
+        w.localStorage.setItem(QA_KEY, "1");
+        w.localStorage.setItem(INTERNAL_KEY, "1");
+      } else if (/[?&]qa=0(?:&|$)/.test(search)) {
+        w.localStorage.removeItem(QA_KEY);
+        w.localStorage.removeItem(INTERNAL_KEY);
+      }
+    } catch (err) {}
+  }
+
+  function qaOn() {
+    try { return w.localStorage.getItem(QA_KEY) === "1"; } catch (e) { return false; }
+  }
+
+  function internalOn() {
+    try { return w.localStorage.getItem(INTERNAL_KEY) === "1" || qaOn(); } catch (e) { return false; }
+  }
+
+  syncQaFlag();
+  w.__SIA21_QA = qaOn();
+  w.__SIA21_INTERNAL = internalOn();
+
+  w.SIA21_isProductionHost = function () {
+    try { return (w.location.hostname || "") === PROD_HOST; } catch (e) { return false; }
+  };
+
+  w.SIA21_allowCapture = function () {
+    syncQaFlag();
+    w.__SIA21_QA = qaOn();
+    w.__SIA21_INTERNAL = internalOn();
+    return w.SIA21_isProductionHost() && !w.__SIA21_QA;
+  };
+
+  function beforeSend(event) {
+    try {
+      if (!w.SIA21_allowCapture()) return null;
+      if (!event) return event;
+      event.properties = event.properties || {};
+      if (w.__SIA21_INTERNAL) event.properties.internal = true;
+      if (event.event === "$pageleave" && typeof w.__SIA21_MAX_SCROLL === "number") {
+        event.properties.$prev_pageview_max_scroll_percentage = Math.round(w.__SIA21_MAX_SCROLL) / 100;
+        event.properties.$prev_pageview_max_scroll = Math.round(w.__SIA21_MAX_SCROLL);
+      }
+    } catch (e) {}
+    return event;
+  }
 
   function pathMatchesInstant(pathname) {
     var path = pathname || "";
@@ -83,27 +149,60 @@
     return d.visibilityState === "visible" && !isAutomated();
   }
 
-  function deliverPh(name, props) {
+  function posthogReady() {
+    var ph = w.posthog;
+    return !!(ph && ph.__loaded && ph.persistence && ph.sessionPersistence && ph.capture);
+  }
+
+  function deliverPh(name, props, options) {
+    if (!w.SIA21_allowCapture()) return;
+    if (!posthogReady()) {
+      phQueue.push({ name: name, props: props || {}, options: options });
+      return;
+    }
     try {
-      if (w.posthog && typeof w.posthog.capture === "function") {
-        w.posthog.capture(name, props);
+      var payload = props || {};
+      if (name === "sia21_scroll") {
+        collectVisibleSections();
+        payload = {
+          depth: payload.depth,
+          path: payload.path || (w.location.pathname || ""),
+          sections: seenSections.slice()
+        };
       }
+      if (options) w.posthog.capture(name, payload, options);
+      else w.posthog.capture(name, payload);
     } catch (e) {}
   }
 
   function flushPhQueue() {
-    if (!w.__SIA21_HUMAN || phDropped) return;
+    if (!w.__SIA21_HUMAN || phDropped || !posthogReady()) return;
     var batch = phQueue.splice(0, phQueue.length);
-    for (var i = 0; i < batch.length; i++) deliverPh(batch[i].name, batch[i].props);
+    for (var i = 0; i < batch.length; i++) deliverPh(batch[i].name, batch[i].props, batch[i].options);
   }
 
-  w.SIA21_captureWhenHuman = function (name, props) {
-    if (phDropped || !name) return;
-    if (w.__SIA21_HUMAN) {
-      deliverPh(name, props || {});
+  // The snippet's loaded callback runs while window.posthog is still the
+  // array stub. capture() on that stub is replayed later (so $pageview
+  // lands), but our own queue looks "not ready" and used to be dropped.
+  // Retry until the real client replaces the stub.
+  function flushWhenReady(attempt) {
+    if (phDropped) return;
+    if (w.__SIA21_HUMAN && posthogReady()) {
+      flushPhQueue();
       return;
     }
-    phQueue.push({ name: name, props: props || {} });
+    if (attempt >= 40) return;
+    w.setTimeout(function () { flushWhenReady(attempt + 1); }, 50);
+  }
+
+  w.SIA21_captureWhenHuman = function (name, props, options) {
+    if (phDropped || !name) return;
+    if (!w.SIA21_allowCapture()) return;
+    if (w.__SIA21_HUMAN && posthogReady()) {
+      deliverPh(name, props || {}, options);
+      return;
+    }
+    phQueue.push({ name: name, props: props || {}, options: options });
   };
 
   w.SIA21_capturePh = function (name, props) {
@@ -152,6 +251,7 @@
   function markEngaged() {
     if (w.__SIA21_ENGAGED) return;
     w.__SIA21_ENGAGED = true;
+    try { w.sessionStorage.setItem(ENGAGED_KEY, "1"); } catch (e) {}
     cleanupEngagement();
     if (!fired) markHuman();
   }
@@ -177,11 +277,29 @@
 
   w.SIA21_checkoutAllowed = checkoutAllowed;
 
+  function flushPageLeave() {
+    if (!w.SIA21_allowCapture()) return;
+    if (!w.__SIA21_HUMAN || !w.__SIA21_PH_PAGEVIEW || w.__SIA21_PH_LEAVE) return;
+    if (!posthogReady()) return;
+    w.__SIA21_PH_LEAVE = true;
+    var startMs = w.__SIA21_PAGE_AT || startedAt;
+    var seconds = Math.round(((Date.now() - startMs) / 1000) * 10) / 10;
+    var ratio = Math.round(w.__SIA21_MAX_SCROLL || 0) / 100;
+    try {
+      w.posthog.capture("$pageleave", {
+        $prev_pageview_duration: seconds,
+        $prev_pageview_max_scroll_percentage: ratio,
+        $prev_pageview_max_scroll: Math.round(w.__SIA21_MAX_SCROLL || 0)
+      }, { transport: "sendBeacon", send_instantly: true });
+    } catch (e) {}
+  }
+
   w.SIA21_armTracking = function () {
     if (w.__SIA21_PH_ARMED) return;
     w.__SIA21_PH_ARMED = true;
     var startMs = w.__SIA21_PAGE_AT || startedAt;
     w.SIA21_onHuman(function () {
+      if (!w.SIA21_allowCapture()) return;
       var ph = w.posthog;
       if (!ph || w.__SIA21_PH_PAGEVIEW) return;
       w.__SIA21_PH_PAGEVIEW = true;
@@ -201,14 +319,45 @@
       } catch (e2) {}
       try { ph.startSessionRecording(); } catch (e3) {}
     });
-    w.addEventListener("pagehide", function () {
-      if (!w.__SIA21_HUMAN || !w.__SIA21_PH_PAGEVIEW || w.__SIA21_PH_LEAVE) return;
-      var ph = w.posthog;
-      if (!ph || typeof ph.capture !== "function") return;
-      w.__SIA21_PH_LEAVE = true;
-      var seconds = Math.round(((Date.now() - startMs) / 1000) * 10) / 10;
-      try { ph.capture("$pageleave", { $prev_pageview_duration: seconds }); } catch (e) {}
+    // pagehide alone misses Facebook and Instagram in-app browsers.
+    // visibilitychange and freeze run while the document can still beacon.
+    w.addEventListener("pagehide", flushPageLeave);
+    w.addEventListener("freeze", flushPageLeave);
+    d.addEventListener("visibilitychange", function () {
+      if (d.visibilityState === "hidden") flushPageLeave();
     });
+  };
+
+  w.SIA21_bootPosthog = function () {
+    if (w.__SIA21_PH_BOOTED) return;
+    if (!w.SIA21_allowCapture()) return;
+    if (!w.posthog || typeof w.posthog.init !== "function") return;
+    w.__SIA21_PH_BOOTED = true;
+    try {
+      w.posthog.init(PH_TOKEN, {
+        api_host: "https://eu.i.posthog.com",
+        person_profiles: "identified_only",
+        capture_pageview: false,
+        capture_pageleave: false,
+        autocapture: false,
+        enable_heatmaps: false,
+        disable_session_recording: true,
+        disable_compression: true,
+        advanced_disable_feature_flags: true,
+        before_send: beforeSend,
+        loaded: function () {
+          w.__SIA21_PH_READY = true;
+          // Pageview first, then anything queued while array.js was still loading.
+          // capture() before __loaded returns without sending. loaded itself
+          // still sees the snippet stub, so the queue flush retries.
+          w.SIA21_armTracking();
+          flushWhenReady(0);
+        }
+      });
+    } catch (e) {
+      w.__SIA21_PH_BOOTED = false;
+      return;
+    }
   };
 
   function scrollY() {
@@ -269,7 +418,9 @@
     if (checkoutAllowed()) {
       checkoutArmed = false;
       w.__SIA21_CHECKOUT_OK = true;
+      w.__SIA21_STRIPE_CLICKED_HERE = true;
       try { w.sessionStorage.setItem("sia21_stripe_left_at_v1", String(Date.now())); } catch (err) {}
+      try { w.sessionStorage.removeItem("sia21_stripe_away_v1"); } catch (err4) {}
       return;
     }
     holdCheckout(e, anchor);
@@ -306,6 +457,183 @@
 
   if (d.readyState === "loading") d.addEventListener("DOMContentLoaded", watchCookieBar);
   else watchCookieBar();
+
+  // Scroll depth does not use PostHog's scroll manager. That manager listens
+  // to window scroll only, and on several mobile webviews scrollY stays 0
+  // (max content stays the first screen) even after a long visit. Milestones
+  // also come from IntersectionObserver sentinels and from the element under
+  // the viewport, which still move when scroll events do not.
+  var firedDepth = {};
+  var seenSections = [];
+  var scrollIo = null;
+
+  function docHeight() {
+    var bodyH = d.body ? d.body.scrollHeight : 0;
+    return Math.max(d.documentElement.scrollHeight || 0, bodyH || 0, 0);
+  }
+
+  function readScrollPct() {
+    var el = d.scrollingElement || d.documentElement;
+    var scrollTop = 0;
+    try {
+      scrollTop = w.scrollY || w.pageYOffset || (el && el.scrollTop) || (d.body && d.body.scrollTop) || 0;
+    } catch (e) {}
+    try {
+      if (w.visualViewport && typeof w.visualViewport.pageTop === "number" && w.visualViewport.pageTop > scrollTop) {
+        scrollTop = w.visualViewport.pageTop;
+      }
+    } catch (e2) {}
+    var viewH = w.innerHeight || (el && el.clientHeight) || 0;
+    var height = docHeight();
+    var max = height - viewH;
+    if (max <= 8) return height > 0 && d.readyState === "complete" ? 100 : 0;
+    return Math.max(0, Math.min(100, (scrollTop / max) * 100));
+  }
+
+  function pctFromHit() {
+    var viewH = w.innerHeight || 0;
+    if (!viewH) return null;
+    var node = null;
+    try { node = d.elementFromPoint(Math.max(1, Math.floor((w.innerWidth || 1) / 2)), Math.floor(viewH * 0.5)); } catch (e) { return null; }
+    if (!node || node === d.body || node === d.documentElement) return null;
+    var top = 0;
+    var n = node;
+    var guard = 0;
+    while (n && n !== d.body && guard < 40) {
+      top += n.offsetTop || 0;
+      n = n.offsetParent;
+      guard += 1;
+    }
+    var height = docHeight();
+    if (!height) return null;
+    return Math.max(0, Math.min(100, ((top + viewH) / height) * 100));
+  }
+
+  function noteSection(id) {
+    if (!id || seenSections.indexOf(id) !== -1) return;
+    seenSections.push(id);
+  }
+
+  function collectVisibleSections() {
+    var nodes = d.querySelectorAll("section[id]");
+    var viewH = w.innerHeight || 0;
+    for (var i = 0; i < nodes.length; i++) {
+      var rect = null;
+      try { rect = nodes[i].getBoundingClientRect(); } catch (e) { rect = null; }
+      if (!rect) continue;
+      if (rect.top < viewH) noteSection(nodes[i].id);
+    }
+  }
+
+  function emitDepth(depth) {
+    if (firedDepth[depth]) return;
+    collectVisibleSections();
+    firedDepth[depth] = true;
+    w.SIA21_captureWhenHuman("sia21_scroll", {
+      depth: depth,
+      path: w.location.pathname || "",
+      sections: seenSections.slice()
+    }, { send_instantly: true });
+  }
+
+  function scrollablePx() {
+    return docHeight() - (w.innerHeight || 0);
+  }
+
+  function notePct(pct) {
+    if (pct == null || isNaN(pct)) return;
+    // Tailwind and webfonts grow the page after the first paint. A document
+    // that is still one screen tall must not lock every depth at 100.
+    if (scrollablePx() <= 8 && d.readyState !== "complete") return;
+    if (pct > w.__SIA21_MAX_SCROLL) w.__SIA21_MAX_SCROLL = pct;
+    var steps = [25, 50, 75, 100];
+    for (var i = 0; i < steps.length; i++) {
+      var depth = steps[i];
+      var threshold = depth === 100 ? 99 : depth;
+      if (pct + 0.01 >= threshold) emitDepth(depth);
+    }
+  }
+
+  function sampleScroll() {
+    notePct(readScrollPct());
+    notePct(pctFromHit());
+  }
+
+  function sentinelPlaced(node, depth) {
+    var height = docHeight();
+    var viewH = w.innerHeight || 0;
+    if (!depth || height < 1) return false;
+    if (height - viewH <= 8) return d.readyState === "complete";
+    var expected = depth === 100 ? height - 2 : height * (depth / 100);
+    var top = node.offsetTop || 0;
+    return Math.abs(top - expected) <= Math.max(48, height * 0.08);
+  }
+
+  function placeSentinels() {
+    if (!d.body) return;
+    var height = docHeight();
+    var steps = [25, 50, 75, 100];
+    for (var i = 0; i < steps.length; i++) {
+      var pct = steps[i];
+      var id = "sia21-scroll-" + pct;
+      var node = d.getElementById(id);
+      if (!node) {
+        node = d.createElement("div");
+        node.id = id;
+        node.setAttribute("data-sia21-depth", String(pct));
+        node.setAttribute("aria-hidden", "true");
+        node.style.cssText = "position:absolute;left:0;width:1px;height:1px;pointer-events:none;opacity:0;";
+        d.body.appendChild(node);
+        if (scrollIo) scrollIo.observe(node);
+      }
+      var y = pct === 100 ? Math.max(0, height - 2) : Math.round(height * (pct / 100));
+      node.style.top = y + "px";
+    }
+  }
+
+  function bindScrollTracking() {
+    if (w.__SIA21_SCROLL_BOUND) return;
+    w.__SIA21_SCROLL_BOUND = true;
+    if (w.IntersectionObserver) {
+      scrollIo = new w.IntersectionObserver(function (entries) {
+        for (var i = 0; i < entries.length; i++) {
+          if (!entries[i].isIntersecting) continue;
+          var target = entries[i].target;
+          var depthAttr = target.getAttribute && target.getAttribute("data-sia21-depth");
+          if (depthAttr) {
+            var rect = target.getBoundingClientRect ? target.getBoundingClientRect() : null;
+            var viewH = w.innerHeight || 1;
+            // A sentinel at the bottom edge is not that depth yet. Count it
+            // once it has travelled into the top quarter, which is what
+            // in-app browsers report even when scrollY stays 0.
+            if (rect && rect.top <= viewH * 0.25 && sentinelPlaced(target, parseInt(depthAttr, 10))) {
+              notePct(parseInt(depthAttr, 10));
+            }
+          }
+          if (target.id && target.tagName === "SECTION") noteSection(target.id);
+        }
+      }, { threshold: 0 });
+    }
+    function boot() {
+      var sections = d.querySelectorAll("section[id]");
+      for (var i = 0; i < sections.length; i++) {
+        if (scrollIo) scrollIo.observe(sections[i]);
+      }
+      placeSentinels();
+      sampleScroll();
+    }
+    if (d.readyState === "loading") d.addEventListener("DOMContentLoaded", boot);
+    else boot();
+    w.addEventListener("scroll", sampleScroll, { passive: true, capture: true });
+    w.addEventListener("resize", function () { placeSentinels(); sampleScroll(); });
+    w.addEventListener("touchmove", sampleScroll, { passive: true });
+    if (w.visualViewport) {
+      w.visualViewport.addEventListener("scroll", sampleScroll);
+      w.visualViewport.addEventListener("resize", sampleScroll);
+    }
+  }
+
+  bindScrollTracking();
 
   if (pathMatchesInstant(w.location.pathname)) {
     markHuman();

@@ -1,0 +1,10 @@
+{
+  "name": "sia21-landing",
+  "private": true,
+  "scripts": {
+    "test:tracking": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.55.1"
+  }
+}

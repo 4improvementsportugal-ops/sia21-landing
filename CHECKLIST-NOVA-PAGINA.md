@@ -3,8 +3,8 @@
 Copia `templates/landing-template.html` e ajusta o caminho relativo de `assets/` à pasta onde a página fica. Não publiques uma landing sem estes pontos.
 
 - [ ] `<script src="…/assets/human-gate.js"></script>` no `<head>`, **antes** do snippet do PostHog.
-- [ ] PostHog inicia com `capture_pageview: false`, `autocapture: false` e `disable_session_recording: true`.
-- [ ] Logo a seguir ao `posthog.init`, chamar `SIA21_armTracking()` (é isso que faz `$pageview`, autocapture e session recording **depois** do sinal humano).
+- [ ] Não chames `posthog.init` na página. O stub fica no `<head>` e, a seguir, `SIA21_onHuman(function(){ SIA21_bootPosthog(); })`. O boot está em `human-gate.js`: host de produção, sem `?qa=1`, e só depois do sinal humano. Os flags `capture_pageview: false`, `autocapture: false` e `disable_session_recording: true` ficam nesse boot.
+- [ ] `SIA21_armTracking()` (chamado pelo boot) faz `$pageview`, autocapture e session recording **depois** do sinal humano. `$pageleave` sai também em `visibilitychange` / `freeze`.
 - [ ] Pixel Meta `1506988540335331` só através de `SIA21_startHumanGatedPixel`, e só quando `4i_cookie_consent_v1 === "accepted"`. Sem snippet base do Meta e sem `fbq('track','PageView')` solto.
 - [ ] `instantPaths` inclui `/obrigado.html`, `/obrigado` e `/ghl-agencias/obrigado.html`.
 - [ ] ViewContent, InitiateCheckout, Lead e Schedule só com `window.__SIA21_HUMAN` (e, no pixel, `window.__SIA21_MTHD_STARTED`). Nas páginas de obrigado o Purchase continua imediato no `onInit`.

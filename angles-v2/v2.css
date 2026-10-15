@@ -309,6 +309,73 @@ button:focus-visible {
   margin-top: var(--space-6);
 }
 
+.buy-summary {
+  margin: 0;
+  flex: 0 1 auto;
+  color: var(--ink-soft);
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.hero .buy-summary {
+  color: var(--on-navy-soft);
+}
+
+.mid-buy {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.85rem 1.25rem;
+  margin-top: 1.75rem;
+  padding: 1rem 1.1rem;
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+  background: var(--paper);
+}
+
+.end-layout {
+  display: grid;
+  align-items: start;
+  gap: var(--space-6);
+}
+
+.faq-list {
+  display: grid;
+  gap: 0.9rem;
+  margin-top: 1rem;
+}
+
+.faq-list dt {
+  font-weight: 800;
+}
+
+.faq-list dd {
+  margin: 0.2rem 0 0;
+  color: var(--ink-soft);
+  font-size: 0.9375rem;
+  line-height: 1.45;
+}
+
+.end-buy {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.85rem;
+  padding: 1.25rem;
+  border-radius: 1.25rem;
+  background: var(--ink);
+}
+
+.end-buy .buy-summary,
+.end-buy .price-note {
+  color: var(--on-navy-soft);
+}
+
+.end-layout .limits-panel {
+  margin-top: 1.25rem;
+}
+
 .price-block,
 .close-price {
   display: grid;
@@ -910,6 +977,41 @@ button:focus-visible {
     font-size: 1.0625rem;
   }
 
+  .hero-tight {
+    padding: 0.65rem 0 0.4rem;
+  }
+
+  .hero-tight .idpill {
+    padding: 0.2rem 0.55rem;
+    font-size: 0.75rem;
+    line-height: 1.3;
+  }
+
+  .hero-tight h1 {
+    margin-top: 0.35rem;
+    font-size: 1.45rem;
+    line-height: 1.12;
+  }
+
+  .hero-tight .price-act {
+    margin-top: 0.55rem;
+    gap: 0.45rem;
+  }
+
+  .hero-tight .price-now {
+    font-size: 1.5rem;
+  }
+
+  .hero-tight .buy-summary,
+  .hero-fold .buy-summary {
+    font-size: 0.8125rem;
+    line-height: 1.3;
+  }
+
+  .hero-tight .price-act .btn {
+    min-height: 2.75rem;
+  }
+
   .price-act,
   .offer-cta {
     flex-direction: column;
@@ -964,6 +1066,10 @@ button:focus-visible {
 }
 
 @media (min-width: 641px) {
+  .price-act .buy-summary {
+    flex: 1 1 16rem;
+  }
+
   .wrap {
     width: min(1120px, calc(100% - 3rem));
   }
@@ -1025,7 +1131,8 @@ button:focus-visible {
 
   .hero-grid,
   .offer-layout,
-  .limits-layout {
+  .limits-layout,
+  .end-layout {
     grid-template-columns: 1.12fr 0.88fr;
     gap: var(--space-7);
     align-items: start;

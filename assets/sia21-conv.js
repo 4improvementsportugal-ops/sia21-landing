@@ -19,7 +19,9 @@
  * Exit step lives in sessionStorage (sia21_exit_step_v2): 0 none, 1 saw €33, 2 saw €14.
  * €14 opens only after the visitor dismissed €33 (close, Escape, or "Quero mesmo sair").
  * A checkout click is not a dismissal. Back navigation or bfcache from Stripe
- * (sia21_stripe_left_at_v1) does not open the next offer.
+ * (sia21_stripe_left_at_v1) does not open an offer on the return itself.
+ * The next leave, after the pointer comes back into the page, shows €33
+ * unless €33 was already dismissed.
  * Each step shows once per session. obrigado.html reads amount from the URL.
  * PostHog (snippet in <head>, armed only after the human gate) records
  * stripe_checkout_click plus the €33/€14 exit events. Those captures never
@@ -511,7 +513,7 @@
     var cooldownUntil = 0;
     var idle = false;
     var peakY = w.scrollY || 0;
-    var returnQuietUntil = 0;
+    var blockExitUntilGesture = false;
     var sawPageHide = false;
 
     function minAge() {
@@ -675,9 +677,9 @@
       return true;
     }
 
-    function armStripeReturnQuiet() {
+    function noteStripeReturn() {
       if (!stripeLeftAt()) return false;
-      returnQuietUntil = Date.now() + (debugMode() ? 700 : 8000);
+      blockExitUntilGesture = true;
       try { w.sessionStorage.removeItem(STRIPE_LEFT_KEY); } catch (e) {}
       if (!root.hidden) closeDialog("return");
       return true;
@@ -685,7 +687,7 @@
 
     function openNext(opts) {
       if (!canOpen(opts)) return false;
-      if (Date.now() < returnQuietUntil) return false;
+      if (blockExitUntilGesture) return false;
       var step = exitStep();
       var which = step >= 1 && dismissed33() ? 2 : 1;
       if (which === 2 && step >= 2) return false;
@@ -713,6 +715,10 @@
     });
 
     d.addEventListener("mouseover", function () { desktopRearmed = true; });
+    d.addEventListener("mousemove", function (e) {
+      if (!blockExitUntilGesture) return;
+      if (e.clientY > 24) blockExitUntilGesture = false;
+    });
 
     d.addEventListener("mouseout", function (e) {
       if (isCoarse()) return;
@@ -730,7 +736,7 @@
       var nav = w.performance && w.performance.getEntriesByType ? w.performance.getEntriesByType("navigation")[0] : null;
       var back = !!(e && e.persisted) || sawPageHide || (nav && nav.type === "back_forward");
       if (!back) return;
-      armStripeReturnQuiet();
+      noteStripeReturn();
     });
 
     if (isCoarse()) {
@@ -745,10 +751,11 @@
         w.addEventListener("popstate", function () {
           if (leaving) return;
           if (sawPageHide && stripeLeftAt()) {
-            armStripeReturnQuiet();
+            noteStripeReturn();
             try { w.history.pushState({ sia21Exit: 1 }, "", w.location.href); } catch (errQuiet) {}
             return;
           }
+          if (blockExitUntilGesture) blockExitUntilGesture = false;
           if (!root.hidden) {
             closeDialog();
             try { w.history.pushState({ sia21Exit: 1 }, "", w.location.href); } catch (err) {}

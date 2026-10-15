@@ -540,6 +540,41 @@ async function main() {
       );
       await context.close();
     }
+
+    {
+      const context = await browser.newContext({ userAgent: HUMAN_UA, viewport: { width: 1280, height: 800 } });
+      await arm(context, "visible");
+      const page = await context.newPage();
+      await page.goto(ORIGIN + "/angles-v2/05-angariacao/index.html?sia21_debug=1", { waitUntil: "load", timeout: 30000 });
+      await page.mouse.move(480, 360);
+      await page.mouse.wheel(0, 1400);
+      await page.waitForFunction(() => window.__SIA21_ENGAGED === true);
+      await sleep(400);
+      await page.evaluate(() => {
+        sessionStorage.setItem("sia21_stripe_left_at_v1", String(Date.now()));
+        window.dispatchEvent(new PageTransitionEvent("pagehide", { persisted: true }));
+        window.dispatchEvent(new PageTransitionEvent("pageshow", { persisted: true }));
+        document.dispatchEvent(new MouseEvent("mouseout", { bubbles: true, clientX: 40, clientY: 0 }));
+      });
+      const onReturn = await page.evaluate(() => {
+        var box = document.getElementById("sia21-exit");
+        return { hidden: !box || box.hidden === true, text: (box && box.textContent) || "" };
+      });
+      await page.mouse.move(240, 280);
+      await page.evaluate(() => {
+        document.dispatchEvent(new MouseEvent("mouseout", { bubbles: true, clientX: 30, clientY: 0 }));
+      });
+      const onLeave = await page.waitForFunction(() => {
+        var box = document.getElementById("sia21-exit");
+        return box && box.hidden === false && /€33/.test(box.textContent || "") && !/€14/.test(box.textContent || "");
+      }, null, { timeout: 2000 }).then(() => true).catch(() => false);
+      report(
+        "return from Stripe stays quiet, the next leave shows €33",
+        onReturn.hidden && !/€33/.test(onReturn.text) && onLeave,
+        JSON.stringify({ onReturn, onLeave })
+      );
+      await context.close();
+    }
   } finally {
     await browser.close();
     server.kill("SIGTERM");

@@ -18,7 +18,10 @@
  * InitiateCheckout value matches the link: 37 / 33 / 14. ViewContent is 37.
  * Exit step lives in sessionStorage (sia21_exit_step_v2): 0 none, 1 saw €33, 2 saw €14.
  * €14 opens only after the visitor dismissed €33 (close, Escape, or "Quero mesmo sair").
- * A checkout click is not a dismissal. Coming back from Stripe without paying
+ * A checkout click is not a dismissal. On angles/ and angles-v2/ only, a human
+ * who reaches the bottom and stays there ~20s without clicking checkout sees
+ * the same €33 dialog once per visitor (localStorage sia21_scroll_exit_once_v1).
+ * That trigger never advances the ladder. Coming back from Stripe without paying
  * opens €33, or €14 only if €33 was already dismissed. Return is detected from
  * visibility, focus, pageshow/bfcache, and a later load that still has
  * sia21_stripe_left_at_v1. target=_blank (and in-app browsers that keep this
@@ -65,6 +68,7 @@
   var STRIPE_LEFT_KEY = "sia21_stripe_left_at_v1";
   var STRIPE_AWAY_KEY = "sia21_stripe_away_v1";
   var DEADLINE_KEY = "sia21_exit14_deadline_v1";
+  var SCROLL_ONCE_KEY = "sia21_scroll_exit_once_v1";
   var OFFER_MS = 5 * 60 * 1000;
 
   w.SIA21_EARLY_37 = EARLY_37;
@@ -86,6 +90,19 @@
 
   function isThankYou() {
     return (w.location.pathname || "").indexOf("obrigado") !== -1;
+  }
+
+  function isAngleLanding() {
+    var path = w.location.pathname || "";
+    return path.indexOf("/angles/") !== -1 || path.indexOf("/angles-v2/") !== -1;
+  }
+
+  function scrollOfferUsed() {
+    try { return w.localStorage.getItem(SCROLL_ONCE_KEY) === "1"; } catch (e) { return false; }
+  }
+
+  function markScrollOfferUsed() {
+    try { w.localStorage.setItem(SCROLL_ONCE_KEY, "1"); } catch (e) {}
   }
 
   function debugMode() {
@@ -900,6 +917,79 @@
           openNext();
         }
       }, { passive: true });
+    }
+
+    // Angle landings only: bottom of the page, held ~20s, no checkout click.
+    // Reuses the €33 dialog. Fires only while the ladder is still at step 0,
+    // so it cannot become the €14 offer. Once per visitor, not per session.
+    if (isAngleLanding() && !scrollOfferUsed()) {
+      var scrollTimer = null;
+      var scrollCheckout = false;
+      var scrollRetried = false;
+
+      function scrollStayMs() {
+        return debugMode() ? 800 : 20000;
+      }
+
+      function atPageEnd() {
+        var doc = d.documentElement;
+        var max = Math.max(0, (doc.scrollHeight || 0) - (w.innerHeight || 0));
+        var y = w.scrollY || doc.scrollTop || (d.body && d.body.scrollTop) || 0;
+        if (max <= 4) return true;
+        return y >= max - 4;
+      }
+
+      function clearScrollTimer() {
+        if (!scrollTimer) return;
+        clearTimeout(scrollTimer);
+        scrollTimer = null;
+      }
+
+      function noteCheckoutClick(e) {
+        if (e.type === "keydown" && e.key !== "Enter" && e.key !== " ") return;
+        var node = e.target;
+        if (!node || !node.closest) return;
+        if (!node.closest('a[href*="buy.stripe.com"]')) return;
+        scrollCheckout = true;
+        clearScrollTimer();
+      }
+
+      function fireScrollOffer() {
+        scrollTimer = null;
+        if (scrollCheckout || scrollOfferUsed() || exitStep() !== 0) return;
+        if (d.visibilityState === "hidden" || !atPageEnd()) return;
+        if (openNext()) {
+          markScrollOfferUsed();
+          return;
+        }
+        if (!scrollRetried && Date.now() - openedAt < minAge()) {
+          scrollRetried = true;
+          var wait = Math.max(40, minAge() - (Date.now() - openedAt) + 40);
+          scrollTimer = setTimeout(fireScrollOffer, wait);
+        }
+      }
+
+      function syncScrollTimer() {
+        if (scrollCheckout || scrollOfferUsed() || exitStep() !== 0) {
+          clearScrollTimer();
+          return;
+        }
+        if (d.visibilityState === "hidden" || !atPageEnd()) {
+          clearScrollTimer();
+          return;
+        }
+        if (scrollTimer) return;
+        scrollTimer = setTimeout(fireScrollOffer, scrollStayMs());
+      }
+
+      w.addEventListener("pointerdown", noteCheckoutClick, true);
+      w.addEventListener("click", noteCheckoutClick, true);
+      w.addEventListener("auxclick", noteCheckoutClick, true);
+      w.addEventListener("keydown", noteCheckoutClick, true);
+      w.addEventListener("scroll", syncScrollTimer, { passive: true });
+      d.addEventListener("visibilitychange", syncScrollTimer);
+      w.addEventListener("resize", syncScrollTimer);
+      syncScrollTimer();
     }
   }
 

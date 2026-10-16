@@ -575,6 +575,119 @@ async function main() {
       );
       await context.close();
     }
+
+    async function wheelToEnd(page) {
+      await page.mouse.move(420, 480);
+      let last = null;
+      for (let i = 0; i < 30; i++) {
+        last = await page.evaluate(() => {
+          var max = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+          var y = window.scrollY || 0;
+          var box = document.getElementById("sia21-exit");
+          return {
+            atEnd: max > 200 && y >= max - 4,
+            max: max,
+            y: y,
+            hidden: !box || box.hidden === true
+          };
+        });
+        if (last.atEnd) return last;
+        await page.mouse.wheel(0, 3200);
+      }
+      return last;
+    }
+
+    function exitSnapshot() {
+      var box = document.getElementById("sia21-exit");
+      var link = box ? box.querySelector('a[href*="buy.stripe.com"]') : null;
+      return {
+        hidden: !box || box.hidden === true,
+        text: (box && box.textContent) || "",
+        href: link ? link.getAttribute("href") : "",
+        once: localStorage.getItem("sia21_scroll_exit_once_v1"),
+        step: sessionStorage.getItem("sia21_exit_step_v2")
+      };
+    }
+
+    {
+      const context = await browser.newContext({ userAgent: HUMAN_UA, viewport: { width: 1280, height: 800 } });
+      await arm(context, "visible");
+      const page = await context.newPage();
+      await page.goto(ORIGIN + "/angles-v2/01-tempo/index.html?sia21_debug=1", { waitUntil: "load", timeout: 30000 });
+      const atBottom = await wheelToEnd(page);
+      await page.waitForFunction(() => window.__SIA21_ENGAGED === true && window.SIA21_mayShowExit() === true);
+      const stayedClosed = atBottom && atBottom.hidden && atBottom.atEnd;
+      await sleep(1300);
+      const shown = await page.evaluate(exitSnapshot);
+      const offer33 = shown.hidden === false
+        && shown.href.indexOf("https://buy.stripe.com/fZueVf1OFc4D7Eb1vMgrS04") !== -1
+        && shown.text.indexOf("Garante o Early Bird antes de sair") !== -1
+        && shown.text.indexOf("Volta ao pagamento: €37 passa a €33.") !== -1
+        && shown.text.indexOf("Volta ao pagamento a €33") !== -1
+        && shown.text.indexOf("€14") === -1
+        && shown.once === "1"
+        && shown.step === "1";
+      await page.evaluate(() => {
+        var btn = document.querySelector("#sia21-exit .sia21-exit-secondary");
+        if (btn) btn.click();
+      });
+      await sleep(1200);
+      const afterDismiss = await page.evaluate(exitSnapshot);
+      await page.reload({ waitUntil: "load", timeout: 30000 });
+      const again = await wheelToEnd(page);
+      await page.waitForFunction(() => window.__SIA21_ENGAGED === true);
+      await sleep(1200);
+      const second = await page.evaluate(exitSnapshot);
+      report(
+        "100% scroll for ~20s on angles-v2 shows €33 once, and staying there does not open €14",
+        stayedClosed && offer33 && afterDismiss.hidden && afterDismiss.text.indexOf("€14") === -1 && again && again.atEnd && again.hidden && second.hidden && second.once === "1",
+        JSON.stringify({ atBottom, shown, afterDismiss, again, second })
+      );
+      await context.close();
+    }
+
+    {
+      const context = await browser.newContext({ userAgent: HUMAN_UA, viewport: { width: 1280, height: 800 } });
+      await arm(context, "visible");
+      await trackStripe(context);
+      const page = await context.newPage();
+      await page.goto(ORIGIN + "/angles/01-tempo/index.html?sia21_debug=1", { waitUntil: "load", timeout: 30000 });
+      const atBottom = await wheelToEnd(page);
+      await page.waitForFunction(() => window.__SIA21_ENGAGED === true);
+      await page.evaluate(() => {
+        document.querySelectorAll('a[href*="buy.stripe.com"]').forEach(function (a) {
+          a.target = "_self";
+          a.addEventListener("click", function (e) { e.preventDefault(); }, true);
+        });
+      });
+      await page.locator('a[href*="buy.stripe.com"]').first().click({ timeout: 5000 });
+      const back = await wheelToEnd(page);
+      await sleep(1200);
+      const state = await page.evaluate(exitSnapshot);
+      report(
+        "a checkout click at the bottom cancels the scroll €33 offer",
+        !!(atBottom && atBottom.atEnd && atBottom.hidden && back && back.atEnd) && state.hidden && state.once !== "1" && state.text.indexOf("€14") === -1,
+        JSON.stringify({ atBottom, back, state })
+      );
+      await context.close();
+    }
+
+    {
+      const context = await browser.newContext({ userAgent: HUMAN_UA, viewport: { width: 1280, height: 800 } });
+      await arm(context, "visible");
+      const page = await context.newPage();
+      await page.goto(ORIGIN + "/index.html?sia21_debug=1", { waitUntil: "load", timeout: 30000 });
+      const atBottom = await wheelToEnd(page);
+      await page.waitForFunction(() => window.__SIA21_ENGAGED === true);
+      await sleep(1200);
+      const state = await page.evaluate(exitSnapshot);
+      report(
+        "100% scroll on the home page does not open the €33 offer",
+        !!(atBottom && atBottom.atEnd && atBottom.hidden) && state.hidden && state.once !== "1",
+        JSON.stringify({ atBottom, state })
+      );
+      await context.close();
+    }
   } finally {
     await browser.close();
     server.kill("SIGTERM");

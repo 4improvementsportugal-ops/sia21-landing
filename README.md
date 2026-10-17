@@ -2,6 +2,26 @@
 
 Public landing page for SIA21 (Sistema IA Consultor 21 Dias). CTAs will use Stripe Payment Links.
 
+## Ângulos
+
+As landings em `angles/` continuam a ser o destino dos anúncios atuais. O redesenho está em `angles-v2/`, mais `/angles/06-chatgpt-falhou/`.
+
+| Ângulo | Caminho |
+| --- | --- |
+| Tempo | `/angles-v2/01-tempo/` |
+| RGPD | `/angles-v2/02-rgpd/` |
+| Idealista | `/angles-v2/03-idealista/` |
+| WhatsApp | `/angles-v2/04-whatsapp/` |
+| Angariação | `/angles-v2/05-angariacao/` |
+| ChatGPT | `/angles/06-chatgpt-falhou/` |
+| Método 21 dias | `/angles-v2/07-metodo-21-dias/` |
+| Solo | `/angles-v2/08-solo-escala/` |
+| Early €37 | `/angles-v2/09-early-37/` |
+| Visitas | `/angles-v2/10-visitas-ops/` |
+| Sobrecarga | `/angles-v2/sobrecarga/` |
+
+Lista navegável: `angles-v2/index.html` e `angles/index.html`.
+
 ## Regra anti-bots (obrigatória em todas as páginas)
 
 Toda a landing deste repositório carrega `assets/human-gate.js` no `<head>`, antes do PostHog. O Meta Pixel `1506988540335331` e o resto do tracking só disparam depois de um sinal humano. A excepção são as páginas de obrigado, que disparam logo.

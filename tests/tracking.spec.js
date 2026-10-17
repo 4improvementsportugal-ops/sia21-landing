@@ -259,7 +259,7 @@ test.describe("tracking", function () {
     await page.waitForFunction(function () {
       return window.__SIA21_ENGAGED === true && window.SIA21_checkoutAllowed && window.SIA21_checkoutAllowed();
     });
-    await page.locator("a[href*='buy.stripe.com']").first().click({ force: true });
+    await page.locator("#sticky-cta").click();
     await expect.poll(async function () {
       return page.evaluate(function () { return sessionStorage.getItem("sia21_stripe_left_at_v1"); });
     }).not.toBeNull();

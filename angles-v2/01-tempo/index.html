@@ -208,6 +208,7 @@ if(window.SIA21_onHuman){SIA21_onHuman(function(){if(window.SIA21_bootPosthog)SI
   function show(){box.hidden=false}
   function hide(){box.hidden=true}
   function startMTHD(){
+    if(typeof window.SIA21_trackingSuppressed==="function"&&window.SIA21_trackingSuppressed())return;
     if(typeof window.SIA21_startHumanGatedPixel!=="function")return;
     window.SIA21_startHumanGatedPixel({
       pixelId:META_PIXEL_ID,
@@ -215,7 +216,7 @@ if(window.SIA21_onHuman){SIA21_onHuman(function(){if(window.SIA21_bootPosthog)SI
     });
   }
   function clearMeta(){["_fbp","_fbc"].forEach(function(n){var h=location.hostname.split("."),d;document.cookie=n+"=; Max-Age=0; path=/";for(var i=0;i<h.length-1;i++){d="."+h.slice(i).join(".");document.cookie=n+"=; Max-Age=0; path=/; domain="+d}})}
-  function decide(v){put(v);hide();if(v==="accepted")startMTHD();else{if(window.fbq)fbq("consent","revoke");clearMeta()}}
+  function decide(v){put(v);hide();if(v==="accepted")startMTHD();else{if(window.fbq&&!(typeof window.SIA21_trackingSuppressed==="function"&&window.SIA21_trackingSuppressed()))fbq("consent","revoke");clearMeta()}}
   box.addEventListener("click",function(e){var b=e.target.closest("[data-ck]");if(b)decide(b.getAttribute("data-ck"))});
   document.addEventListener("click",function(e){
     if(e.target.closest("[data-ck-open]")){e.preventDefault();show();return}

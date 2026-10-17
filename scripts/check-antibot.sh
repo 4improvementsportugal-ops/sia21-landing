@@ -32,7 +32,16 @@ while IFS= read -r -d '' f; do
     echo "FAIL $rel must wait for SIA21_onHuman before booting PostHog"
     fail=1
   fi
+  if grep -q 'SIA21_startHumanGatedPixel' "$f" && ! grep -q 'SIA21_trackingSuppressed' "$f"; then
+    echo "FAIL $rel starts the pixel without SIA21_trackingSuppressed"
+    fail=1
+  fi
 done < <(find . -name '*.html' -not -path './.git/*' -not -path './node_modules/*' -not -path './test-results/*' -print0)
+
+if ! grep -q 'SIA21_trackingSuppressed' templates/landing-template.html; then
+  echo "FAIL templates/landing-template.html must document and call SIA21_trackingSuppressed"
+  fail=1
+fi
 
 if ! grep -q 'SIA21_onHuman' assets/human-gate.js; then
   echo "FAIL assets/human-gate.js must expose SIA21_onHuman"
@@ -96,6 +105,26 @@ if ! grep -q '4improvementsportugal-ops.github.io' assets/human-gate.js; then
 fi
 if ! grep -q 'sia21_qa_v1' assets/human-gate.js; then
   echo "FAIL assets/human-gate.js must honour the qa opt-out flag"
+  fail=1
+fi
+if ! grep -q 'SIA21_trackingSuppressed' assets/human-gate.js; then
+  echo "FAIL assets/human-gate.js must expose SIA21_trackingSuppressed"
+  fail=1
+fi
+if ! grep -q 'sia21_qa' assets/human-gate.js; then
+  echo "FAIL assets/human-gate.js must persist the sia21_qa flag"
+  fail=1
+fi
+if ! grep -q 'SIA21_trackingSuppressed' assets/mthd-pixel.js; then
+  echo "FAIL assets/mthd-pixel.js must use SIA21_trackingSuppressed before fbevents.js"
+  fail=1
+fi
+if ! grep -q 'SIA21_trackingSuppressed' assets/sia21-conv.js; then
+  echo "FAIL assets/sia21-conv.js must use SIA21_trackingSuppressed"
+  fail=1
+fi
+if ! grep -q 'SIA21_trackingSuppressed' assets/sia21-purchase.js || ! grep -q 'cs_live_' assets/sia21-purchase.js; then
+  echo "FAIL assets/sia21-purchase.js must suppress QA traffic and require a cs_live_ session"
   fail=1
 fi
 if ! grep -q 'sia21_scroll' assets/human-gate.js; then

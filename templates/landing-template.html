@@ -10,10 +10,17 @@
   1. human-gate.js no <head>, antes do PostHog.
   2. Não chames posthog.init aqui. SIA21_bootPosthog() (dentro de SIA21_onHuman)
      inicia com capture_pageview/autocapture/session recording desligados,
-     e só no host de produção, sem a flag ?qa=1.
-  3. Pixel só depois de 4i_cookie_consent_v1 === "accepted", via SIA21_startHumanGatedPixel.
+     e só no host de produção, quando SIA21_trackingSuppressed() é falso.
+  3. Pixel só depois de 4i_cookie_consent_v1 === "accepted", via SIA21_startHumanGatedPixel,
+     e só se SIA21_trackingSuppressed() for falso. QA (?qa=1, ?test=1, ?debug=1, ou
+     localStorage/sessionStorage sia21_qa), webdriver e user agents de automação
+     não carregam fbevents.js e não chamam fbq nem posthog.capture. ?qa=1 grava
+     sia21_qa para a página seguinte (por exemplo obrigado) continuar em silêncio.
+     ?sia21_debug=1 só encurta os timers de saída. Não é opt-out.
   4. Eventos custom: SIA21_capturePh / SIA21_onHuman. Nunca posthog.capture directo.
-  5. Páginas de obrigado entram em INSTANT_PATHS (human-gate.js). Purchase fica imediato.
+  5. Páginas de obrigado entram em INSTANT_PATHS (human-gate.js). PageView fica
+     imediato para um visitante real. Purchase só com session_id cs_live_, sem
+     supressão, e uma vez por sessão (localStorage + sessionStorage, eventID = session_id).
   6. Exit/last offer só com SIA21_mayShowExit() (scroll, rato ou dwell antes; nunca com webdriver).
   7. buy.stripe.com só navega com sinal anterior ao clique, 1,5 s na página e webdriver false.
      stripe_checkout_click e InitiateCheckout seguem esse clique. O handler está em human-gate.js.
@@ -60,6 +67,7 @@ if(window.SIA21_onHuman){SIA21_onHuman(function(){if(window.SIA21_bootPosthog)SI
   function show() { box.hidden = false; }
   function hide() { box.hidden = true; }
   function startMTHD() {
+    if (typeof window.SIA21_trackingSuppressed === "function" && window.SIA21_trackingSuppressed()) return;
     if (typeof window.SIA21_startHumanGatedPixel !== "function") return;
     window.SIA21_startHumanGatedPixel({
       pixelId: META_PIXEL_ID,
@@ -80,7 +88,7 @@ if(window.SIA21_onHuman){SIA21_onHuman(function(){if(window.SIA21_bootPosthog)SI
     put(v);
     hide();
     if (v === "accepted") startMTHD();
-    else if (window.fbq) {
+    else if (window.fbq && !(typeof window.SIA21_trackingSuppressed === "function" && window.SIA21_trackingSuppressed())) {
       fbq("consent", "revoke");
       clearMeta();
     }

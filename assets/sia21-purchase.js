@@ -9,21 +9,21 @@
  * assets/sia21-conv.js, assets/mthd-pixel.js and assets/human-gate.js
  * must not track Purchase.
  *
- * When the URL has session_id, checkout_session_id, or another param
- * whose value is a Stripe checkout session (cs_live_ / cs_test_),
- * eventID is that session id. The same id is written to localStorage
- * and sessionStorage before the pixel request, so a reload, the back
+ * Purchase fires only when the URL carries a real Stripe live checkout
+ * session (the value starts with cs_live_), SIA21_trackingSuppressed()
+ * is false, and that session id has not already fired. eventID is the
+ * session id. The same id is written to localStorage and sessionStorage
+ * before the pixel request (sia21_purchase_v1_<sid>, plus the older
+ * sessionStorage key sia21_purchase_fired_<sid>), so a reload, the back
  * button, or a second webview does not fire again.
+ *
+ * A visit with no session id, a fake id, or a test id (cs_test_) sends
+ * no Purchase. PageView on the thank-you page is separate and can still
+ * fire for a real visitor.
  *
  * There is no PostHog "purchase" event. Anything that sends one later
  * has to go through SIA21_firePurchaseOnce so it shares this flag.
- *
- * If the success URL has no session id, the flag is the amount in cents
- * plus one slot per browser (sia21_purchase_once_v1_<cents>). A later
- * purchase of the same amount in that browser does not fire. No eventID
- * is sent in that case: an eventID of "37" would make Meta collapse
- * every buyer into one Purchase. Payment Links need
- * {CHECKOUT_SESSION_ID} on the success URL for a unique eventID.
+ * Payment Links need {CHECKOUT_SESSION_ID} on the success URL.
  */
 (function (w) {
   "use strict";
@@ -42,17 +42,21 @@
     return (w.location.pathname || "").indexOf("obrigado") !== -1;
   }
 
+  function isLiveSession(value) {
+    return /^cs_live_[A-Za-z0-9]+$/.test(String(value || "").trim());
+  }
+
   function sessionId() {
     var params = qs();
     var i;
+    var found = "";
     for (i = 0; i < SESSION_PARAMS.length; i++) {
       var named = params.get(SESSION_PARAMS[i]) || "";
-      if (named) return named;
+      if (isLiveSession(named)) return named.trim();
     }
-    var found = "";
     params.forEach(function (value) {
       if (found) return;
-      if (/^cs_(live|test)_[A-Za-z0-9]+$/.test(value || "")) found = value;
+      if (isLiveSession(value)) found = String(value).trim();
     });
     return found;
   }
@@ -65,16 +69,6 @@
     if (!isFinite(n) || n <= 0) return DEFAULT_PURCHASE_VALUE;
     if (params.get("amount_total") && String(raw).indexOf(".") === -1 && n >= 100) n = n / 100;
     return Math.round(n * 100) / 100;
-  }
-
-  function explicitAmountCents() {
-    var params = qs();
-    var raw = params.get("amount") || params.get("value") || params.get("amount_total") || "";
-    if (!raw) return null;
-    var n = parseFloat(String(raw).replace(",", "."));
-    if (!isFinite(n) || n <= 0) return null;
-    if (params.get("amount_total") && String(raw).indexOf(".") === -1 && n >= 100) n = n / 100;
-    return Math.round(n * 100);
   }
 
   function contentIdsForValue(value) {
@@ -94,46 +88,43 @@
     try { store.setItem(key, value); } catch (e) {}
   }
 
-  function dedupeKey() {
-    var sid = sessionId();
-    if (sid) return "sia21_purchase_v1_" + sid;
-    var cents = explicitAmountCents();
-    if (cents != null) return "sia21_purchase_once_v1_" + cents;
-    return "sia21_purchase_once_session_v1";
+  function dedupeKey(sid) {
+    return "sia21_purchase_v1_" + sid;
   }
 
-  function persistsAcrossDocuments(key) {
-    return key.indexOf("sia21_purchase_once_session_v1") !== 0;
-  }
-
-  function alreadyFired(key) {
+  function alreadyFired(sid) {
+    var key = dedupeKey(sid);
     var mem = w.__SIA21_PURCHASE_KEYS;
     if (mem && mem[key]) return true;
-    var sid = sessionId();
-    if (sid && storageGet(w.sessionStorage, "sia21_purchase_fired_" + sid) === "1") return true;
-    if (!sid && explicitAmountCents() == null && storageGet(w.sessionStorage, "sia21_purchase_fired") === "1") return true;
+    if (storageGet(w.sessionStorage, "sia21_purchase_fired_" + sid) === "1") return true;
     if (storageGet(w.sessionStorage, key) === "1") return true;
-    if (persistsAcrossDocuments(key) && storageGet(w.localStorage, key) === "1") return true;
+    if (storageGet(w.localStorage, key) === "1") return true;
     return false;
   }
 
-  function markFired(key) {
+  function markFired(sid) {
+    var key = dedupeKey(sid);
     var mem = w.__SIA21_PURCHASE_KEYS || (w.__SIA21_PURCHASE_KEYS = {});
     mem[key] = true;
     storageSet(w.sessionStorage, key, "1");
-    if (persistsAcrossDocuments(key)) storageSet(w.localStorage, key, "1");
-    var sid = sessionId();
-    if (sid) storageSet(w.sessionStorage, "sia21_purchase_fired_" + sid, "1");
-    else if (explicitAmountCents() == null) storageSet(w.sessionStorage, "sia21_purchase_fired", "1");
+    storageSet(w.localStorage, key, "1");
+    storageSet(w.sessionStorage, "sia21_purchase_fired_" + sid, "1");
+  }
+
+  function trackingBlocked() {
+    if (typeof w.SIA21_trackingSuppressed !== "function" || w.SIA21_trackingSuppressed()) return true;
+    if (typeof w.SIA21_allowCapture === "function" && !w.SIA21_allowCapture()) return true;
+    return false;
   }
 
   function firePurchaseOnce() {
     if (!isThankYou()) return false;
-    if (!w.fbq) return false;
-    var key = dedupeKey();
-    if (alreadyFired(key)) return false;
-    var value = purchaseValue();
+    if (trackingBlocked()) return false;
+    if (typeof w.fbq !== "function") return false;
     var sid = sessionId();
+    if (!sid) return false;
+    if (alreadyFired(sid)) return false;
+    var value = purchaseValue();
     var payload = {
       value: value,
       currency: DEFAULT_CURRENCY,
@@ -142,11 +133,8 @@
       content_type: "product"
     };
     // Mark first so a second onInit in this turn cannot send again.
-    markFired(key);
-    try {
-      if (sid) w.fbq("track", "Purchase", payload, { eventID: sid });
-      else w.fbq("track", "Purchase", payload);
-    } catch (e) {}
+    markFired(sid);
+    try { w.fbq("track", "Purchase", payload, { eventID: sid }); } catch (e) {}
     return true;
   }
 

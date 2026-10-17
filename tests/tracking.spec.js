@@ -204,11 +204,14 @@ test.describe("tracking", function () {
     const flags = await page.evaluate(function () {
       return {
         qa: localStorage.getItem("sia21_qa_v1"),
+        stored: localStorage.getItem("sia21_qa"),
+        session: sessionStorage.getItem("sia21_qa"),
         internal: localStorage.getItem("sia21_internal_v1"),
-        allow: window.SIA21_allowCapture()
+        allow: window.SIA21_allowCapture(),
+        suppressed: window.SIA21_trackingSuppressed()
       };
     });
-    expect(flags).toEqual({ qa: "1", internal: "1", allow: false });
+    expect(flags).toEqual({ qa: "1", stored: "1", session: "1", internal: "1", allow: false, suppressed: true });
     expect(hits, JSON.stringify(hits.map(function (hit) { return hit.url; }))).toEqual([]);
   });
 
@@ -522,26 +525,162 @@ test.describe("tracking", function () {
     expect(purchases).toHaveLength(2);
   });
 
-  test("obrigado without a session id fires Purchase once per amount in the browser", async function ({ page }) {
+  test("obrigado without a live session id fires no Purchase", async function ({ page }) {
     await maskWebdriver(page);
     const purchases = await acceptAndCountPurchases(page);
-    await page.goto(PROD + "/obrigado.html?amount=14", { waitUntil: "load" });
-    await expect.poll(function () { return purchases.length; }, { timeout: 15000 }).toBe(1);
-    // No session id: do not send a shared eventID such as the amount.
-    // The pixel may attach its own one-off id. That id must not be reused
-    // across buyers, so it is not the amount.
-    expect(purchaseEid(purchases[0])).not.toBe("14");
-    expect(purchaseEid(purchases[0])).not.toBe("1400");
-    expect(new URL(purchases[0]).searchParams.get("cd[value]")).toBe("14");
-    const once = await page.evaluate(function () {
-      return localStorage.getItem("sia21_purchase_once_v1_1400");
+    const pageviews = [];
+    page.on("request", function (req) {
+      if (/[?&]ev=PageView(?:&|$)/.test(req.url())) pageviews.push(req.url());
     });
-    expect(once).toBe("1");
-    await page.reload({ waitUntil: "load" });
-    await page.waitForTimeout(3000);
-    expect(purchases).toHaveLength(1);
-    await page.goto(PROD + "/obrigado.html?amount=33", { waitUntil: "load" });
-    await expect.poll(function () { return purchases.length; }, { timeout: 15000 }).toBe(2);
-    expect(new URL(purchases[1]).searchParams.get("cd[value]")).toBe("33");
+    await page.goto(PROD + "/obrigado.html", { waitUntil: "load" });
+    await expect.poll(function () { return pageviews.length; }, { timeout: 15000 }).toBeGreaterThan(0);
+    expect(purchases).toHaveLength(0);
+    await page.goto(PROD + "/obrigado.html?amount=37", { waitUntil: "load" });
+    await page.waitForTimeout(1500);
+    await page.goto(PROD + "/obrigado.html?session_id=not-a-checkout&amount=37", { waitUntil: "load" });
+    await page.waitForTimeout(1500);
+    await page.goto(PROD + "/obrigado.html?session_id=cs_test_FAKESESSION&amount=14", { waitUntil: "load" });
+    await page.waitForTimeout(1500);
+    expect(purchases).toHaveLength(0);
+    const flagged = await page.evaluate(function () {
+      return localStorage.getItem("sia21_purchase_once_v1_3700") || localStorage.getItem("sia21_purchase_v1_cs_test_FAKESESSION");
+    });
+    expect(flagged).toBeNull();
+  });
+
+  async function countFbq(page) {
+    await page.addInitScript(function () {
+      window.__fbqCalls = [];
+      var impl;
+      try {
+        Object.defineProperty(window, "fbq", {
+          configurable: true,
+          enumerable: true,
+          get: function () { return impl; },
+          set: function (fn) {
+            if (typeof fn !== "function") { impl = fn; return; }
+            var wrapped = function () {
+              window.__fbqCalls.push(String(arguments[0] || ""));
+              return fn.apply(this, arguments);
+            };
+            impl = wrapped;
+          }
+        });
+      } catch (e) {}
+    });
+  }
+
+  test("headless webdriver never loads fbevents or calls fbq", async function ({ page }) {
+    await countFbq(page);
+    await page.addInitScript(function () {
+      try { localStorage.setItem("4i_cookie_consent_v1", "accepted"); } catch (e) {}
+    });
+    const pixel = [];
+    page.on("request", function (req) {
+      if (/fbevents\.js|facebook\.com\/tr|posthog\.com/i.test(req.url())) pixel.push(req.url());
+    });
+    await page.goto(PROD + "/index.html", { waitUntil: "domcontentloaded" });
+    await page.mouse.wheel(0, 900);
+    await page.evaluate(function () { window.scrollTo(0, document.documentElement.scrollHeight); });
+    await page.goto(PROD + "/obrigado.html?session_id=cs_live_HEADLESSQA&amount=37", { waitUntil: "load" });
+    await page.waitForTimeout(2000);
+    const state = await page.evaluate(function () {
+      return {
+        suppressed: window.SIA21_trackingSuppressed(),
+        fbq: typeof window.fbq,
+        calls: window.__fbqCalls || []
+      };
+    });
+    expect(state.suppressed).toBe(true);
+    expect(state.fbq).toBe("undefined");
+    expect(state.calls).toEqual([]);
+    expect(pixel, JSON.stringify(pixel)).toEqual([]);
+  });
+
+  test("qa=1 stays suppressed on obrigado without the query", async function ({ page }) {
+    await maskWebdriver(page);
+    await countFbq(page);
+    await page.addInitScript(function () {
+      try { localStorage.setItem("4i_cookie_consent_v1", "accepted"); } catch (e) {}
+    });
+    const pixel = [];
+    page.on("request", function (req) {
+      if (/fbevents\.js|facebook\.com\/tr|posthog\.com/i.test(req.url())) pixel.push(req.url());
+    });
+    await page.goto(PROD + "/index.html?qa=1", { waitUntil: "domcontentloaded" });
+    await page.mouse.wheel(0, 400);
+    const flags = await page.evaluate(function () {
+      return {
+        local: localStorage.getItem("sia21_qa"),
+        session: sessionStorage.getItem("sia21_qa")
+      };
+    });
+    expect(flags).toEqual({ local: "1", session: "1" });
+    await page.goto(PROD + "/obrigado.html?session_id=cs_live_QAPERSIST&amount=37", { waitUntil: "load" });
+    await page.waitForTimeout(2000);
+    const state = await page.evaluate(function () {
+      return {
+        suppressed: window.SIA21_trackingSuppressed(),
+        local: localStorage.getItem("sia21_qa"),
+        session: sessionStorage.getItem("sia21_qa"),
+        calls: window.__fbqCalls || [],
+        fbq: typeof window.fbq
+      };
+    });
+    expect(state.suppressed).toBe(true);
+    expect(state.local).toBe("1");
+    expect(state.session).toBe("1");
+    expect(state.fbq).toBe("undefined");
+    expect(state.calls).toEqual([]);
+    expect(pixel, JSON.stringify(pixel)).toEqual([]);
+  });
+});
+
+test.describe("automated user agent", function () {
+  test.use({
+    userAgent: "Mozilla/5.0 (Linux; Android 11; Pixel 5) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/122.0.0.0 Mobile Safari/537.36 Playwright"
+  });
+
+  test("HeadlessChrome UA skips the pixel when webdriver is hidden", async function ({ page }) {
+    await maskWebdriver(page);
+    await page.addInitScript(function () {
+      window.__fbqCalls = [];
+      var impl;
+      try {
+        Object.defineProperty(window, "fbq", {
+          configurable: true,
+          enumerable: true,
+          get: function () { return impl; },
+          set: function (fn) {
+            if (typeof fn !== "function") { impl = fn; return; }
+            var wrapped = function () {
+              window.__fbqCalls.push(String(arguments[0] || ""));
+              return fn.apply(this, arguments);
+            };
+            impl = wrapped;
+          }
+        });
+      } catch (e) {}
+      try { localStorage.setItem("4i_cookie_consent_v1", "accepted"); } catch (e2) {}
+    });
+    const pixel = [];
+    page.on("request", function (req) {
+      if (/fbevents\.js|facebook\.com\/tr|posthog\.com/i.test(req.url())) pixel.push(req.url());
+    });
+    await page.goto(PROD + "/obrigado.html?session_id=cs_live_HEADLESSUA&amount=37", { waitUntil: "load" });
+    await page.waitForTimeout(2000);
+    const state = await page.evaluate(function () {
+      return {
+        suppressed: window.SIA21_trackingSuppressed(),
+        webdriver: navigator.webdriver === true,
+        calls: window.__fbqCalls || [],
+        fbq: typeof window.fbq
+      };
+    });
+    expect(state.webdriver).toBe(false);
+    expect(state.suppressed).toBe(true);
+    expect(state.fbq).toBe("undefined");
+    expect(state.calls).toEqual([]);
+    expect(pixel, JSON.stringify(pixel)).toEqual([]);
   });
 });

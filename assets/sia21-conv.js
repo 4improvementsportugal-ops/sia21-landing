@@ -140,7 +140,14 @@
     return "home";
   }
 
+  function trackingBlocked() {
+    if (typeof w.SIA21_trackingSuppressed !== "function" || w.SIA21_trackingSuppressed()) return true;
+    if (typeof w.SIA21_allowCapture === "function" && !w.SIA21_allowCapture()) return true;
+    return false;
+  }
+
   function capturePh(name, props) {
+    if (trackingBlocked()) return;
     if (typeof w.SIA21_captureWhenHuman === "function") {
       w.SIA21_captureWhenHuman(name, props);
       return;
@@ -148,6 +155,7 @@
     if (typeof w.SIA21_onHuman === "function") {
       w.SIA21_onHuman(function () {
         try {
+          if (trackingBlocked()) return;
           if (w.posthog && typeof w.posthog.capture === "function") w.posthog.capture(name, props);
         } catch (e) {}
       });
@@ -166,6 +174,7 @@
   }
 
   function pixelReady() {
+    if (trackingBlocked()) return false;
     return !!(w.fbq && w.__SIA21_MTHD_STARTED);
   }
 
@@ -201,6 +210,7 @@
       currency: "EUR"
     };
     remember("ViewContent", payload);
+    if (trackingBlocked() || typeof w.fbq !== "function") return;
     try { w.fbq("track", "ViewContent", payload); } catch (e) {}
   }
 
@@ -219,6 +229,7 @@
       content_type: "product"
     };
     remember("InitiateCheckout", payload);
+    if (trackingBlocked() || typeof w.fbq !== "function") return;
     try { w.fbq("track", "InitiateCheckout", payload); } catch (err) {}
   }
 

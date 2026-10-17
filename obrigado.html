@@ -22,11 +22,15 @@
        INSTANT_PATH (/obrigado.html, /obrigado, /ghl-agencias/obrigado.html).
        Upsell InitiateCheckout and stripe_checkout_click follow the Stripe
        gate: a prior engagement signal, 1.5s on the page, and webdriver false.
-       The instant path does not bypass that. Purchase in onInit stays immediate.
-    4) Purchase: value (amount URL or default 37), currency EUR, content_name "Sistema IA Consultor 21 Dias",
-       content_ids, eventID = session_id when the URL has one.
+       The instant path does not bypass that. PageView for a real visitor stays immediate.
+       SIA21_trackingSuppressed() still blocks the pixel entirely (no fbevents.js, no fbq).
+    4) Purchase fires only for a live Stripe session id (starts with cs_live_),
+       when tracking is not suppressed, and only once per session id.
+       value (amount URL or default 37), currency EUR, content_name "Sistema IA Consultor 21 Dias",
+       content_ids, eventID = session_id.
        The same id is stored in localStorage and sessionStorage before the request,
        so a reload, back navigation, or a second webview does not fire again.
+       A visit without a cs_live_ session id sends no Purchase.
        Primary Early Bird €37 (SIA21_EARLY_37) is the default when amount is missing.
        Exit €33 (SIA21_EARLY_33) should redirect with amount=33 → content_ids sia21-core-early-33.
        Final exit €14 (SIA21_EARLY_14) should redirect with amount=14 → content_ids sia21-core-early-14.
@@ -123,6 +127,7 @@ if(window.SIA21_onHuman){SIA21_onHuman(function(){if(window.SIA21_bootPosthog)SI
     }
 
     function startMTHD(){
+      if (typeof window.SIA21_trackingSuppressed === "function" && window.SIA21_trackingSuppressed()) return;
       if (typeof window.SIA21_startHumanGatedPixel !== "function") return;
       // Instant PageView: pathname contains /obrigado.html (e.g. /sia21-landing/obrigado.html)
       // Purchase fires in onInit right after fbq init. It does not wait for PageView.
@@ -146,7 +151,7 @@ if(window.SIA21_onHuman){SIA21_onHuman(function(){if(window.SIA21_bootPosthog)SI
     function decide(v){
       put(v); hide();
       if (v === "accepted") startMTHD();
-      else { if (window.fbq) fbq('consent','revoke'); clearMeta(); }
+      else { if (window.fbq && !(typeof window.SIA21_trackingSuppressed === "function" && window.SIA21_trackingSuppressed())) fbq('consent','revoke'); clearMeta(); }
     }
 
     function setCheckoutBannerCopy(){
@@ -166,7 +171,7 @@ if(window.SIA21_onHuman){SIA21_onHuman(function(){if(window.SIA21_bootPosthog)SI
       if (typeof window.SIA21_capturePh === "function") {
         window.SIA21_capturePh("stripe_checkout_click", { angle: "obrigado", price: label });
       }
-      if (window.__SIA21_MTHD_STARTED && window.__SIA21_HUMAN && window.fbq) {
+      if (window.__SIA21_MTHD_STARTED && window.__SIA21_HUMAN && window.fbq && !(typeof window.SIA21_trackingSuppressed === "function" && window.SIA21_trackingSuppressed())) {
         fbq('track','InitiateCheckout',{value:label,currency:'EUR',content_name:'Upsell obrigado SIA21'});
       }
     });

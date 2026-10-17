@@ -1,3 +1,5 @@
+const fs = require("fs");
+const path = require("path");
 const { test, expect } = require("@playwright/test");
 
 const PROD = "http://4improvementsportugal-ops.github.io:4173";
@@ -103,6 +105,77 @@ async function showPage(page) {
   });
 }
 
+const EARLY_33 = "https://buy.stripe.com/fZueVf1OFc4D7Eb1vMgrS04";
+const EARLY_14 = "https://buy.stripe.com/6oU3cx3WN0lVbUr0rIgrS05";
+
+function anglePages() {
+  const pages = [];
+  ["angles", "angles-v2"].forEach(function (root) {
+    fs.readdirSync(root).forEach(function (name) {
+      const file = path.join(root, name, "index.html");
+      if (fs.existsSync(file) && fs.statSync(file).isFile()) pages.push(file);
+    });
+  });
+  return pages.sort();
+}
+
+async function engage(page) {
+  for (let i = 0; i < 5; i++) await page.mouse.move(24 + i * 10, 160 + i * 6);
+  await page.waitForFunction(function () { return window.__SIA21_ENGAGED === true; });
+}
+
+async function waitTall(page) {
+  await page.waitForFunction(function () {
+    return document.documentElement.scrollHeight > window.innerHeight + 500;
+  });
+}
+
+async function installInnerScroller(page) {
+  await page.evaluate(function () {
+    if (document.getElementById("inapp-scroller")) return;
+    var scroller = document.createElement("div");
+    scroller.id = "inapp-scroller";
+    scroller.style.cssText = "position:fixed;inset:0;overflow:auto;z-index:1;background:#fff;";
+    var kids = Array.prototype.slice.call(document.body.childNodes);
+    kids.forEach(function (node) {
+      if (node.id && String(node.id).indexOf("sia21-") === 0) return;
+      scroller.appendChild(node);
+    });
+    document.body.appendChild(scroller);
+    document.documentElement.style.height = "100%";
+    document.documentElement.style.overflow = "hidden";
+    document.body.style.height = "100%";
+    document.body.style.overflow = "hidden";
+    document.body.style.margin = "0";
+  });
+}
+
+async function scrollInner(page, top) {
+  return page.evaluate(function (y) {
+    var scroller = document.getElementById("inapp-scroller");
+    if (y == null) scroller.scrollTop = scroller.scrollHeight;
+    else scroller.scrollTop = y;
+    return {
+      scrollY: window.scrollY || 0,
+      docTop: document.documentElement.scrollTop || 0,
+      inner: scroller.scrollTop,
+      max: scroller.scrollHeight - scroller.clientHeight
+    };
+  }, top === undefined ? null : top);
+}
+
+async function stuckScrollOffsets(page) {
+  await page.addInitScript(function () {
+    var zero = { configurable: true, get: function () { return 0; } };
+    try { Object.defineProperty(window, "scrollY", zero); } catch (e) {}
+    try { Object.defineProperty(window, "pageYOffset", zero); } catch (e2) {}
+    try { Object.defineProperty(Element.prototype, "scrollTop", zero); } catch (e3) {}
+    try {
+      if (window.visualViewport) Object.defineProperty(window.visualViewport, "pageTop", zero);
+    } catch (e4) {}
+  });
+}
+
 test.describe("tracking", function () {
   test.use({ viewport: { width: 390, height: 844 } });
 
@@ -200,5 +273,201 @@ test.describe("tracking", function () {
     expect(shown[0].properties.price).toBe(33);
     expect(shown[0].properties.angle).toBe("05-angariacao");
     expect(eventsFrom(hits).some(function (event) { return event.event === "last_offer_14_shown"; })).toBe(false);
+  });
+
+  test("every funnel angle loads the shared exit script", function () {
+    const pages = anglePages();
+    expect(pages.length).toBeGreaterThanOrEqual(16);
+    const missing = pages.filter(function (file) {
+      const html = fs.readFileSync(file, "utf8");
+      return html.indexOf("sia21-conv.js") === -1 || html.indexOf("human-gate.js") === -1;
+    });
+    expect(missing).toEqual([]);
+    const hub = fs.readFileSync("angles/index.html", "utf8");
+    expect(hub).toContain('content="noindex,nofollow"');
+    expect(hub).not.toContain("sia21-conv.js");
+  });
+
+  test("inner scroller: end of page lingers into €33, and the top does not", async function ({ page }) {
+    await maskWebdriver(page);
+    const hits = await watchTracking(page);
+    await page.goto(PROD + "/angles-v2/02-rgpd/?sia21_debug=1", { waitUntil: "domcontentloaded" });
+    await waitTall(page);
+    await engage(page);
+    await installInnerScroller(page);
+    const top = await scrollInner(page, 0);
+    expect(top.scrollY).toBe(0);
+    expect(top.max).toBeGreaterThan(500);
+    await page.waitForTimeout(2000);
+    await expect(page.locator("#sia21-exit")).toBeHidden();
+    const end = await scrollInner(page, null);
+    expect(end.scrollY).toBe(0);
+    expect(end.docTop).toBe(0);
+    expect(end.inner).toBeGreaterThan(end.max - 8);
+    await expect(page.locator("#sia21-exit")).toBeVisible({ timeout: 4000 });
+    await expect(page.locator("#sia21-exit-title")).toHaveText("Garante o Early Bird antes de sair");
+    await expect(page.locator("#sia21-exit-timer")).toBeHidden();
+    await expect(page.locator("#sia21-exit a.sia21-exit-primary")).toHaveAttribute("href", EARLY_33);
+    await waitFor(hits, function (events) {
+      return events.some(function (event) { return event.event === "exit_offer_33_shown"; });
+    }, "missing exit_offer_33_shown");
+    const shown = eventsFrom(hits).filter(function (event) { return event.event === "exit_offer_33_shown"; });
+    expect(shown).toHaveLength(1);
+    expect(shown[0].properties).toMatchObject({ angle: "02-rgpd", price: 33 });
+    expect(eventsFrom(hits).some(function (event) { return event.event === "last_offer_14_shown"; })).toBe(false);
+    const depth = await page.evaluate(function () { return window.__SIA21_MAX_SCROLL; });
+    expect(depth).toBeGreaterThanOrEqual(99);
+  });
+
+  test("inner scroller still waits for the human gate and the real 5s hold", async function ({ page }) {
+    await maskWebdriver(page);
+    const hits = await watchTracking(page);
+    await page.goto(PROD + "/angles-v2/04-whatsapp/", { waitUntil: "domcontentloaded" });
+    await waitTall(page);
+    await installInnerScroller(page);
+    const end = await scrollInner(page, null);
+    expect(end.scrollY).toBe(0);
+    expect(end.inner).toBeGreaterThan(500);
+    await page.waitForTimeout(2500);
+    const early = await page.evaluate(function () {
+      var exit = document.getElementById("sia21-exit");
+      return { hidden: !exit || exit.hidden, engaged: window.__SIA21_ENGAGED === true };
+    });
+    expect(early).toEqual({ hidden: true, engaged: false });
+    await expect(page.locator("#sia21-exit")).toBeVisible({ timeout: 12000 });
+    const later = await page.evaluate(function () { return window.__SIA21_ENGAGED === true; });
+    expect(later).toBe(true);
+    await waitFor(hits, function (events) {
+      return events.some(function (event) {
+        return event.event === "exit_offer_33_shown" && event.properties && event.properties.angle === "04-whatsapp" && event.properties.price === 33;
+      });
+    }, "missing exit_offer_33_shown");
+    expect(eventsFrom(hits).some(function (event) { return event.event === "last_offer_14_shown"; })).toBe(false);
+  });
+
+  test("stuck window scroll offsets still open €33 at the visual end", async function ({ page }) {
+    await maskWebdriver(page);
+    await stuckScrollOffsets(page);
+    const hits = await watchTracking(page);
+    await page.goto(PROD + "/angles/06-chatgpt-falhou/?sia21_debug=1", { waitUntil: "domcontentloaded" });
+    await waitTall(page);
+    await engage(page);
+    await page.evaluate(function () { window.scrollTo(0, document.documentElement.scrollHeight); });
+    const metrics = await page.evaluate(function () {
+      var footers = document.querySelectorAll("footer");
+      var footer = footers[footers.length - 1];
+      return {
+        scrollY: window.scrollY || 0,
+        docTop: document.documentElement.scrollTop || 0,
+        footerBottom: footer ? footer.getBoundingClientRect().bottom : null,
+        view: window.innerHeight,
+        depth: window.__SIA21_MAX_SCROLL
+      };
+    });
+    expect(metrics.scrollY).toBe(0);
+    expect(metrics.docTop).toBe(0);
+    expect(metrics.footerBottom).toBeLessThan(metrics.view + 48);
+    expect(metrics.depth).toBeGreaterThanOrEqual(99);
+    await expect(page.locator("#sia21-exit")).toBeVisible({ timeout: 4000 });
+    await expect(page.locator("#sia21-exit a.sia21-exit-primary")).toHaveAttribute("href", EARLY_33);
+    await waitFor(hits, function (events) {
+      return events.some(function (event) {
+        return event.event === "exit_offer_33_shown" && event.properties && event.properties.angle === "06-chatgpt-falhou";
+      });
+    }, "missing exit_offer_33_shown");
+  });
+
+  test("fast scroll up on an inner scroller opens €33 once", async function ({ page }) {
+    await maskWebdriver(page);
+    const hits = await watchTracking(page);
+    await page.goto(PROD + "/angles/01-tempo/?sia21_debug=1", { waitUntil: "domcontentloaded" });
+    await waitTall(page);
+    await engage(page);
+    await installInnerScroller(page);
+    const down = await scrollInner(page, 720);
+    expect(down.scrollY).toBe(0);
+    expect(down.inner).toBeGreaterThan(400);
+    await page.waitForTimeout(500);
+    await expect(page.locator("#sia21-exit")).toBeHidden();
+    const up = await scrollInner(page, 40);
+    expect(up.inner).toBeLessThan(80);
+    await expect(page.locator("#sia21-exit")).toBeVisible({ timeout: 3000 });
+    await expect(page.locator("#sia21-exit a.sia21-exit-primary")).toHaveAttribute("href", EARLY_33);
+    await waitFor(hits, function (events) {
+      return events.some(function (event) {
+        return event.event === "exit_offer_33_shown" && event.properties && event.properties.angle === "01-tempo" && event.properties.price === 33;
+      });
+    }, "missing exit_offer_33_shown");
+    await page.evaluate(function () { window.location.hash = "again"; });
+    await scrollInner(page, 900);
+    await page.waitForTimeout(400);
+    await scrollInner(page, 20);
+    await page.waitForTimeout(600);
+    const shown = eventsFrom(hits).filter(function (event) { return event.event === "exit_offer_33_shown"; });
+    expect(shown).toHaveLength(1);
+    expect(eventsFrom(hits).some(function (event) { return event.event === "last_offer_14_shown"; })).toBe(false);
+  });
+
+  test("hiding the tab opens €33 after the minimum age, including on an older angle", async function ({ page }) {
+    await maskWebdriver(page);
+    const hits = await watchTracking(page);
+    await page.goto(PROD + "/angles/10-visitas-ops/", { waitUntil: "domcontentloaded" });
+    await waitTall(page);
+    await engage(page);
+    await hidePage(page);
+    await page.waitForTimeout(500);
+    await showPage(page);
+    await expect(page.locator("#sia21-exit")).toBeHidden();
+    await expect(page.locator("#sia21-exit")).toBeVisible({ timeout: 12000 });
+    await expect(page.locator("#sia21-exit a.sia21-exit-primary")).toHaveAttribute("href", EARLY_33);
+    await waitFor(hits, function (events) {
+      return events.some(function (event) {
+        return event.event === "exit_offer_33_shown" && event.properties && event.properties.angle === "10-visitas-ops" && event.properties.price === 33;
+      });
+    }, "missing exit_offer_33_shown");
+    expect(eventsFrom(hits).some(function (event) { return event.event === "last_offer_14_shown"; })).toBe(false);
+  });
+
+  test("a Stripe return without pagehide opens €33, and €14 only after that dialog is dismissed", async function ({ page }) {
+    await maskWebdriver(page);
+    const hits = await watchTracking(page);
+    await page.addInitScript(function () {
+      try { sessionStorage.setItem("sia21_stripe_left_at_v1", String(Date.now() - 120000)); } catch (e) {}
+    });
+    await page.goto(PROD + "/angles/06-chatgpt-falhou/?sia21_debug=1", { waitUntil: "domcontentloaded" });
+    await page.waitForTimeout(500);
+    const before = await page.evaluate(function () {
+      var exit = document.getElementById("sia21-exit");
+      return {
+        hidden: !exit || exit.hidden,
+        engaged: window.__SIA21_ENGAGED === true,
+        away: sessionStorage.getItem("sia21_stripe_away_v1")
+      };
+    });
+    expect(before.hidden).toBe(true);
+    expect(before.engaged).toBe(false);
+    await engage(page);
+    await expect(page.locator("#sia21-exit")).toBeVisible({ timeout: 3000 });
+    await expect(page.locator("#sia21-exit-title")).toHaveText("Garante o Early Bird antes de sair");
+    await expect(page.locator("#sia21-exit a.sia21-exit-primary")).toHaveAttribute("href", EARLY_33);
+    await expect(page.locator("#sia21-exit-timer")).toBeHidden();
+    await page.locator("#sia21-exit button.sia21-exit-secondary").click();
+    await expect(page.locator("#sia21-exit")).toBeHidden();
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await engage(page);
+    await expect(page.locator("#sia21-exit")).toBeVisible({ timeout: 3000 });
+    await expect(page.locator("#sia21-exit-kicker")).toHaveText("Última oferta");
+    await expect(page.locator("#sia21-exit a.sia21-exit-primary")).toHaveAttribute("href", EARLY_14);
+    await expect(page.locator("#sia21-exit-timer")).toBeVisible();
+    await waitFor(hits, function (events) {
+      var names = events.map(function (event) { return event.event; });
+      return names.indexOf("exit_offer_33_shown") !== -1 && names.indexOf("last_offer_14_shown") !== -1;
+    }, "missing exit ladder events");
+    const offer33 = eventsFrom(hits).filter(function (event) { return event.event === "exit_offer_33_shown"; });
+    const offer14 = eventsFrom(hits).filter(function (event) { return event.event === "last_offer_14_shown"; });
+    expect(offer33).toHaveLength(1);
+    expect(offer14).toHaveLength(1);
+    expect(offer33[0].properties).toMatchObject({ angle: "06-chatgpt-falhou", price: 33 });
+    expect(offer14[0].properties).toMatchObject({ angle: "06-chatgpt-falhou", price: 14 });
   });
 });

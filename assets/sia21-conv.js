@@ -19,14 +19,23 @@
  * Exit step lives in sessionStorage (sia21_exit_step_v2): 0 none, 1 saw €33, 2 saw €14.
  * €14 opens only after the visitor dismissed €33 (close, Escape, or "Quero mesmo sair").
  * A checkout click is not a dismissal. On angles/ and angles-v2/ only, a human
- * who reaches the bottom and stays there ~5s, or who leaves on mobile
- * (visibility hidden, or a fast scroll up), sees
+ * who reaches the end and stays there ~5s, or who leaves on mobile
+ * (visibility hidden, freeze/resume, or a fast scroll up), sees
  * the same €33 dialog once per visitor (localStorage sia21_scroll_exit_once_v1).
+ * "The end" is the footer, or the depth-100 sentinel, actually in the viewport.
+ * Facebook and Instagram in-app webviews often leave window.scrollY at 0:
+ * the page scrolls inside another element, or the layout moves without a
+ * window scroll event. Those positions are read from getBoundingClientRect
+ * and from any viewport-sized overflow scroller, on a timer as well as on
+ * scroll, because an inner scroll event does not reach a window listener.
  * That trigger never advances the ladder. Coming back from Stripe without paying
  * opens €33, or €14 only if €33 was already dismissed. Return is detected from
  * visibility, focus, pageshow/bfcache, and a later load that still has
- * sia21_stripe_left_at_v1. target=_blank (and in-app browsers that keep this
- * document alive) does not emit pageshow, so a hide then show counts.
+ * sia21_stripe_left_at_v1. In-app browsers often skip pagehide, so the away
+ * flag may be missing; the left timestamp on a new document is enough.
+ * The dialog still waits until SIA21_mayShowExit() is true.
+ * target=_blank (and in-app browsers that keep this document alive) does not
+ * emit pageshow, so a hide then show counts.
  * Each step shows once per session. obrigado.html reads amount from the URL.
  * PostHog (snippet in <head>, armed only after the human gate) records
  * stripe_checkout_click plus the €33/€14 exit events. Those captures never
@@ -432,6 +441,143 @@
     if (cred) cred.insertBefore(el, cred.firstChild);
   }
 
+  function viewHeight() {
+    return w.innerHeight || d.documentElement.clientHeight || 0;
+  }
+
+  var scrollerCache = [];
+  var scrollerCacheAt = 0;
+
+  function overflowYScrolls(el) {
+    var oy = "";
+    try { oy = w.getComputedStyle(el).overflowY; } catch (e) { return false; }
+    return oy === "auto" || oy === "scroll" || oy === "overlay";
+  }
+
+  // Viewport-sized boxes only. A small overflow widget is not the page.
+  function pageScrollers() {
+    var now = Date.now();
+    if (now - scrollerCacheAt < 400) return scrollerCache;
+    var found = [];
+    var vh = viewHeight();
+    var nodes = d.body ? d.body.getElementsByTagName("*") : [];
+    for (var i = 0; i < nodes.length; i++) {
+      var el = nodes[i];
+      if (!el || el === d.body || el === d.documentElement) continue;
+      if (el.id && el.id.indexOf("sia21-") === 0) continue;
+      if (!vh || el.clientHeight < vh * 0.55) continue;
+      if (el.scrollHeight <= el.clientHeight + 8) continue;
+      if (!overflowYScrolls(el)) continue;
+      found.push(el);
+    }
+    scrollerCache = found;
+    scrollerCacheAt = now;
+    return found;
+  }
+
+  function rawDocTop() {
+    var top = 0;
+    try { top = w.scrollY || w.pageYOffset || 0; } catch (e) {}
+    var docTop = 0;
+    var bodyTop = 0;
+    try { docTop = d.documentElement.scrollTop || 0; } catch (e2) {}
+    try { bodyTop = (d.body && d.body.scrollTop) || 0; } catch (e3) {}
+    if (docTop > top) top = docTop;
+    if (bodyTop > top) top = bodyTop;
+    try {
+      if (w.visualViewport && typeof w.visualViewport.pageTop === "number" && w.visualViewport.pageTop > top) {
+        top = w.visualViewport.pageTop;
+      }
+    } catch (e4) {}
+    return top;
+  }
+
+  function contentBottom() {
+    var nodes = d.querySelectorAll("footer");
+    var el = nodes.length ? nodes[nodes.length - 1] : d.querySelector("main");
+    if (!el || !el.getBoundingClientRect) return null;
+    var rect = null;
+    try { rect = el.getBoundingClientRect(); } catch (e) { return null; }
+    if (!rect || !rect.height) return null;
+    return rect.bottom;
+  }
+
+  function sentinelAtEnd() {
+    var node = d.getElementById("sia21-scroll-100");
+    if (!node || !node.getBoundingClientRect) return false;
+    var placed = parseFloat(node.style.top);
+    var vh = viewHeight();
+    if (!(placed > vh)) return false;
+    var rect = null;
+    try { rect = node.getBoundingClientRect(); } catch (e) { return false; }
+    return !!rect && rect.top <= vh * 0.25 && rect.top > -vh;
+  }
+
+  function visualAtEnd() {
+    var vh = viewHeight();
+    if (!vh) return false;
+    var bottom = contentBottom();
+    // A collapsed document (inner scroller, or a webview whose scroll
+    // offsets stay 0) is not "at the end" just because scrollHeight
+    // fits the first screen. The footer has to have arrived.
+    if (bottom != null && bottom <= vh + 48 && bottom >= -80) return true;
+    return sentinelAtEnd();
+  }
+
+  function scrollerAtEnd(el) {
+    var max = el.scrollHeight - el.clientHeight;
+    if (max <= 8) return false;
+    var top = 0;
+    try { top = el.scrollTop || 0; } catch (e) { top = 0; }
+    return top >= max - 8;
+  }
+
+  function documentAtEnd() {
+    var vh = viewHeight();
+    var docH = d.documentElement.scrollHeight || 0;
+    var bodyH = (d.body && d.body.scrollHeight) || 0;
+    var max = Math.max(0, Math.max(docH, bodyH) - vh);
+    if (max <= 8) return false;
+    return rawDocTop() >= max - 8;
+  }
+
+  function atPageEnd() {
+    var inners = pageScrollers();
+    for (var i = 0; i < inners.length; i++) {
+      if (scrollerAtEnd(inners[i])) return true;
+    }
+    if (documentAtEnd()) return true;
+    return visualAtEnd();
+  }
+
+  function readOffset() {
+    var top = rawDocTop();
+    var anchor = d.querySelector("main") || d.querySelector("section");
+    if (anchor && anchor.getBoundingClientRect) {
+      try {
+        var lifted = -anchor.getBoundingClientRect().top;
+        if (lifted > top) top = lifted;
+      } catch (e) {}
+    }
+    var inners = pageScrollers();
+    for (var n = 0; n < inners.length; n++) {
+      var innerTop = 0;
+      try { innerTop = inners[n].scrollTop || 0; } catch (err) { innerTop = 0; }
+      if (innerTop > top) top = innerTop;
+    }
+    var node = d.getElementById("sia21-scroll-100");
+    if (node && node.getBoundingClientRect) {
+      var placed = parseFloat(node.style.top);
+      if (placed > 0) {
+        try {
+          var inferred = placed - node.getBoundingClientRect().top;
+          if (inferred > top) top = inferred;
+        } catch (e2) {}
+      }
+    }
+    return top > 0 ? top : 0;
+  }
+
   function mobileBarVisible() {
     var mob = d.querySelector(".mobile-cta");
     if (!mob) return false;
@@ -543,7 +689,7 @@
 
     function disarmIdle() {
       idle = false;
-      peakY = w.scrollY || d.documentElement.scrollTop || 0;
+      peakY = readOffset();
     }
 
     function focusables() {
@@ -700,6 +846,7 @@
 
     var awayLatched = false;
     var awayTimer = null;
+    var stripeReturnTimer = null;
 
     function isAutomatedBrowser() {
       try { return w.navigator.webdriver === true; } catch (e) { return false; }
@@ -752,14 +899,49 @@
         clearTimeout(awayTimer);
         awayTimer = null;
       }
+      if (stripeReturnTimer) {
+        clearTimeout(stripeReturnTimer);
+        stripeReturnTimer = null;
+      }
       w.__SIA21_STRIPE_CLICKED_HERE = false;
       try { w.sessionStorage.removeItem(STRIPE_LEFT_KEY); } catch (e) {}
       try { w.sessionStorage.removeItem(STRIPE_AWAY_KEY); } catch (e2) {}
     }
 
+    function rememberStripeReturn() {
+      awayLatched = true;
+      try { w.sessionStorage.setItem(STRIPE_AWAY_KEY, "1"); } catch (e) {}
+    }
+
+    // The human gate may still be closed on the load that comes back from
+    // Checkout. Retry until it opens. A click that never left has no latch,
+    // and this stops instead of polling.
+    function queueStripeReturn() {
+      if (stripeReturnTimer) return;
+      function attempt() {
+        stripeReturnTimer = null;
+        if (!pendingStripe()) return;
+        if (!awayLatched && !storedAway()) return;
+        if (storedAway()) awayLatched = true;
+        if (d.visibilityState === "hidden") {
+          stripeReturnTimer = setTimeout(attempt, 300);
+          return;
+        }
+        if (handleStripeReturn()) return;
+        if (pendingStripe() && (awayLatched || storedAway())) {
+          stripeReturnTimer = setTimeout(attempt, 250);
+        }
+      }
+      stripeReturnTimer = setTimeout(attempt, 0);
+    }
+
     function handleStripeReturn() {
       if (!pendingStripe()) return false;
       if (!awayLatched && !storedAway()) return false;
+      if (isAutomatedBrowser() || exitStep() >= 2) {
+        clearStripePending();
+        return false;
+      }
       blockExitUntilGesture = false;
       if (!root.hidden) {
         clearStripePending();
@@ -776,7 +958,8 @@
         awayTimer = null;
       }
       if (stillAway()) return;
-      handleStripeReturn();
+      if (!awayLatched && !storedAway()) return;
+      queueStripeReturn();
     }
 
     function openNext(opts) {
@@ -841,8 +1024,9 @@
       var nav = w.performance && w.performance.getEntriesByType ? w.performance.getEntriesByType("navigation")[0] : null;
       var back = !!(e && e.persisted) || sawPageHide || (nav && nav.type === "back_forward") || storedAway();
       if (!back) return;
-      if (storedAway()) awayLatched = true;
-      handleStripeReturn();
+      // bfcache restore counts even when the webview skipped pagehide.
+      rememberStripeReturn();
+      queueStripeReturn();
     });
     d.addEventListener("visibilitychange", function () {
       if (d.visibilityState === "hidden") markStripeAway();
@@ -856,10 +1040,12 @@
       markStripeBack();
     });
     // Full reload after Stripe (in-app back that does not restore bfcache).
-    // pageshow may already have fired if this script ran late.
-    if (storedAway() && stripeLeftAt() && !w.__SIA21_STRIPE_CLICKED_HERE) {
-      awayLatched = true;
-      setTimeout(function () { handleStripeReturn(); }, 0);
+    // pageshow may already have fired if this script ran late. The away
+    // flag is optional: several in-app browsers never emit pagehide, but
+    // the click still stored sia21_stripe_left_at_v1.
+    if (stripeLeftAt() && !w.__SIA21_STRIPE_CLICKED_HERE) {
+      rememberStripeReturn();
+      queueStripeReturn();
     }
 
     if (isCoarse()) {
@@ -903,7 +1089,7 @@
         if (idleTimer) clearTimeout(idleTimer);
         idleTimer = setTimeout(function () {
           idle = true;
-          peakY = w.scrollY || d.documentElement.scrollTop || 0;
+          peakY = readOffset();
         }, idleMs);
       }
       ["touchstart", "keydown", "click", "mousemove"].forEach(function (name) {
@@ -911,35 +1097,28 @@
       });
       bumpIdle();
       w.addEventListener("scroll", function () {
-        var y = w.scrollY || d.documentElement.scrollTop || 0;
+        var y = readOffset();
         if (y > peakY) peakY = y;
         var oldEnough = Date.now() - openedAt > (debugMode() ? 400 : 20000);
         if (idle && peakY - y > 120 && oldEnough) {
           disarmIdle();
           openNext();
         }
-      }, { passive: true });
+      }, { passive: true, capture: true });
     }
 
-    // Angle landings only: bottom of the page, held ~5s, or a mobile leave
+    // Angle landings only: end of the page, held ~5s, or a mobile leave
     // signal (the tab was hidden, or a fast scroll up). Reuses the €33 dialog.
     // Fires only while the ladder is still at step 0, so it cannot become the
     // €14 offer. Once per visitor, not per session.
     if (isAngleLanding() && !scrollOfferUsed()) {
       var scrollTimer = null;
       var scrollCheckout = false;
-      var scrollRetried = false;
+      var leavePending = false;
+      var watchTimer = null;
 
       function scrollStayMs() {
         return debugMode() ? 800 : 5000;
-      }
-
-      function atPageEnd() {
-        var doc = d.documentElement;
-        var max = Math.max(0, (doc.scrollHeight || 0) - (w.innerHeight || 0));
-        var y = w.scrollY || doc.scrollTop || (d.body && d.body.scrollTop) || 0;
-        if (max <= 4) return true;
-        return y >= max - 4;
       }
 
       function clearScrollTimer() {
@@ -960,16 +1139,15 @@
       function fireScrollOffer() {
         scrollTimer = null;
         if (scrollCheckout || scrollOfferUsed() || exitStep() !== 0) return;
+        if (isAutomatedBrowser()) return;
         if (d.visibilityState === "hidden" || !atPageEnd()) return;
         if (openNext()) {
           markScrollOfferUsed();
           return;
         }
-        if (!scrollRetried && Date.now() - openedAt < minAge()) {
-          scrollRetried = true;
-          var wait = Math.max(40, minAge() - (Date.now() - openedAt) + 40);
-          scrollTimer = setTimeout(fireScrollOffer, wait);
-        }
+        // Minimum age or the human gate is not ready yet. Keep the hold
+        // while the visitor is still at the end.
+        scrollTimer = setTimeout(fireScrollOffer, 250);
       }
 
       function syncScrollTimer() {
@@ -989,43 +1167,81 @@
       w.addEventListener("click", noteCheckoutClick, true);
       w.addEventListener("auxclick", noteCheckoutClick, true);
       w.addEventListener("keydown", noteCheckoutClick, true);
-      w.addEventListener("scroll", syncScrollTimer, { passive: true });
+      w.addEventListener("scroll", syncScrollTimer, { passive: true, capture: true });
+      w.addEventListener("touchmove", syncScrollTimer, { passive: true });
       d.addEventListener("visibilitychange", syncScrollTimer);
       w.addEventListener("resize", syncScrollTimer);
+      if (w.visualViewport) {
+        w.visualViewport.addEventListener("scroll", syncScrollTimer);
+        w.visualViewport.addEventListener("resize", syncScrollTimer);
+      }
       syncScrollTimer();
 
       function tryLeaveOffer() {
-        if (scrollCheckout || scrollOfferUsed() || exitStep() !== 0) return;
+        if (scrollCheckout || scrollOfferUsed() || exitStep() !== 0) {
+          leavePending = false;
+          return;
+        }
+        if (isAutomatedBrowser()) {
+          leavePending = false;
+          return;
+        }
+        if (pendingStripe() || storedAway() || awayLatched) return;
         if (d.visibilityState === "hidden") return;
-        if (pendingStripe() || storedAway()) return;
-        if (openNext()) markScrollOfferUsed();
+        if (openNext()) {
+          markScrollOfferUsed();
+          leavePending = false;
+          return;
+        }
+        leavePending = true;
       }
 
-      var lastScrollY = w.scrollY || d.documentElement.scrollTop || 0;
+      var lastScrollY = readOffset();
       var lastScrollAt = Date.now();
-      w.addEventListener("scroll", function () {
+      function noteScrollUp() {
         if (!isCoarse()) return;
-        var y = w.scrollY || d.documentElement.scrollTop || 0;
+        var y = readOffset();
         var now = Date.now();
         var dt = now - lastScrollAt;
         var up = lastScrollY - y;
         lastScrollY = y;
         lastScrollAt = now;
-        if (dt > 0 && dt < 320 && up > 160) tryLeaveOffer();
-      }, { passive: true });
+        if (dt > 0 && dt < 450 && up > 160) tryLeaveOffer();
+      }
+      w.addEventListener("scroll", noteScrollUp, { passive: true, capture: true });
 
-      var hiddenAt = 0;
-      d.addEventListener("visibilitychange", function () {
-        if (d.visibilityState === "hidden") {
-          if (!pendingStripe()) hiddenAt = Date.now();
+      // In-app webviews move the layout without a window scroll event.
+      // Sample the same end-of-page and scroll-up signals on a timer.
+      watchTimer = setInterval(function () {
+        if (scrollOfferUsed() || exitStep() !== 0) {
+          clearInterval(watchTimer);
+          watchTimer = null;
+          clearScrollTimer();
           return;
         }
+        noteScrollUp();
+        if (leavePending && d.visibilityState === "visible") tryLeaveOffer();
+        syncScrollTimer();
+      }, 200);
+
+      var hiddenAt = 0;
+      function noteHidden() {
+        if (pendingStripe() || storedAway() || awayLatched) return;
+        if (!hiddenAt) hiddenAt = Date.now();
+      }
+      function noteShown() {
         if (!hiddenAt) return;
         var away = Date.now() - hiddenAt;
         hiddenAt = 0;
         if (away < 400) return;
         tryLeaveOffer();
+      }
+      d.addEventListener("visibilitychange", function () {
+        if (d.visibilityState === "hidden") noteHidden();
+        else noteShown();
       });
+      w.addEventListener("freeze", noteHidden);
+      w.addEventListener("resume", noteShown);
     }
   }
 

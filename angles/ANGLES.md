@@ -20,8 +20,20 @@ Stripe Early (todas as variantes): `https://buy.stripe.com/aFa5kF1OFc4D1fNb6mgrS
 ## Paths
 
 - Hub: `angles/index.html`
-- Variantes: `angles/<slug>/index.html`
+- Variantes (anúncios atuais): `angles/<slug>/index.html`
 - Espelho deploy: `deploy/angles/<slug>/index.html`
+- Redesenho v2: `angles-v2/index.html`
+  - `/angles-v2/01-tempo/`
+  - `/angles-v2/02-rgpd/`
+  - `/angles-v2/03-idealista/`
+  - `/angles-v2/04-whatsapp/`
+  - `/angles-v2/05-angariacao/`
+  - `/angles-v2/sobrecarga/`
+  - `/angles/06-chatgpt-falhou/` (redesenho no caminho original)
+  - `/angles-v2/07-metodo-21-dias/`
+  - `/angles-v2/08-solo-escala/`
+  - `/angles-v2/09-early-37/`
+  - `/angles-v2/10-visitas-ops/`
 
 ## Sync Hormozi (2026-09-21)
 

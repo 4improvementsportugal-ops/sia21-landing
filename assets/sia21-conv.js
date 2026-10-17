@@ -1,7 +1,8 @@
 /**
  * SIA21 conversion helper: Meta events, retorno copy, FOMO toast, exit intent.
  *
- * Loaded on index.html and angles/01..10 only. Purchase stays on obrigado.html.
+ * Loaded on index.html and angles/01..10 only. Purchase stays in
+ * assets/sia21-purchase.js, called from obrigado.html. Do not track Purchase here.
  * Meta events fire only after cookie consent (4i_cookie_consent_v1 === "accepted"),
  * SIA21_startHumanGatedPixel has started the pixel, and the human gate is open
  * (window.__SIA21_HUMAN / SIA21_onHuman). ViewContent is not tied to onInit.

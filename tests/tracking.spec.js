@@ -470,4 +470,78 @@ test.describe("tracking", function () {
     expect(offer33[0].properties).toMatchObject({ angle: "06-chatgpt-falhou", price: 33 });
     expect(offer14[0].properties).toMatchObject({ angle: "06-chatgpt-falhou", price: 14 });
   });
+
+  async function acceptAndCountPurchases(page) {
+    const purchases = [];
+    await page.addInitScript(function () {
+      try { localStorage.setItem("4i_cookie_consent_v1", "accepted"); } catch (e) {}
+    });
+    await page.route(/facebook\.com\/tr/i, async function (route) {
+      const url = route.request().url();
+      if (/[?&]ev=Purchase(?:&|$)/.test(url)) purchases.push(url);
+      await route.fulfill({ status: 200, contentType: "text/plain", body: "" });
+    });
+    return purchases;
+  }
+
+  function purchaseEid(url) {
+    return new URL(url).searchParams.get("eid");
+  }
+
+  test("loading and reloading obrigado fires Purchase once per checkout session", async function ({ page }) {
+    await maskWebdriver(page);
+    const purchases = await acceptAndCountPurchases(page);
+    const sid = "cs_live_TESTSESSION123";
+    await page.goto(PROD + "/obrigado.html?session_id=" + sid + "&amount=37", { waitUntil: "load" });
+    await expect.poll(function () { return purchases.length; }, { timeout: 15000 }).toBe(1);
+    const first = new URL(purchases[0]);
+    expect(first.searchParams.get("eid")).toBe(sid);
+    expect(first.searchParams.get("cd[value]")).toBe("37");
+    expect(first.searchParams.get("cd[currency]")).toBe("EUR");
+    expect(first.searchParams.get("cd[content_name]")).toBe("Sistema IA Consultor 21 Dias");
+    const flags = await page.evaluate(function (id) {
+      var key = "sia21_purchase_v1_" + id;
+      return {
+        local: localStorage.getItem(key),
+        session: sessionStorage.getItem(key)
+      };
+    }, sid);
+    expect(flags).toEqual({ local: "1", session: "1" });
+    await page.evaluate(function () { window.SIA21_firePurchaseOnce(); });
+    await page.reload({ waitUntil: "load" });
+    await page.waitForTimeout(3000);
+    expect(purchases).toHaveLength(1);
+    expect(purchaseEid(purchases[0])).toBe(sid);
+
+    const other = "cs_live_OTHERSESSION456";
+    await page.goto(PROD + "/obrigado.html?session_id=" + other + "&amount=37", { waitUntil: "load" });
+    await expect.poll(function () { return purchases.length; }, { timeout: 15000 }).toBe(2);
+    expect(purchaseEid(purchases[1])).toBe(other);
+    await page.reload({ waitUntil: "load" });
+    await page.waitForTimeout(3000);
+    expect(purchases).toHaveLength(2);
+  });
+
+  test("obrigado without a session id fires Purchase once per amount in the browser", async function ({ page }) {
+    await maskWebdriver(page);
+    const purchases = await acceptAndCountPurchases(page);
+    await page.goto(PROD + "/obrigado.html?amount=14", { waitUntil: "load" });
+    await expect.poll(function () { return purchases.length; }, { timeout: 15000 }).toBe(1);
+    // No session id: do not send a shared eventID such as the amount.
+    // The pixel may attach its own one-off id. That id must not be reused
+    // across buyers, so it is not the amount.
+    expect(purchaseEid(purchases[0])).not.toBe("14");
+    expect(purchaseEid(purchases[0])).not.toBe("1400");
+    expect(new URL(purchases[0]).searchParams.get("cd[value]")).toBe("14");
+    const once = await page.evaluate(function () {
+      return localStorage.getItem("sia21_purchase_once_v1_1400");
+    });
+    expect(once).toBe("1");
+    await page.reload({ waitUntil: "load" });
+    await page.waitForTimeout(3000);
+    expect(purchases).toHaveLength(1);
+    await page.goto(PROD + "/obrigado.html?amount=33", { waitUntil: "load" });
+    await expect.poll(function () { return purchases.length; }, { timeout: 15000 }).toBe(2);
+    expect(new URL(purchases[1]).searchParams.get("cd[value]")).toBe("33");
+  });
 });

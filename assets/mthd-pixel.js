@@ -6,6 +6,8 @@
  * (/obrigado.html, /obrigado, /ghl-agencias/obrigado.html), including prefixed
  * paths such as /sia21-landing/obrigado.html (indexOf !== -1).
  * Purchase on thank-you pages stays in onInit and does not wait for PageView.
+ * This file must not call fbq("track", "Purchase"). That call lives only in
+ * assets/sia21-purchase.js.
  */
 (function (w, d) {
   "use strict";

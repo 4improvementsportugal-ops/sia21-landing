@@ -13,7 +13,8 @@
  *
  * The 6s clock does not run when navigator.webdriver is true. Headless
  * browsers report a visible, focused tab, so a dwell timer alone lets them
- * through. Interaction signals still count for PageView and PostHog.
+ * through. Interaction signals still open the human gate. They do not send
+ * PageView or PostHog when SIA21_trackingSuppressed() is true.
  *
  * Exit popups and Stripe Payment Links are stricter. They need engagement
  * that is not the click itself: trusted scroll past 80px, more than 3
@@ -35,8 +36,16 @@
  * and drops them on pagehide if no human signal arrived.
  *
  * PostHog and the Meta Pixel only start on the production host
- * (4improvementsportugal-ops.github.io). ?qa=1 stores sia21_qa_v1 and
- * sia21_internal_v1 and keeps both SDKs off. SIA21_bootPosthog() is what
+ * (4improvementsportugal-ops.github.io). SIA21_trackingSuppressed() is the
+ * shared QA gate for this file, sia21-conv.js, sia21-purchase.js, mthd-pixel.js
+ * and the inline pixel callers. It is true for ?qa=1, ?test=1 and ?debug=1
+ * (not ?sia21_debug=1, which only shortens exit timers), for localStorage or
+ * sessionStorage sia21_qa (also the older sia21_qa_v1), for navigator.webdriver,
+ * and for an automated user agent (HeadlessChrome, Headless, Playwright,
+ * Puppeteer, Lighthouse, bot, crawler, spider) or another clear automation
+ * global. Seeing an opt-out flag stores sia21_qa in both storages so a later
+ * page such as obrigado stays quiet. While suppressed, fbevents.js is not
+ * loaded and neither fbq nor posthog.capture runs. SIA21_bootPosthog() is what
  * pages call, and only from SIA21_onHuman.
  *
  * Scroll depth is sia21_scroll (25/50/75/100, plus section ids when the
@@ -53,8 +62,10 @@
   var DWELL_MS = 6000;
   var CHECKOUT_MIN_MS = 1500;
   var PROD_HOST = "4improvementsportugal-ops.github.io";
+  var QA_FLAG = "sia21_qa";
   var QA_KEY = "sia21_qa_v1";
   var INTERNAL_KEY = "sia21_internal_v1";
+  var UA_TOKENS = ["headlesschrome", "headless", "playwright", "puppeteer", "lighthouse", "bot", "crawler", "spider"];
   var ENGAGED_KEY = "sia21_engaged_v1";
   var PH_TOKEN = "phc_knF2fZccBcGVgHcayHbPfcYfXguFx3jzxaBksdduz9R3";
   var listeners = [];
@@ -81,26 +92,85 @@
   w.__SIA21_CHECKOUT_MIN_MS = CHECKOUT_MIN_MS;
   w.__SIA21_MAX_SCROLL = 0;
 
-  function syncQaFlag() {
-    var search = "";
-    try { search = w.location.search || ""; } catch (e) { search = ""; }
+  function searchString() {
+    try { return w.location.search || ""; } catch (e) { return ""; }
+  }
+
+  function storeSet(store, key, value) {
     try {
-      if (/[?&]qa=1(?:&|$)/.test(search)) {
-        w.localStorage.setItem(QA_KEY, "1");
-        w.localStorage.setItem(INTERNAL_KEY, "1");
-      } else if (/[?&]qa=0(?:&|$)/.test(search)) {
-        w.localStorage.removeItem(QA_KEY);
-        w.localStorage.removeItem(INTERNAL_KEY);
-      }
-    } catch (err) {}
+      if (!store) return;
+      if (value == null) store.removeItem(key);
+      else store.setItem(key, value);
+    } catch (e) {}
+  }
+
+  function storeHas(store, key) {
+    try { return !!(store && store.getItem(key) === "1"); } catch (e) { return false; }
+  }
+
+  // ?sia21_debug=1 must not match: the character before "debug" is not ? or &.
+  function optOutInUrl(search) {
+    return /[?&](?:qa|test|debug)=1(?:&|$)/.test(search || "");
+  }
+
+  function rememberQa() {
+    storeSet(w.localStorage, QA_FLAG, "1");
+    storeSet(w.sessionStorage, QA_FLAG, "1");
+    storeSet(w.localStorage, QA_KEY, "1");
+    storeSet(w.sessionStorage, QA_KEY, "1");
+    storeSet(w.localStorage, INTERNAL_KEY, "1");
+  }
+
+  function clearQa() {
+    storeSet(w.localStorage, QA_FLAG, null);
+    storeSet(w.sessionStorage, QA_FLAG, null);
+    storeSet(w.localStorage, QA_KEY, null);
+    storeSet(w.sessionStorage, QA_KEY, null);
+    storeSet(w.localStorage, INTERNAL_KEY, null);
+  }
+
+  function syncQaFlag() {
+    var search = searchString();
+    if (optOutInUrl(search)) rememberQa();
+    else if (/[?&]qa=0(?:&|$)/.test(search)) clearQa();
   }
 
   function qaOn() {
-    try { return w.localStorage.getItem(QA_KEY) === "1"; } catch (e) { return false; }
+    if (optOutInUrl(searchString())) return true;
+    return storeHas(w.localStorage, QA_FLAG) || storeHas(w.sessionStorage, QA_FLAG) || storeHas(w.localStorage, QA_KEY) || storeHas(w.sessionStorage, QA_KEY);
   }
 
   function internalOn() {
-    try { return w.localStorage.getItem(INTERNAL_KEY) === "1" || qaOn(); } catch (e) { return false; }
+    try { return w.localStorage.getItem(INTERNAL_KEY) === "1" || qaOn(); } catch (e) { return qaOn(); }
+  }
+
+  function userAgent() {
+    try { return String((w.navigator && w.navigator.userAgent) || ""); } catch (e) { return ""; }
+  }
+
+  function uaAutomated(ua) {
+    var hay = String(ua || "").toLowerCase();
+    for (var i = 0; i < UA_TOKENS.length; i++) {
+      if (hay.indexOf(UA_TOKENS[i]) !== -1) return true;
+    }
+    return false;
+  }
+
+  function webdriverOn() {
+    try { if (w.navigator && w.navigator.webdriver === true) return true; } catch (e) {}
+    try {
+      if (d.documentElement && d.documentElement.getAttribute("webdriver")) return true;
+    } catch (e2) {}
+    return false;
+  }
+
+  function automationGlobals() {
+    try {
+      if (w.callPhantom || w._phantom || w.__nightmare || w.Cypress || w.domAutomation || w.domAutomationController) return true;
+      if (w._selenium || w.callSelenium || w.__webdriver_evaluate || w.__driver_evaluate || w.__selenium_evaluate || w.__fxdriver_evaluate || w.__webdriverFunc || w.__playwright || w.__puppeteer) return true;
+      if (d.__selenium_unwrapped || d.__webdriver_evaluate || d.__driver_evaluate || d.__selenium_evaluate || d.__fxdriver_evaluate || d.__webdriver_unwrapped) return true;
+    } catch (e) {}
+    return false;
   }
 
   syncQaFlag();
@@ -111,11 +181,19 @@
     try { return (w.location.hostname || "") === PROD_HOST; } catch (e) { return false; }
   };
 
-  w.SIA21_allowCapture = function () {
+  w.SIA21_trackingSuppressed = function () {
     syncQaFlag();
     w.__SIA21_QA = qaOn();
     w.__SIA21_INTERNAL = internalOn();
-    return w.SIA21_isProductionHost() && !w.__SIA21_QA;
+    if (w.__SIA21_QA) return true;
+    if (webdriverOn()) return true;
+    if (uaAutomated(userAgent())) return true;
+    if (automationGlobals()) return true;
+    return false;
+  };
+
+  w.SIA21_allowCapture = function () {
+    return w.SIA21_isProductionHost() && !w.SIA21_trackingSuppressed();
   };
 
   function beforeSend(event) {

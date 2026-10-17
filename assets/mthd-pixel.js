@@ -8,6 +8,8 @@
  * Purchase on thank-you pages stays in onInit and does not wait for PageView.
  * This file must not call fbq("track", "Purchase"). That call lives only in
  * assets/sia21-purchase.js.
+ * SIA21_trackingSuppressed() (human-gate.js) blocks fbevents.js and every fbq
+ * call for QA flags, stored sia21_qa, webdriver, and automated user agents.
  */
 (function (w, d) {
   "use strict";
@@ -15,7 +17,14 @@
   var DEFAULT_PIXEL_ID = "1506988540335331";
   var DEFAULT_INSTANT_PATHS = ["/obrigado.html", "/obrigado", "/ghl-agencias/obrigado.html"];
 
+  function trackingBlocked() {
+    if (typeof w.SIA21_trackingSuppressed !== "function" || w.SIA21_trackingSuppressed()) return true;
+    if (typeof w.SIA21_allowCapture === "function" && !w.SIA21_allowCapture()) return true;
+    return false;
+  }
+
   function ensureFbqStub() {
+    if (trackingBlocked()) return;
     if (w.fbq) return;
     !(function (f, b, e, v, n, t, s) {
       if (f.fbq) return;
@@ -53,7 +62,7 @@
    */
   w.SIA21_startHumanGatedPixel = function (options) {
     options = options || {};
-    if (typeof w.SIA21_allowCapture === "function" && !w.SIA21_allowCapture()) return;
+    if (trackingBlocked()) return;
     if (!w.__SIA21_HUMAN && typeof w.SIA21_onHuman === "function") {
       w.SIA21_onHuman(function () { w.SIA21_startHumanGatedPixel(options); });
       return;
@@ -73,9 +82,11 @@
       }
       return;
     }
+    if (trackingBlocked()) return;
     w.__SIA21_MTHD_STARTED = true;
 
     ensureFbqStub();
+    if (trackingBlocked() || typeof w.fbq !== "function") return;
 
     try { w.fbq("consent", "grant"); } catch (e) {}
     try { w.fbq("set", "autoConfig", false, pixelId); } catch (e) {}
@@ -86,7 +97,7 @@
 
     var pageViewFired = false;
     function firePageView() {
-      if (pageViewFired) return;
+      if (pageViewFired || trackingBlocked() || typeof w.fbq !== "function") return;
       pageViewFired = true;
       try { w.fbq("track", "PageView"); } catch (e) {}
     }

@@ -639,7 +639,7 @@ async function main() {
       await sleep(1200);
       const second = await page.evaluate(exitSnapshot);
       report(
-        "100% scroll for ~20s on angles-v2 shows €33 once, and staying there does not open €14",
+        "100% scroll for ~5s on angles-v2 shows €33 once, and staying there does not open €14",
         stayedClosed && offer33 && afterDismiss.hidden && afterDismiss.text.indexOf("€14") === -1 && again && again.atEnd && again.hidden && second.hidden && second.once === "1",
         JSON.stringify({ atBottom, shown, afterDismiss, again, second })
       );

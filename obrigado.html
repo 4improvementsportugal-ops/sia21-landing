@@ -13,22 +13,25 @@
     .ck-btns{display:flex;flex-direction:row;gap:6px;flex:0 0 auto}.ck-b{min-width:0;border-radius:10px;padding:8px 10px;font-weight:800;font-size:13px;background:#fff;color:#0f172a;border:1px solid #fff;cursor:pointer}.ck-b:hover{background:#e2e8f0}
   </style>
   <!--
-    META PURCHASE FLOW (SIA21 thank-you) — Human-Gated (MTHD)
+    META PURCHASE FLOW (SIA21 thank-you). Human-Gated (MTHD)
     1) Pixel ID 1506988540335331 is NOT loaded until cookie consent key 4i_cookie_consent_v1 === "accepted".
     2) Stripe Payment Links redirect here with ?session_id={CHECKOUT_SESSION_ID}&amount=<EUR>.
-    3) On accept: SIA21_startHumanGatedPixel → init → onInit fires Purchase immediately.
+    3) On accept: SIA21_startHumanGatedPixel → init → onInit calls SIA21_firePurchaseOnce
+       (assets/sia21-purchase.js). That file is the only fbq Purchase.
        PageView is INSTANT because assets/human-gate.js treats this pathname as an
        INSTANT_PATH (/obrigado.html, /obrigado, /ghl-agencias/obrigado.html).
        Upsell InitiateCheckout and stripe_checkout_click follow the Stripe
        gate: a prior engagement signal, 1.5s on the page, and webdriver false.
        The instant path does not bypass that. Purchase in onInit stays immediate.
     4) Purchase: value (amount URL or default 37), currency EUR, content_name "Sistema IA Consultor 21 Dias",
-       content_ids, eventID = session_id (CAPI dedup).
+       content_ids, eventID = session_id when the URL has one.
+       The same id is stored in localStorage and sessionStorage before the request,
+       so a reload, back navigation, or a second webview does not fire again.
        Primary Early Bird €37 (SIA21_EARLY_37) is the default when amount is missing.
        Exit €33 (SIA21_EARLY_33) should redirect with amount=33 → content_ids sia21-core-early-33.
        Final exit €14 (SIA21_EARLY_14) should redirect with amount=14 → content_ids sia21-core-early-14.
        Without amount, value stays 37.
-    5) If consent undecided AND session_id present: show banner with clearer copy — never auto-accept.
+    5) If consent undecided AND session_id present: show banner with clearer copy. Never auto-accept.
     6) Past sales without browser consent / without params will not appear in Pixel retroactively.
   -->
   <noscript>
@@ -99,14 +102,11 @@ if(window.SIA21_onHuman){SIA21_onHuman(function(){if(window.SIA21_bootPosthog)SI
     </div>
   </div>
   <script src="assets/mthd-pixel.js"></script>
+  <script src="assets/sia21-purchase.js"></script>
   <script>
   (function(){
     var META_PIXEL_ID = "1506988540335331";
     var KEY = "4i_cookie_consent_v1";
-    var DEFAULT_PURCHASE_VALUE = 37.00;
-    var DEFAULT_CURRENCY = "EUR";
-    var CONTENT_NAME = "Sistema IA Consultor 21 Dias";
-    var CONTENT_IDS = ["sia21-core"];
 
     function get(){ try { return localStorage.getItem(KEY); } catch(e){ return null; } }
     function put(v){ try { localStorage.setItem(KEY, v); } catch(e){} }
@@ -114,72 +114,24 @@ if(window.SIA21_onHuman){SIA21_onHuman(function(){if(window.SIA21_bootPosthog)SI
     function show(){ box.hidden = false; }
     function hide(){ box.hidden = true; }
 
-    function qs(){
-      try { return new URLSearchParams(window.location.search); } catch(e){ return new URLSearchParams(); }
-    }
-
     function sessionId(){
-      return qs().get("session_id") || qs().get("checkout_session_id") || "";
-    }
-
-    function purchaseValue(){
-      var p = qs();
-      var raw = p.get("amount") || p.get("value") || p.get("amount_total") || "";
-      if (!raw) return DEFAULT_PURCHASE_VALUE;
-      var n = parseFloat(String(raw).replace(",", "."));
-      if (!isFinite(n) || n <= 0) return DEFAULT_PURCHASE_VALUE;
-      if (p.get("amount_total") && String(raw).indexOf(".") === -1 && n >= 100) n = n / 100;
-      return Math.round(n * 100) / 100;
-    }
-
-    function contentIdsForValue(value){
-      if (value >= 90) return ["sia21-ang-pro"];
-      if (value >= 45 && value < 50) return ["sia21-core-standard", "sia21-ang-lite"];
-      if (value >= 35 && value < 40) return ["sia21-core-early"];
-      if (value >= 30 && value < 35) return ["sia21-core-early-33"];
-      if (value >= 13 && value < 16) return ["sia21-core-early-14"];
-      return CONTENT_IDS.slice();
-    }
-
-    function purchaseDedupKey(){
-      var sid = sessionId();
-      if (sid) return "sia21_purchase_fired_" + sid;
-      return "sia21_purchase_fired";
-    }
-
-    function alreadyFiredPurchase(){
-      try { return sessionStorage.getItem(purchaseDedupKey()) === "1"; } catch(e){ return false; }
-    }
-
-    function markPurchaseFired(){
-      try { sessionStorage.setItem(purchaseDedupKey(), "1"); } catch(e){}
-    }
-
-    function firePurchase(){
-      if (!window.fbq || alreadyFiredPurchase()) return;
-      var value = purchaseValue();
-      var sid = sessionId();
-      var payload = {
-        value: value,
-        currency: DEFAULT_CURRENCY,
-        content_name: CONTENT_NAME,
-        content_ids: contentIdsForValue(value),
-        content_type: "product"
-      };
-      var opts = sid ? { eventID: sid } : undefined;
-      if (opts) fbq("track", "Purchase", payload, opts);
-      else fbq("track", "Purchase", payload);
-      markPurchaseFired();
+      if (typeof window.SIA21_checkoutSessionId === "function") return window.SIA21_checkoutSessionId();
+      try {
+        var p = new URLSearchParams(window.location.search);
+        return p.get("session_id") || p.get("checkout_session_id") || "";
+      } catch (e) { return ""; }
     }
 
     function startMTHD(){
       if (typeof window.SIA21_startHumanGatedPixel !== "function") return;
       // Instant PageView: pathname contains /obrigado.html (e.g. /sia21-landing/obrigado.html)
-      // Purchase fires in onInit right after fbq init — does not wait for PageView.
+      // Purchase fires in onInit right after fbq init. It does not wait for PageView.
       window.SIA21_startHumanGatedPixel({
         pixelId: META_PIXEL_ID,
         instantPaths: ["/obrigado.html", "/obrigado", "/ghl-agencias/obrigado.html"],
-        onInit: function(){ firePurchase(); }
+        onInit: function(){
+          if (typeof window.SIA21_firePurchaseOnce === "function") window.SIA21_firePurchaseOnce();
+        }
       });
     }
 

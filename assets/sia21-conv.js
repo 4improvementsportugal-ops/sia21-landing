@@ -19,7 +19,8 @@
  * Exit step lives in sessionStorage (sia21_exit_step_v2): 0 none, 1 saw €33, 2 saw €14.
  * €14 opens only after the visitor dismissed €33 (close, Escape, or "Quero mesmo sair").
  * A checkout click is not a dismissal. On angles/ and angles-v2/ only, a human
- * who reaches the bottom and stays there ~20s without clicking checkout sees
+ * who reaches the bottom and stays there ~5s, or who leaves on mobile
+ * (visibility hidden, or a fast scroll up), sees
  * the same €33 dialog once per visitor (localStorage sia21_scroll_exit_once_v1).
  * That trigger never advances the ladder. Coming back from Stripe without paying
  * opens €33, or €14 only if €33 was already dismissed. Return is detected from
@@ -53,6 +54,7 @@
     "04-whatsapp": "WhatsApp",
     "05-angariacao": "Angariação",
     "06-chatgpt-falhou": "ChatGPT",
+    "sobrecarga": "Sobrecarga",
     "07-metodo-21-dias": "Método 21 dias",
     "08-solo-escala": "Solo",
     "09-early-37": "Early",
@@ -919,16 +921,17 @@
       }, { passive: true });
     }
 
-    // Angle landings only: bottom of the page, held ~20s, no checkout click.
-    // Reuses the €33 dialog. Fires only while the ladder is still at step 0,
-    // so it cannot become the €14 offer. Once per visitor, not per session.
+    // Angle landings only: bottom of the page, held ~5s, or a mobile leave
+    // signal (the tab was hidden, or a fast scroll up). Reuses the €33 dialog.
+    // Fires only while the ladder is still at step 0, so it cannot become the
+    // €14 offer. Once per visitor, not per session.
     if (isAngleLanding() && !scrollOfferUsed()) {
       var scrollTimer = null;
       var scrollCheckout = false;
       var scrollRetried = false;
 
       function scrollStayMs() {
-        return debugMode() ? 800 : 20000;
+        return debugMode() ? 800 : 5000;
       }
 
       function atPageEnd() {
@@ -990,6 +993,39 @@
       d.addEventListener("visibilitychange", syncScrollTimer);
       w.addEventListener("resize", syncScrollTimer);
       syncScrollTimer();
+
+      function tryLeaveOffer() {
+        if (scrollCheckout || scrollOfferUsed() || exitStep() !== 0) return;
+        if (d.visibilityState === "hidden") return;
+        if (pendingStripe() || storedAway()) return;
+        if (openNext()) markScrollOfferUsed();
+      }
+
+      var lastScrollY = w.scrollY || d.documentElement.scrollTop || 0;
+      var lastScrollAt = Date.now();
+      w.addEventListener("scroll", function () {
+        if (!isCoarse()) return;
+        var y = w.scrollY || d.documentElement.scrollTop || 0;
+        var now = Date.now();
+        var dt = now - lastScrollAt;
+        var up = lastScrollY - y;
+        lastScrollY = y;
+        lastScrollAt = now;
+        if (dt > 0 && dt < 320 && up > 160) tryLeaveOffer();
+      }, { passive: true });
+
+      var hiddenAt = 0;
+      d.addEventListener("visibilitychange", function () {
+        if (d.visibilityState === "hidden") {
+          if (!pendingStripe()) hiddenAt = Date.now();
+          return;
+        }
+        if (!hiddenAt) return;
+        var away = Date.now() - hiddenAt;
+        hiddenAt = 0;
+        if (away < 400) return;
+        tryLeaveOffer();
+      });
     }
   }
 

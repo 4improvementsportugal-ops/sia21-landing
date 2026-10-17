@@ -1,0 +1,180 @@
+/* Ships the Superdesign mobile page as a real document.
+   The draft used a fake phone frame (h-screen + inner scroll + a status-bar pad).
+   This file removes that frame, keeps the designed look, and adds the desktop layout. */
+
+body {
+  background: #f6f4ef;
+  color: #0f172a;
+}
+
+.safe-pt {
+  padding-top: 0 !important;
+}
+
+.offer-page {
+  min-height: 100%;
+}
+
+.offer-page > header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  min-height: 3.5rem;
+}
+
+.offer-page > header .head-cta {
+  display: none;
+}
+
+.offer-page .book-cover {
+  box-shadow:
+    7px 1px 0 #e2e8f0,
+    11px 2px 0 #cbd5e1,
+    15px 3px 0 #f8fafc,
+    4px 10px 18px rgba(15, 23, 42, 0.28) !important;
+}
+
+.offer-page .mobile-cta {
+  position: fixed;
+  left: 0;
+  right: 0;
+  z-index: 58;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+  background: #fff;
+  border-top: 1px solid #e2e8f0;
+}
+
+.offer-page .mobile-cta a {
+  flex: 1 1 auto;
+}
+
+.offer-page .legal-foot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px 20px;
+  padding: 28px 20px 12px;
+  background: #0f172a;
+  color: #dbe7f8;
+  font-size: 13px;
+}
+
+.offer-page .legal-foot a {
+  color: #e2e8f0;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.offer-page .legal-note {
+  margin: 0;
+  padding: 0 20px 8px;
+  background: #0f172a;
+  color: #94a3b8;
+  text-align: center;
+  font-size: 12px;
+}
+
+@media (max-width: 640px) {
+  .offer-page .mobile-cta {
+    display: flex !important;
+    bottom: var(--ck-offset, 0px) !important;
+  }
+
+  .offer-page main > section:first-of-type {
+    padding-top: 12px !important;
+    padding-bottom: 8px !important;
+  }
+
+  .offer-page main > section:first-of-type .book-cover {
+    width: 84px !important;
+    height: 108px !important;
+    margin-bottom: 10px !important;
+  }
+
+  .offer-page main > section:first-of-type h1 {
+    margin-bottom: 6px !important;
+  }
+
+  .offer-page main > section:first-of-type > p {
+    margin-bottom: 10px !important;
+  }
+}
+
+@media (min-width: 641px) {
+  .offer-page .mobile-cta {
+    display: none !important;
+  }
+
+  .offer-page > header {
+    justify-content: space-between;
+    padding-left: 28px;
+    padding-right: 28px;
+  }
+
+  .offer-page > header .head-cta {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: 0 18px;
+    border-radius: 999px;
+    background: #1d4ed8;
+    color: #fff;
+    font-weight: 800;
+    font-size: 14px;
+    text-decoration: none;
+  }
+
+  .offer-page > header .head-cta:hover {
+    background: #1e40af;
+  }
+}
+
+@media (min-width: 900px) {
+  .offer-page main > section:first-of-type {
+    max-width: 1040px;
+    margin: 0 auto;
+    display: grid !important;
+    grid-template-columns: 240px minmax(0, 1fr);
+    column-gap: 56px;
+    align-items: center;
+    text-align: left !important;
+    padding: 72px 40px 56px !important;
+  }
+
+  .offer-page main > section:first-of-type > * {
+    grid-column: 2;
+    width: 100%;
+    max-width: none;
+    align-items: flex-start !important;
+  }
+
+  .offer-page main > section:first-of-type > .book-cover {
+    grid-column: 1;
+    grid-row: 1 / span 8;
+    width: 210px !important;
+    height: 276px !important;
+    margin: 0 !important;
+    justify-self: center;
+  }
+
+  .offer-page main > section:first-of-type h1 {
+    font-size: 3.25rem !important;
+    line-height: 1.05 !important;
+  }
+
+  .offer-page main > section:not(:first-of-type) {
+    max-width: 880px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .offer-page main > section:nth-of-type(3) .grid,
+  .offer-page main > section .grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}

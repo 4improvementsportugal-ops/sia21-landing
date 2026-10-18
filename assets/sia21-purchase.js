@@ -14,7 +14,9 @@
  * Purchase fires only when the URL carries a real Stripe live checkout
  * session (the value starts with cs_live_), SIA21_trackingSuppressed()
  * is false, and that session id has not already fired. eventID is the
- * session id. The same id is written to localStorage and sessionStorage
+ * session id, the same value the webhook sends as event_id (session.id)
+ * with event_name Purchase. See docs/CAPI-CONTRACT.md. The same id is
+ * written to localStorage and sessionStorage
  * before the pixel request (sia21_purchase_v1_<sid>, plus the older
  * sessionStorage key sia21_purchase_fired_<sid>), so a reload, the back
  * button, or a second webview does not fire again.

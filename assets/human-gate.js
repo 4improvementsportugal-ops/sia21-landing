@@ -45,6 +45,12 @@
  * one stripe_checkout_click, and opens Stripe once. A different Payment
  * Link, such as the €33 exit, can still record its own checkout.
  *
+ * When that click is allowed and cookie consent is already accepted,
+ * SIA21_attachClientReference (assets/sia21-capi.js) appends
+ * client_reference_id to the Payment Link before the lock stores the
+ * href. Without consent the Stripe URL is left as written. The format
+ * is documented in docs/CAPI-CONTRACT.md.
+ *
  * window.SIA21_onHuman(cb) runs cb now if the visitor is already human,
  * otherwise queues it. window.SIA21_armTracking() turns PostHog pageview,
  * autocapture and session recording on at that moment.
@@ -80,6 +86,22 @@
  * taken while the document is still one screen tall. $pageleave is flushed
  * on visibilitychange (hidden), pagehide and freeze, with sendBeacon.
  */
+(function () {
+  try {
+    var current = document.currentScript;
+    if (!current || !current.src || current.src.indexOf("human-gate.js") === -1) return;
+    var capi = current.src.replace(/human-gate\.js(\?[^#]*)?/, "sia21-capi.js$1");
+    if (!capi || capi === current.src) return;
+    if (document.readyState === "loading" && !current.async && !current.defer) {
+      document.write('<script src="' + capi.replace(/"/g, "%22") + '"><\/script>');
+      return;
+    }
+    var extra = document.createElement("script");
+    extra.src = capi;
+    extra.async = false;
+    (document.head || document.documentElement).appendChild(extra);
+  } catch (e) {}
+})();
 (function (w, d) {
   "use strict";
 
@@ -643,6 +665,9 @@
       w.__SIA21_CHECKOUT_OK = true;
       w.__SIA21_STRIPE_CLICKED_HERE = true;
       w.__SIA21_STRIPE_LEAVE_PENDING = true;
+      if (typeof w.SIA21_attachClientReference === "function") {
+        try { w.SIA21_attachClientReference(anchor); } catch (errRef) {}
+      }
       lockCheckout(anchor);
       try { w.sessionStorage.setItem("sia21_stripe_left_at_v1", String(Date.now())); } catch (err) {}
       try { w.sessionStorage.removeItem("sia21_stripe_away_v1"); } catch (err4) {}

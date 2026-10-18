@@ -48,7 +48,8 @@ body {
   border-top: 1px solid #e2e8f0;
 }
 
-.offer-page .mobile-cta a {
+.offer-page .mobile-cta #sticky-cta,
+.offer-page .mobile-cta .btn {
   flex: 1 1 auto;
 }
 
@@ -98,7 +99,8 @@ body {
 @media (max-width: 640px) {
   .offer-page .mobile-cta {
     display: flex !important;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+    align-items: center;
     bottom: 0 !important;
   }
 

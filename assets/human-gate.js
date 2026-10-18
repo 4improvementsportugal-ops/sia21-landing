@@ -736,7 +736,7 @@
     var links = d.querySelectorAll('a[href*="buy.stripe.com"]');
     for (var i = 0; i < links.length; i++) {
       var anchor = links[i];
-      if (!anchor || (anchor.closest && anchor.closest("header"))) continue;
+      if (!anchor || (anchor.closest && (anchor.closest("header") || anchor.closest(".mobile-cta")))) continue;
       var host = noticeAnchor(anchor);
       if (host.classList && host.classList.contains("inapp-note")) continue;
       var note = d.createElement("p");

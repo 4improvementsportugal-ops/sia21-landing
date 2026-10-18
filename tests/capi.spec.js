@@ -134,7 +134,7 @@ async function showPage(page) {
 function publishedStripePages() {
   const fs = require("fs");
   const path = require("path");
-  const files = ["index.html", "obrigado.html"];
+  const files = ["index.html", "obrigado.html", path.join("v3", "storytelling", "index.html")];
   ["angles", "angles-v2"].forEach(function (root) {
     fs.readdirSync(root).forEach(function (name) {
       const file = path.join(root, name, "index.html");
@@ -147,9 +147,11 @@ function publishedStripePages() {
 }
 
 function pageUrl(file) {
-  if (file === "index.html") return "/index.html";
-  if (file === "obrigado.html") return "/obrigado.html";
-  return "/" + file.replace(/index\.html$/, "");
+  const normalized = String(file).replace(/\\/g, "/");
+  if (normalized === "index.html") return "/index.html";
+  if (normalized === "obrigado.html") return "/obrigado.html";
+  if (normalized === "v3/storytelling/index.html") return "/v3/storytelling/";
+  return "/" + normalized.replace(/index\.html$/, "");
 }
 
 function pageFiresPurchase(file) {
@@ -224,7 +226,7 @@ test.describe("meta capi browser", function () {
     const navs = await arm(page, PROD + "/index.html?fbclid=abc_D-1", { fbp: FBP });
     expect(await readCookie(page, "_fbc")).toBe("");
     await allowCheckout(page);
-    const buy = page.locator("a", { hasText: "Comprar agora" });
+    const buy = page.locator("#hero-cta");
     const before = await buy.getAttribute("href");
     await buy.scrollIntoViewIfNeeded();
     await buy.click({ noWaitAfter: true });
@@ -256,7 +258,7 @@ test.describe("meta capi browser", function () {
     expect(preservedUrl.searchParams.get("client_reference_id")).toBe(FBP_REF);
     expect(splitRef(preservedUrl.searchParams.get("client_reference_id"))).toEqual(["c1", "1711111111111", "2222222222", "0", ""]);
     await allowCheckout(page);
-    const ref = await checkoutRef(page, page.locator("a", { hasText: "Comprar agora" }), navs);
+    const ref = await checkoutRef(page, page.locator("#hero-cta"), navs);
     expect(ref).toBe(FBP_REF);
   });
 
@@ -306,7 +308,7 @@ test.describe("meta capi browser", function () {
     const longId = "a".repeat(180);
     const navs = await arm(page, PROD + "/index.html?fbclid=" + longId, { consent: true, fbp: FBP });
     await allowCheckout(page);
-    const ref = await checkoutRef(page, page.locator("a", { hasText: "Comprar agora" }), navs);
+    const ref = await checkoutRef(page, page.locator("#hero-cta"), navs);
     expect(ref).toBe(FBP_REF);
     expect(ref.length).toBeLessThanOrEqual(200);
     expect(ref).not.toContain(longId);

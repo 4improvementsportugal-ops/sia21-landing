@@ -244,7 +244,10 @@ test.describe("storytelling preview", function () {
     await page.route(/buy\.stripe\.com/, function (route) { return route.abort(); });
     await page.goto(PROD + PAGE, { waitUntil: "domcontentloaded" });
     await expect(page.locator("h1")).toHaveText(H1);
-    await expect(page.locator("#preco .cta")).toHaveAttribute("href", STRIPE_37);
+    const priceHref = await page.locator("#preco .cta").getAttribute("href");
+    const priceUrl = new URL(priceHref);
+    expect(priceUrl.origin + priceUrl.pathname).toBe(STRIPE_37);
+    expect(priceUrl.searchParams.get("client_reference_id")).toBe("c1_0_0_0_");
     await expect(page.locator(".sia21-retorno")).toHaveCount(0);
     await expect(page.locator("#sia21-toast")).toHaveCount(0);
     await page.mouse.wheel(0, 500);

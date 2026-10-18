@@ -30,6 +30,7 @@ That includes:
 
 - all 12 live landing pages below: the Core Payment Link (€37), and the exit offers at €33 and €14 when those links are added
 - the older `angles/` pages that still publish the Core link
+- the storytelling rewrite of these pages, and the preview at `/v3/storytelling/`. They use the same Payment Links. The helper does not depend on the page template
 - `/obrigado.html`. That page loads `sia21-purchase.js`, not `sia21-conv.js`. Its post-purchase links are Kit Pro €97 (`https://buy.stripe.com/14A9AVgJz9Wve2zfmCgrS00`) and Kit Lite €47 (`https://buy.stripe.com/dRm00lbpf5Gf1fNb6mgrS01`)
 
 `ghl-agencias` is excluded. The parameter is not added on that path.

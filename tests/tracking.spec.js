@@ -1162,7 +1162,7 @@ test.describe("tracking", function () {
     expect(layout.ck.top).toBeLessThan(8);
     expect(layout.heroOverlap).toBe(false);
     expect(layout.stickyOverlap).toBe(false);
-    expect(page.locator(".inapp-note")).toHaveCount(0);
+    await expect(page.locator(".inapp-note")).toHaveCount(0);
   });
 
   test("the in-app notice exists only inside Facebook or Instagram", async function ({ page }) {

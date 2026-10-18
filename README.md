@@ -51,7 +51,7 @@ A supressão é verdadeira quando:
 
 O URL de opt-out chega para suprimir mesmo que o storage falhe. Usa `?qa=1` nas corridas de QA e nos screenshots. Não chega a haver pedido ao PostHog nem ao Meta.
 
-A profundidade de scroll não fica a cargo do scroll manager do PostHog. Esse manager só ouve `window` scroll e, em vários webviews móveis, `scrollY` permanece 0 (a percentagem de conteúdo fica no primeiro ecrã) mesmo com dezenas ou centenas de segundos na página. `sia21_scroll` dispara aos 25, 50, 75 e 100, atrás do mesmo gate humano, com `path` e `sections` (ids de `section[id]` já visíveis; lista vazia se a página não tiver ids). A medição usa o scroll do documento, `visualViewport`, sentinelas com IntersectionObserver e o elemento no centro do ecrã.
+A profundidade de scroll não fica a cargo do scroll manager do PostHog. Esse manager só ouve `window` scroll e, em vários webviews móveis, `scrollY` permanece 0 (a percentagem de conteúdo fica no primeiro ecrã) mesmo com dezenas ou centenas de segundos na página. `sia21_scroll` dispara aos 25, 50, 75 e 100, atrás do mesmo gate humano, com `path` e `sections` (ids de `section[id]` já visíveis; lista vazia se a página não tiver ids). A percentagem é a distância percorrida a dividir pelo intervalo rolável (`scrollHeight` menos a altura visível), incluindo um contentor interno do tamanho do ecrã e o deslocamento visual do conteúdo quando `scrollY` fica preso a 0. Um documento que ainda cabe no primeiro ecrã não conta como 100.
 
 Eventos custom (`stripe_checkout_click`, `calendar_cta_click`, `exit_offer_*`, `last_offer_*`) entram por `SIA21_capturePh` / `SIA21_captureWhenHuman`, que os guarda até ao sinal humano e os descarta no `pagehide` se o sinal não chegou.
 

@@ -248,6 +248,50 @@ test.describe("tracking", function () {
     expect(leave.properties.$prev_pageview_duration).toBeGreaterThan(0);
   });
 
+  test("mobile first fold does not report the bottom", async function ({ page }) {
+    await maskWebdriver(page);
+    const hits = await watchTracking(page);
+    await page.goto(PROD + "/angles-v2/sobrecarga/", { waitUntil: "load" });
+    await waitTall(page);
+    const atRest = await page.evaluate(function () { return window.__SIA21_MAX_SCROLL; });
+    expect(atRest).toBeLessThan(25);
+    await page.locator("h1").click();
+    await page.evaluate(function () {
+      window.scrollTo(0, Math.round(window.innerHeight * 0.7));
+    });
+    await page.waitForTimeout(200);
+    const fold = await page.evaluate(function () {
+      return {
+        max: window.__SIA21_MAX_SCROLL,
+        top: window.scrollY,
+        height: document.documentElement.scrollHeight,
+        view: window.innerHeight
+      };
+    });
+    expect(fold.top).toBeGreaterThan(80);
+    expect(fold.top).toBeLessThan(fold.view);
+    expect(fold.max).toBeLessThan(50);
+    const early = eventsFrom(hits).filter(function (event) { return event.event === "sia21_scroll"; });
+    const earlyDepths = early.map(function (event) { return event.properties && event.properties.depth; });
+    expect(earlyDepths.every(function (depth) { return depth <= 25; })).toBe(true);
+    expect(earlyDepths.indexOf(50)).toBe(-1);
+    expect(earlyDepths.indexOf(100)).toBe(-1);
+    await page.evaluate(function () {
+      var max = document.documentElement.scrollHeight - window.innerHeight;
+      window.scrollTo(0, max);
+    });
+    const scrolled = await waitFor(hits, function (events) {
+      var depths = events.filter(function (event) { return event.event === "sia21_scroll"; }).map(function (event) {
+        return event.properties && event.properties.depth;
+      });
+      return [25, 50, 75, 100].every(function (depth) { return depths.indexOf(depth) !== -1; });
+    }, "missing ordered sia21_scroll depths");
+    const depths = scrolled.filter(function (event) { return event.event === "sia21_scroll"; }).map(function (event) {
+      return event.properties && event.properties.depth;
+    });
+    expect(depths).toEqual([25, 50, 75, 100]);
+  });
+
   test("exit step opens after a return from Stripe without payment", async function ({ page }) {
     await maskWebdriver(page);
     const hits = await watchTracking(page);
@@ -370,7 +414,9 @@ test.describe("tracking", function () {
     expect(metrics.scrollY).toBe(0);
     expect(metrics.docTop).toBe(0);
     expect(metrics.footerBottom).toBeLessThan(metrics.view + 48);
-    expect(metrics.depth).toBeGreaterThanOrEqual(99);
+    await expect.poll(async function () {
+      return page.evaluate(function () { return window.__SIA21_MAX_SCROLL; });
+    }).toBeGreaterThanOrEqual(99);
     await expect(page.locator("#sia21-exit")).toBeVisible({ timeout: 4000 });
     await expect(page.locator("#sia21-exit a.sia21-exit-primary")).toHaveAttribute("href", EARLY_33);
     await waitFor(hits, function (events) {

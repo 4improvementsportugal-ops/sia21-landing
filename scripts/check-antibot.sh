@@ -111,8 +111,14 @@ if ! grep -q 'SIA21_obviousTestId' assets/human-gate.js; then
   echo "FAIL assets/human-gate.js must refuse obvious test checkout ids"
   fail=1
 fi
-if grep -q 'route.continue' tests/tracking.spec.js; then
-  echo "FAIL tests/tracking.spec.js must not continue tracking requests"
+if grep -n 'route.continue' tests/*.js tests/*.mjs >/tmp/sia21-route-continue.txt 2>/dev/null; then
+  echo "FAIL tests must not continue browser requests (a continued call can reach Meta or PostHog)"
+  cat /tmp/sia21-route-continue.txt
+  fail=1
+fi
+if grep -nE 'fetch\([[:space:]]*["'\'']https?://[^"'\'']*(posthog\.com|facebook\.com|facebook\.net)' tests/*.js tests/*.mjs >/tmp/sia21-remote-fetch.txt 2>/dev/null; then
+  echo "FAIL tests must not fetch Meta or PostHog from Node"
+  cat /tmp/sia21-remote-fetch.txt
   fail=1
 fi
 if ! grep -q 'sia21_qa_v1' assets/human-gate.js; then

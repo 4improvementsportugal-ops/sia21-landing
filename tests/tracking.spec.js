@@ -7,35 +7,16 @@ const LOCAL = "http://127.0.0.1:4173";
 const PREVIEW = "http://4improvementsportugal-ops.github.io:4173";
 const TRACKING = /posthog\.com|facebook\.net|facebook\.com/i;
 const FBE_SHIM = fs.readFileSync(path.join(__dirname, "fbevents-shim.js"), "utf8");
+const PH_STUB = fs.readFileSync(path.join(__dirname, "posthog-stub.js"), "utf8");
 const LIVE_SESSION = "cs_live_a8Kd2mQ9pL4sT7vX1nR6bY3c";
 const OTHER_SESSION = "cs_live_b7Nm3pQ2rL8sT4vY6wZ1cD5e";
 
-const assetCache = new Map();
-
 function isPosthogAsset(url) {
-  try {
-    var host = new URL(url).hostname;
-    return /(^|\.)([a-z0-9-]+-)?assets\.i\.posthog\.com$/i.test(host) || /-assets\.i\.posthog\.com$/i.test(host);
-  } catch (e) {
-    return false;
-  }
+  return /posthog\.com\/.+\.js(?:\?|$)/i.test(url) || /-assets\.i\.posthog\.com/i.test(url);
 }
 
 function isFacebookScript(url) {
   return /fbevents\.js/i.test(url);
-}
-
-async function posthogAsset(url) {
-  const key = url;
-  if (assetCache.has(key)) return assetCache.get(key);
-  const res = await fetch(key);
-  const payload = {
-    status: res.status,
-    type: res.headers.get("content-type") || "application/javascript",
-    body: Buffer.from(await res.arrayBuffer())
-  };
-  assetCache.set(key, payload);
-  return payload;
 }
 
 async function fulfillTracking(route) {
@@ -46,8 +27,7 @@ async function fulfillTracking(route) {
       return;
     }
     if (isPosthogAsset(url)) {
-      const asset = await posthogAsset(url);
-      await route.fulfill({ status: asset.status, contentType: asset.type, body: asset.body });
+      await route.fulfill({ status: 200, contentType: "application/javascript", body: PH_STUB });
       return;
     }
     await route.fulfill({ status: 200, contentType: "application/json", body: "{}" });
@@ -825,7 +805,7 @@ test.describe("tracking", function () {
     await page.evaluate(function () {
       window.fbq("track", "Purchase", { value: 37, currency: "EUR" }, { eventID: "cs_live_NOTATHANKYOU" });
     });
-    await page.locator("a", { hasText: "Comprar agora" }).click();
+    await page.locator("#hero-cta").click();
     await page.waitForTimeout(1600);
     expect(purchases).toEqual([]);
     await page.goto(PROD + "/angles/01-tempo/?session_id=cs_live_ANGLEPAGE", { waitUntil: "domcontentloaded" });
@@ -871,7 +851,7 @@ test.describe("tracking", function () {
       if (/buy\.stripe\.com/.test(url)) order.push("nav");
     });
     const hits = await armCheckout(page, PROD + "/index.html");
-    await page.locator("a", { hasText: "Comprar agora" }).click();
+    await page.locator("#hero-cta").click();
     await expect.poll(function () { return icUrls(hits).length; }, { timeout: 15000 }).toBe(1);
     const ic = new URL(icUrls(hits)[0]);
     expect(ic.searchParams.get("cd[value]")).toBe("37");
@@ -895,7 +875,7 @@ test.describe("tracking", function () {
     const popups = [];
     page.on("popup", function (popup) { popups.push(popup); });
     const hits = await armCheckout(page, PROD + "/index.html");
-    const cta = page.locator("a", { hasText: "Comprar agora" });
+    const cta = page.locator("#hero-cta");
     await cta.click({ noWaitAfter: true });
     await page.waitForTimeout(200);
     await cta.click({ noWaitAfter: true });
@@ -1031,7 +1011,7 @@ test.describe("tracking", function () {
     "7 listas para imprimir: setup, visita, anúncio, angariação, follow-up, semana e compliance.",
     "Regras claras do que nunca colar na IA. Usas a IA sem pôr dados de clientes em risco.",
     "Uma rotina para a semana e uma folha para anotares o tempo que poupas. Vês nos teus números.",
-    "PDF de 58 páginas, em português de Portugal. Lês no telemóvel ou imprimes.",
+    "PDF de 55 páginas, em português de Portugal. Lês no telemóvel ou imprimes.",
     TOOLS_LINE
   ];
   const EARLY_37 = "https://buy.stripe.com/aFa5kF1OFc4D1fNb6mgrS02";
@@ -1091,6 +1071,7 @@ test.describe("tracking", function () {
     expect(consent[0].properties.choice).toBe("accepted");
     expect(consent[0].properties.path).toBe(pathName);
     expect(consent[0].properties.angle).toBe("home");
+    expect(consent[0].properties.format).toBe("storytelling");
     await waitFor(hits, function () {
       return hits.some(function (hit) {
         return /[?&]ev=PageView(?:&|$)/.test(hit.url) && /[?&]id=1506988540335331(?:&|$)/.test(hit.url);

@@ -49,7 +49,9 @@
  * pages call, and only from SIA21_onHuman.
  *
  * Scroll depth is sia21_scroll (25/50/75/100, plus section ids when the
- * page has them), queued behind the same human gate. $pageleave is flushed
+ * page has them), queued behind the same human gate. A milestone is the
+ * fraction of the real scroll range the visitor has moved, not a reading
+ * taken while the document is still one screen tall. $pageleave is flushed
  * on visibilitychange (hidden), pagehide and freeze, with sendBeacon.
  */
 (function (w, d) {
@@ -78,6 +80,7 @@
   var dwellTimer = null;
   var phQueue = [];
   var phDropped = false;
+  var depthSent = {};
   var checkoutArmed = false;
   var startedAt = Date.now();
   try {
@@ -247,6 +250,7 @@
           path: payload.path || (w.location.pathname || ""),
           sections: seenSections.slice()
         };
+        if (payload.depth) depthSent[payload.depth] = true;
       }
       if (options) w.posthog.capture(name, payload, options);
       else w.posthog.capture(name, payload);
@@ -537,54 +541,173 @@
   else watchCookieBar();
 
   // Scroll depth does not use PostHog's scroll manager. That manager listens
-  // to window scroll only, and on several mobile webviews scrollY stays 0
-  // (max content stays the first screen) even after a long visit. Milestones
-  // also come from IntersectionObserver sentinels and from the element under
-  // the viewport, which still move when scroll events do not.
+  // to window scroll only, and on several mobile webviews scrollY stays 0.
+  // Milestones are the distance actually travelled divided by the scrollable
+  // range. A document that is still about one screen tall is not 100%: that
+  // reading used to latch during load (and in expanded in-app webviews) and
+  // then flush as depth 100 when the human gate opened.
   var firedDepth = {};
   var seenSections = [];
   var scrollIo = null;
+  var geometryHeight = 0;
+  var seenHeight = 0;
+  var heightSteady = false;
 
   function docHeight() {
     var bodyH = d.body ? d.body.scrollHeight : 0;
     return Math.max(d.documentElement.scrollHeight || 0, bodyH || 0, 0);
   }
 
-  function readScrollPct() {
-    var el = d.scrollingElement || d.documentElement;
-    var scrollTop = 0;
+  function viewportH() {
+    var inner = w.innerHeight || d.documentElement.clientHeight || 0;
     try {
-      scrollTop = w.scrollY || w.pageYOffset || (el && el.scrollTop) || (d.body && d.body.scrollTop) || 0;
-    } catch (e) {}
-    try {
-      if (w.visualViewport && typeof w.visualViewport.pageTop === "number" && w.visualViewport.pageTop > scrollTop) {
-        scrollTop = w.visualViewport.pageTop;
+      if (w.visualViewport && w.visualViewport.height > 0 && w.visualViewport.height + 80 < inner) {
+        return w.visualViewport.height;
       }
-    } catch (e2) {}
-    var viewH = w.innerHeight || (el && el.clientHeight) || 0;
-    var height = docHeight();
-    var max = height - viewH;
-    if (max <= 8) return height > 0 && d.readyState === "complete" ? 100 : 0;
-    return Math.max(0, Math.min(100, (scrollTop / max) * 100));
+    } catch (e) {}
+    return inner;
   }
 
-  function pctFromHit() {
-    var viewH = w.innerHeight || 0;
-    if (!viewH) return null;
-    var node = null;
-    try { node = d.elementFromPoint(Math.max(1, Math.floor((w.innerWidth || 1) / 2)), Math.floor(viewH * 0.5)); } catch (e) { return null; }
-    if (!node || node === d.body || node === d.documentElement) return null;
+  function rawDocTop() {
     var top = 0;
-    var n = node;
+    try { top = w.scrollY || w.pageYOffset || 0; } catch (e) {}
+    var docTop = 0;
+    var bodyTop = 0;
+    try { docTop = d.documentElement.scrollTop || 0; } catch (e2) {}
+    try { bodyTop = (d.body && d.body.scrollTop) || 0; } catch (e3) {}
+    if (docTop > top) top = docTop;
+    if (bodyTop > top) top = bodyTop;
+    try {
+      if (w.visualViewport && typeof w.visualViewport.pageTop === "number" && w.visualViewport.pageTop > top) {
+        top = w.visualViewport.pageTop;
+      }
+    } catch (e4) {}
+    return top > 0 ? top : 0;
+  }
+
+  function layoutTop(el) {
+    var y = 0;
+    var n = el;
     var guard = 0;
-    while (n && n !== d.body && guard < 40) {
-      top += n.offsetTop || 0;
+    while (n && n !== d.body && n !== d.documentElement && guard < 40) {
+      y += n.offsetTop || 0;
       n = n.offsetParent;
       guard += 1;
     }
+    return y;
+  }
+
+  function travelOf(el) {
+    if (!el || !el.getBoundingClientRect) return 0;
+    var rect = null;
+    try { rect = el.getBoundingClientRect(); } catch (e) { return 0; }
+    if (!rect) return 0;
+    var moved = layoutTop(el) - rect.top;
+    return moved > 1 ? moved : 0;
+  }
+
+  function contentAnchor() {
+    return d.querySelector("main") || d.querySelector("section") || null;
+  }
+
+  function bottomEl() {
+    var nodes = d.querySelectorAll("footer");
+    if (nodes.length) return nodes[nodes.length - 1];
+    return d.querySelector("main");
+  }
+
+  function bottomVisible() {
+    var el = bottomEl();
+    var view = viewportH();
+    if (!el || !view || !el.getBoundingClientRect) return false;
+    var rect = null;
+    try { rect = el.getBoundingClientRect(); } catch (e) { return false; }
+    if (!rect || rect.height < 8) return false;
+    return rect.bottom <= view + 24 && rect.top < view && rect.bottom > view * 0.35;
+  }
+
+  function overflowYScrolls(el) {
+    var oy = "";
+    try { oy = w.getComputedStyle(el).overflowY; } catch (e) { return false; }
+    return oy === "auto" || oy === "scroll" || oy === "overlay";
+  }
+
+  var scrollerCache = [];
+  var scrollerCacheAt = 0;
+
+  function pageScrollers() {
+    var now = Date.now();
+    if (now - scrollerCacheAt < 500) return scrollerCache;
+    var found = [];
+    var vh = viewportH();
+    if (!d.body || !vh) {
+      scrollerCache = found;
+      scrollerCacheAt = now;
+      return found;
+    }
+    var nodes = d.body.getElementsByTagName("*");
+    for (var i = 0; i < nodes.length; i++) {
+      var el = nodes[i];
+      if (!el || el === d.body || el === d.documentElement) continue;
+      if (el.id && el.id.indexOf("sia21-scroll-") === 0) continue;
+      if (el.clientHeight < vh * 0.55) continue;
+      if (el.scrollHeight <= el.clientHeight + 8) continue;
+      if (!overflowYScrolls(el)) continue;
+      found.push(el);
+    }
+    scrollerCache = found;
+    scrollerCacheAt = now;
+    return found;
+  }
+
+  function ratio(top, max) {
+    if (!(max > 8) || top == null || isNaN(top)) return null;
+    if (top < 0) top = 0;
+    var pct = (top / max) * 100;
+    if (pct < 0) return 0;
+    if (pct > 100) return 100;
+    return pct;
+  }
+
+  function rememberHeight(height) {
+    if (!seenHeight || Math.abs(height - seenHeight) > 48) {
+      heightSteady = false;
+      seenHeight = height;
+      return;
+    }
+    heightSteady = true;
+    seenHeight = height;
+  }
+
+  function readScrollPct() {
+    if (d.readyState === "loading") return null;
+    var view = viewportH();
     var height = docHeight();
-    if (!height) return null;
-    return Math.max(0, Math.min(100, ((top + viewH) / height) * 100));
+    if (!view || !height) return null;
+    rememberHeight(height);
+    var best = 0;
+    function take(pct) {
+      if (pct == null || isNaN(pct)) return;
+      if (pct > best) best = pct;
+    }
+    var anchor = contentAnchor();
+    take(ratio(Math.max(rawDocTop(), travelOf(anchor)), height - view));
+    var scrollers = pageScrollers();
+    for (var i = 0; i < scrollers.length; i++) {
+      var el = scrollers[i];
+      var max = el.scrollHeight - el.clientHeight;
+      var top = 0;
+      try { top = el.scrollTop || 0; } catch (e) {}
+      var kid = el.querySelector("main, section") || el.firstElementChild;
+      var moved = travelOf(kid);
+      if (moved > top) top = moved;
+      take(ratio(top, max));
+    }
+    if (bottomVisible()) {
+      if (height - view > 48) take(100);
+      else if (d.readyState === "complete" && heightSteady) take(100);
+    }
+    return best;
   }
 
   function noteSection(id) {
@@ -614,37 +737,47 @@
     }, { send_instantly: true });
   }
 
-  function scrollablePx() {
-    return docHeight() - (w.innerHeight || 0);
+  function depthReached(pct, depth) {
+    var threshold = depth === 100 ? 99 : depth;
+    return pct + 0.01 >= threshold;
+  }
+
+  function rewindUnsent(pct) {
+    var steps = [25, 50, 75, 100];
+    var keep = {};
+    for (var i = 0; i < steps.length; i++) {
+      if (depthReached(pct, steps[i])) keep[steps[i]] = true;
+    }
+    for (var j = 0; j < steps.length; j++) {
+      var depth = steps[j];
+      if (keep[depth] || !firedDepth[depth] || depthSent[depth]) continue;
+      delete firedDepth[depth];
+    }
+    for (var k = phQueue.length - 1; k >= 0; k--) {
+      var item = phQueue[k];
+      if (!item || item.name !== "sia21_scroll" || !item.props) continue;
+      if (keep[item.props.depth] || depthSent[item.props.depth]) continue;
+      phQueue.splice(k, 1);
+    }
+    w.__SIA21_MAX_SCROLL = pct > 0 ? pct : 0;
   }
 
   function notePct(pct) {
     if (pct == null || isNaN(pct)) return;
-    // Tailwind and webfonts grow the page after the first paint. A document
-    // that is still one screen tall must not lock every depth at 100.
-    if (scrollablePx() <= 8 && d.readyState !== "complete") return;
+    var height = docHeight();
+    // Fonts and the Tailwind CDN grow the page after the first sample.
+    // Milestones queued against that short height are not real depth.
+    if (geometryHeight && height > geometryHeight + 80) rewindUnsent(pct);
+    if (height > geometryHeight) geometryHeight = height;
     if (pct > w.__SIA21_MAX_SCROLL) w.__SIA21_MAX_SCROLL = pct;
     var steps = [25, 50, 75, 100];
     for (var i = 0; i < steps.length; i++) {
-      var depth = steps[i];
-      var threshold = depth === 100 ? 99 : depth;
-      if (pct + 0.01 >= threshold) emitDepth(depth);
+      if (depthReached(pct, steps[i])) emitDepth(steps[i]);
     }
   }
 
   function sampleScroll() {
     notePct(readScrollPct());
-    notePct(pctFromHit());
-  }
-
-  function sentinelPlaced(node, depth) {
-    var height = docHeight();
-    var viewH = w.innerHeight || 0;
-    if (!depth || height < 1) return false;
-    if (height - viewH <= 8) return d.readyState === "complete";
-    var expected = depth === 100 ? height - 2 : height * (depth / 100);
-    var top = node.offsetTop || 0;
-    return Math.abs(top - expected) <= Math.max(48, height * 0.08);
   }
 
   function placeSentinels() {
@@ -680,13 +813,11 @@
           var depthAttr = target.getAttribute && target.getAttribute("data-sia21-depth");
           if (depthAttr) {
             var rect = target.getBoundingClientRect ? target.getBoundingClientRect() : null;
-            var viewH = w.innerHeight || 1;
-            // A sentinel at the bottom edge is not that depth yet. Count it
-            // once it has travelled into the top quarter, which is what
-            // in-app browsers report even when scrollY stays 0.
-            if (rect && rect.top <= viewH * 0.25 && sentinelPlaced(target, parseInt(depthAttr, 10))) {
-              notePct(parseInt(depthAttr, 10));
-            }
+            var viewH = viewportH() || 1;
+            // The sentinel only wakes a measurement. Its own number is not
+            // the depth: a marker placed while the page was still short used
+            // to report 100 before the visitor had moved.
+            if (rect && rect.top <= viewH && rect.bottom > -viewH) sampleScroll();
           }
           if (target.id && target.tagName === "SECTION") noteSection(target.id);
         }
@@ -702,8 +833,24 @@
     }
     if (d.readyState === "loading") d.addEventListener("DOMContentLoaded", boot);
     else boot();
+    w.addEventListener("load", function () {
+      placeSentinels();
+      sampleScroll();
+    });
+    if (d.fonts && d.fonts.ready && typeof d.fonts.ready.then === "function") {
+      d.fonts.ready.then(function () {
+        placeSentinels();
+        sampleScroll();
+      }, function () {});
+    }
     w.addEventListener("scroll", sampleScroll, { passive: true, capture: true });
     w.addEventListener("resize", function () { placeSentinels(); sampleScroll(); });
+    // In-app webviews move the layout without a window scroll event.
+    // The same 200ms watch the exit offer uses keeps depth honest there.
+    w.setInterval(function () {
+      if (d.visibilityState === "hidden") return;
+      sampleScroll();
+    }, 200);
     w.addEventListener("touchmove", sampleScroll, { passive: true });
     if (w.visualViewport) {
       w.visualViewport.addEventListener("scroll", sampleScroll);

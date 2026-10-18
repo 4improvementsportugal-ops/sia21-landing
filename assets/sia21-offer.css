@@ -78,6 +78,23 @@ body {
   font-size: 12px;
 }
 
+.offer-page .pay-note {
+  margin: 0.75rem 0 0;
+  max-width: 22rem;
+  color: #64748b;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.45;
+  letter-spacing: -0.011em;
+  text-align: center;
+  text-wrap: balance;
+}
+
+.offer-page .pay-note-on-dark {
+  color: #dbe7f8;
+  font-weight: 500;
+}
+
 @media (max-width: 640px) {
   .offer-page .mobile-cta {
     display: flex !important;

@@ -3,8 +3,11 @@
  *
  * Stripe copies client_reference_id from the Payment Link onto the
  * Checkout Session. The webhook reads that value. This file builds it
- * from the Meta cookies and appends it when a buy.stripe.com link is
- * allowed to open. See docs/CAPI-CONTRACT.md.
+ * from the Meta cookies and appends it to every anchor whose href starts
+ * with https://buy.stripe.com/, including links inserted later. A new
+ * Payment Link needs no extra code. ghl-agencias is skipped. The human
+ * gate still refreshes the value on an allowed click, before the lock.
+ * See docs/CAPI-CONTRACT.md.
  *
  * Consent is localStorage 4i_cookie_consent_v1 === "accepted" (this visit
  * or a previous one). Without that, the parameter is not added and _fbc
@@ -135,35 +138,103 @@
     return full;
   }
 
+  var STRIPE_PREFIX = "https://buy.stripe.com/";
+
+  function excludedPage() {
+    try {
+      return String(w.location.pathname || "").indexOf("ghl-agencias") !== -1;
+    } catch (e) { return false; }
+  }
+
   function attachClientReference(anchor) {
+    if (excludedPage()) return false;
     if (!anchor || !anchor.getAttribute || !consentAccepted()) return false;
     var ref = clientReferenceId();
     if (!ref) return false;
     var raw = anchor.getAttribute("href") || "";
-    if (!raw || raw.indexOf("buy.stripe.com") === -1) return false;
+    if (raw.indexOf(STRIPE_PREFIX) !== 0) return false;
     var url;
-    try { url = new URL(raw, w.location.href); } catch (e) { return false; }
-    if (url.hostname !== "buy.stripe.com") return false;
+    try { url = new URL(raw); } catch (e) { return false; }
+    if (url.protocol !== "https:" || url.hostname !== "buy.stripe.com") return false;
     var params = new URLSearchParams(url.search);
     if (params.get("client_reference_id") === ref) return true;
     params.set("client_reference_id", ref);
     url.search = params.toString();
-    anchor.setAttribute("href", url.toString());
+    var next = url.toString();
+    if (next === raw) return true;
+    anchor.setAttribute("href", next);
     return true;
+  }
+
+  function decorateStripeLinks(root) {
+    if (excludedPage()) return 0;
+    var scope = root && root.querySelectorAll ? root : d;
+    var n = 0;
+    if (scope.nodeName === "A" && attachClientReference(scope)) n++;
+    var links;
+    try { links = scope.querySelectorAll('a[href^="https://buy.stripe.com/"]'); } catch (e) { return n; }
+    var i;
+    for (i = 0; i < links.length; i++) {
+      if (attachClientReference(links[i])) n++;
+    }
+    return n;
+  }
+
+  function watchStripeLinks() {
+    if (w.__SIA21_CAPI_OBS || !w.MutationObserver) return;
+    var root = d.documentElement;
+    if (!root) return;
+    w.__SIA21_CAPI_OBS = true;
+    var obs = new MutationObserver(function (records) {
+      if (excludedPage() || !consentAccepted()) return;
+      var i, j;
+      for (i = 0; i < records.length; i++) {
+        var rec = records[i];
+        if (rec.type === "attributes") {
+          attachClientReference(rec.target);
+          continue;
+        }
+        var added = rec.addedNodes;
+        for (j = 0; j < added.length; j++) {
+          var node = added[j];
+          if (!node || node.nodeType !== 1) continue;
+          decorateStripeLinks(node);
+        }
+      }
+    });
+    try {
+      obs.observe(root, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ["href"]
+      });
+    } catch (e) {}
+  }
+
+  function bootStripeLinks() {
+    watchStripeLinks();
+    decorateStripeLinks(d);
   }
 
   w.SIA21_clientReferenceId = clientReferenceId;
   w.SIA21_attachClientReference = attachClientReference;
+  w.SIA21_decorateStripeLinks = decorateStripeLinks;
 
   noteLanding();
   ensureFbc();
+  watchStripeLinks();
+  if (d.readyState === "loading") d.addEventListener("DOMContentLoaded", bootStripeLinks);
+  else bootStripeLinks();
 
   // Bubble phase: the banner writes localStorage on the way up, then we
-  // persist _fbc. A capture listener would run before that write.
+  // persist _fbc and fill links already on the page. A capture listener
+  // would run before that write.
   d.addEventListener("click", function (e) {
     var node = e.target && e.target.closest ? e.target.closest("[data-ck]") : null;
     if (!node || node.getAttribute("data-ck") !== "accepted") return;
     noteLanding();
     ensureFbc();
+    decorateStripeLinks(d);
   });
 })(window, document);

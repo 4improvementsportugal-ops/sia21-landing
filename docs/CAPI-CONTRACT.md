@@ -24,7 +24,19 @@ The webhook sends the same purchase with `event_name = Purchase` and `event_id =
 
 ## client_reference_id
 
-`client_reference_id` is added to every `buy.stripe.com` click on all 12 live landing pages, once cookie consent is accepted. On each page that includes the Core Payment Link (€37), the exit offer at €33, and the exit offer at €14:
+`assets/sia21-capi.js` appends `client_reference_id` to every anchor whose `href` starts with `https://buy.stripe.com/`, once cookie consent is accepted. `SIA21_decorateStripeLinks` fills the anchors already in the page. A `MutationObserver` fills anchors inserted later. A new Payment Link, including a future A/B test at €27, needs no code change.
+
+That includes:
+
+- all 12 live landing pages below: the Core Payment Link (€37), and the exit offers at €33 and €14 when those links are added
+- the older `angles/` pages that still publish the Core link
+- `/obrigado.html`. That page loads `sia21-purchase.js`, not `sia21-conv.js`. Its post-purchase links are Kit Pro €97 (`https://buy.stripe.com/14A9AVgJz9Wve2zfmCgrS00`) and Kit Lite €47 (`https://buy.stripe.com/dRm00lbpf5Gf1fNb6mgrS01`)
+
+`ghl-agencias` is excluded. The parameter is not added on that path.
+
+Decorating a link does not fire Purchase and does not delay it. Purchase still fires only from `/obrigado.html`, in the pixel `onInit`, on the instant human-gate path.
+
+The 12 live landing pages:
 
 | LP | Path |
 | --- | --- |
@@ -41,7 +53,7 @@ The webhook sends the same purchase with `event_name = Purchase` and `event_id =
 | Visitas | `/angles-v2/10-visitas-ops/` |
 | Sobrecarga | `/angles-v2/sobrecarga/` |
 
-Core is `https://buy.stripe.com/aFa5kF1OFc4D1fNb6mgrS02`. Exit €33 is `https://buy.stripe.com/fZueVf1OFc4D7Eb1vMgrS04`. Exit €14 is `https://buy.stripe.com/6oU3cx3WN0lVbUr0rIgrS05`. Any other `buy.stripe.com` click on these 12 pages is included the same way.
+Core is `https://buy.stripe.com/aFa5kF1OFc4D1fNb6mgrS02`. Exit €33 is `https://buy.stripe.com/fZueVf1OFc4D7Eb1vMgrS04`. Exit €14 is `https://buy.stripe.com/6oU3cx3WN0lVbUr0rIgrS05`. Any other `https://buy.stripe.com/` link on these pages is included the same way, including one added after the page has loaded.
 
 Consent is `localStorage['4i_cookie_consent_v1'] === 'accepted'`, from this visit or an earlier one.
 
@@ -107,4 +119,4 @@ var match = /^c1_(\d+)_(\d+)_(\d+)_(.*)$/.exec(value);
 
 Python `str.split('_', 4)` is a different function: its maxsplit keeps the remainder as the fifth field. That happens to be the right cut. It is not what JavaScript's `split` does.
 
-The click handler reads the current `href`, copies it with `URL`, and sets the parameter with `URLSearchParams`. Query parameters already on the Payment Link stay in place. The href is updated before the double-tap lock records it, so a second tap on that same link is still the same checkout.
+The helper reads the current `href`, copies it with `URL`, and sets the parameter with `URLSearchParams`. Only an href that already starts with `https://buy.stripe.com/` is changed. Query parameters already on the Payment Link stay in place. The allowed checkout click calls the same helper again before the double-tap lock records the href, so a Meta cookie that appears after the first paint is included, and a second tap on that same link is still the same checkout.

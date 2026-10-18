@@ -6,12 +6,7 @@
   <title>Obrigado: Sistema IA do Consultor</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <meta name="description" content="Confirmação de compra do Sistema IA do Consultor: 21 Dias." />
-  <style>
-    .ck{position:fixed;left:0;right:0;bottom:0;z-index:80;box-sizing:border-box;max-height:15dvh;overflow:hidden;padding:6px 8px calc(6px + env(safe-area-inset-bottom))}.ck[hidden]{display:none}
-    .ck-in{max-width:880px;max-height:100%;margin:auto;display:flex;flex-direction:row;align-items:center;gap:8px;background:#0f172a;color:#e2e8f0;border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:8px 10px;box-shadow:0 12px 32px rgba(2,6,23,.35)}
-    .ck-in p{margin:0;flex:1 1 auto;min-width:0;font-size:12px;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.ck-in a{color:#93c5fd;text-decoration:underline}
-    .ck-btns{display:flex;flex-direction:row;gap:6px;flex:0 0 auto}.ck-b{min-width:0;border-radius:10px;padding:8px 10px;font-weight:800;font-size:13px;background:#fff;color:#0f172a;border:1px solid #fff;cursor:pointer}.ck-b:hover{background:#e2e8f0}
-  </style>
+  <link rel="stylesheet" href="assets/sia21-consent.css">
   <!--
     META PURCHASE FLOW (SIA21 thank-you). Human-Gated (MTHD)
     1) Pixel ID 1506988540335331 is NOT loaded until cookie consent key 4i_cookie_consent_v1 === "accepted".
@@ -61,7 +56,8 @@ if(window.SIA21_onHuman){SIA21_onHuman(function(){if(window.SIA21_bootPosthog)SI
           <div class="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-400/15 text-3xl text-emerald-300" aria-hidden="true">✓</div>
           <p class="mb-3 text-sm font-semibold uppercase tracking-[0.2em] text-blue-300">Pagamento confirmado</p>
           <h1 class="text-3xl font-extrabold tracking-tight text-white sm:text-5xl">Obrigado. O teu acesso está a caminho</h1>
-          <p class="mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-slate-300">Verifica o email usado na compra. Vais receber o acesso ao PDF e aos documentos através de uma partilha Google Drive associada ao teu email de comprador.</p>
+          <p class="mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-slate-300">Recebes o PDF por email, normalmente em menos de 30 minutos. Verifica o email usado na compra, incluindo a pasta de spam.</p>
+          <p class="tool-note tool-note-on-dark">Funciona com o ChatGPT grátis ou com o Claude; os planos pagos são opcionais.</p>
         </div>
 
         <div class="grid gap-6 px-6 py-8 sm:px-12 sm:py-10 lg:grid-cols-2">
@@ -70,7 +66,7 @@ if(window.SIA21_onHuman){SIA21_onHuman(function(){if(window.SIA21_bootPosthog)SI
             <ul class="mt-5 space-y-4 text-sm leading-relaxed text-slate-300">
               <li class="flex gap-3"><span class="text-emerald-300">✓</span><span>Procura o email de acesso e confirma a caixa de spam ou promoções.</span></li>
               <li class="flex gap-3"><span class="text-emerald-300">✓</span><span>A partilha dos documentos é feita para o email usado no Stripe Checkout.</span></li>
-              <li class="flex gap-3"><span class="text-emerald-300">✓</span><span>Se não receberes nada dentro de 30 minutos, escreve para <a class="font-semibold text-blue-300 underline decoration-blue-400/50 underline-offset-4" href="mailto:4improvementsportugal@gmail.com">4improvementsportugal@gmail.com</a>.</span></li>
+              <li class="flex gap-3"><span class="text-emerald-300">✓</span><span>Recebes o PDF por email, normalmente em menos de 30 minutos. Se não chegar nesse tempo, escreve para <a class="font-semibold text-blue-300 underline decoration-blue-400/50 underline-offset-4" href="mailto:4improvementsportugal@gmail.com">4improvementsportugal@gmail.com</a>.</span></li>
             </ul>
           </div>
 
@@ -103,7 +99,7 @@ if(window.SIA21_onHuman){SIA21_onHuman(function(){if(window.SIA21_bootPosthog)SI
        que Aceitar permite confirmar a compra nas métricas das campanhas. -->
   <div id="ck" class="ck" role="dialog" aria-live="polite" aria-label="Consentimento de cookies" hidden>
     <div class="ck-in">
-      <p id="ck-copy"><b>Usamos cookies.</b> Necessários para a página. Com autorização, o Meta Pixel mede campanhas. <a href="privacidade.html#cookies">Saber mais</a></p>
+      <p id="ck-copy"><b>Usamos cookies.</b> Os necessários fazem a página funcionar. Com a tua autorização, o Meta Pixel mede as campanhas. <a href="privacidade.html#cookies">Política de Privacidade</a></p>
       <div class="ck-btns"><button type="button" class="ck-b" data-ck="rejected">Rejeitar</button><button type="button" class="ck-b" data-ck="accepted">Aceitar</button></div>
     </div>
   </div>
@@ -160,7 +156,7 @@ if(window.SIA21_onHuman){SIA21_onHuman(function(){if(window.SIA21_bootPosthog)SI
       if (!sessionId()) return;
       var el = document.getElementById("ck-copy");
       if (!el) return;
-      el.innerHTML = "<b>Pagamento confirmado.</b> Para confirmarmos a compra nas métricas das campanhas (Meta Pixel), clica <b>Aceitar</b>. Os cookies necessários já fazem a página funcionar. Podes <b>Rejeitar</b>. O teu acesso por email não depende disto. <a href=\"privacidade.html#cookies\">Saber mais</a>";
+      el.innerHTML = "<b>Pagamento confirmado.</b> Para confirmarmos a compra nas métricas das campanhas (Meta Pixel), clica <b>Aceitar</b>. Os cookies necessários já fazem a página funcionar. Podes <b>Rejeitar</b>. O teu acesso por email não depende disto. <a href=\"privacidade.html#cookies\">Política de Privacidade</a>";
     }
 
     box.addEventListener("click", function(e){ var b = e.target.closest("[data-ck]"); if (b) decide(b.getAttribute("data-ck")); });

@@ -865,6 +865,35 @@ test.describe("tracking", function () {
     expect(hits.some(function (url) { return /[?&]ev=Purchase(?:&|$)/.test(url); })).toBe(false);
   });
 
+  test("two taps 200ms apart fire one InitiateCheckout, one stripe_checkout_click and one navigation", async function ({ page }) {
+    await maskWebdriver(page);
+    const tracked = await watchTracking(page);
+    const navs = [];
+    page.on("request", function (req) {
+      if (/buy\.stripe\.com/i.test(req.url())) navs.push(req.url());
+    });
+    const popups = [];
+    page.on("popup", function (popup) { popups.push(popup); });
+    const hits = await armCheckout(page, PROD + "/index.html");
+    const cta = page.locator("a", { hasText: "Comprar agora" });
+    await cta.click({ noWaitAfter: true });
+    await page.waitForTimeout(200);
+    await cta.click({ noWaitAfter: true });
+    function checkoutClicks() {
+      return tracked.reduce(function (n, hit) {
+        var blob = (hit.body || "") + "\n" + hit.url;
+        return n + (blob.split("stripe_checkout_click").length - 1);
+      }, 0);
+    }
+    await expect.poll(function () { return icUrls(hits).length; }, { timeout: 15000 }).toBe(1);
+    await expect.poll(checkoutClicks, { timeout: 15000 }).toBe(1);
+    await page.waitForTimeout(1400);
+    expect(icUrls(hits)).toHaveLength(1);
+    expect(checkoutClicks()).toBe(1);
+    expect(navs.length + popups.length).toBe(1);
+    expect(page.url()).toContain("/index.html");
+  });
+
   test("InitiateCheckout fires for the sticky bar and the €33 exit offer", async function ({ page }) {
     await maskWebdriver(page);
     const hits = await armCheckout(page, PROD + "/angles-v2/05-angariacao/?sia21_debug=1");
@@ -970,6 +999,215 @@ test.describe("tracking", function () {
     expect(state.fbq).toBe("undefined");
     expect(state.calls).toEqual([]);
     expect(pixel, JSON.stringify(pixel)).toEqual([]);
+  });
+
+  const TRUST_LINE = "Recebes o PDF por email, normalmente em menos de 30 minutos";
+  const TOOLS_LINE = "Funciona com o ChatGPT grátis ou com o Claude; os planos pagos são opcionais.";
+  const PROOF_LINE = "Mais de 1000 compras em ofertas semelhantes da 4Improvements";
+  const VALUE_LINES = [
+    "Cada dia diz-te o que fazer, quanto tempo leva e o que tens no fim.",
+    "Entre 25 e 45 minutos na maioria dos dias. Alguns dias pedem 60.",
+    "80 prompts em português de Portugal para emails, Idealista, WhatsApp, CRM e follow-up. Deixas de escrever do zero.",
+    "7 listas para imprimir: setup, visita, anúncio, angariação, follow-up, semana e compliance.",
+    "Regras claras do que nunca colar na IA. Usas a IA sem pôr dados de clientes em risco.",
+    "Uma rotina para a semana e uma folha para anotares o tempo que poupas. Vês nos teus números.",
+    "PDF de 58 páginas, em português de Portugal. Lês no telemóvel ou imprimes.",
+    TOOLS_LINE
+  ];
+  const EARLY_37 = "https://buy.stripe.com/aFa5kF1OFc4D1fNb6mgrS02";
+  const KIT_LITE = "https://buy.stripe.com/dRm00lbpf5Gf1fNb6mgrS01";
+  const KIT_PRO = "https://buy.stripe.com/14A9AVgJz9Wve2zfmCgrS00";
+
+  function checkoutFiles() {
+    return ["index.html"].concat(anglePages()).filter(function (file) {
+      return fs.readFileSync(file, "utf8").indexOf("aFa5kF1OFc4D1fNb6mgrS02") !== -1;
+    });
+  }
+
+  test("checkout pages keep the trust copy, the struck price and the payment links", function () {
+    const files = checkoutFiles();
+    expect(files.length).toBeGreaterThanOrEqual(21);
+    const missing = [];
+    files.forEach(function (file) {
+      const html = fs.readFileSync(file, "utf8");
+      const need = [EARLY_37, "€37", "line-through", "€47", TRUST_LINE, TOOLS_LINE, PROOF_LINE, "sia21-consent.css", "privacidade", "Política de Privacidade", 'data-ck="accepted"', 'data-ck="rejected"'].concat(VALUE_LINES);
+      need.forEach(function (needle) {
+        if (html.indexOf(needle) === -1) missing.push(file + " missing " + needle);
+      });
+      if (html.indexOf("—") !== -1) missing.push(file + " contains an em dash");
+      if (html.indexOf("Pagamento seguro via Stripe.") !== -1) missing.push(file + " still has the old pay note");
+    });
+    expect(missing, missing.join("\n")).toEqual([]);
+    const obrigado = fs.readFileSync("obrigado.html", "utf8");
+    expect(obrigado).toContain(TRUST_LINE);
+    expect(obrigado).toContain(KIT_LITE);
+    expect(obrigado).toContain(KIT_PRO);
+    expect(obrigado.indexOf("—")).toBe(-1);
+    const termos = fs.readFileSync("termos.html", "utf8");
+    expect(termos).toContain("O prazo máximo de entrega é de 24 horas");
+    expect(termos).toContain(TRUST_LINE);
+    const conv = fs.readFileSync("assets/sia21-conv.js", "utf8");
+    expect(conv).toContain(EARLY_33);
+    expect(conv).toContain(EARLY_14);
+    expect(conv).toContain(PROOF_LINE);
+    expect(conv.indexOf("—")).toBe(-1);
+    const gate = fs.readFileSync("assets/human-gate.js", "utf8");
+    expect(gate).toContain('SIA21_captureWhenHuman("cookie_consent"');
+    expect(gate).toContain("Estás dentro do Facebook ou do Instagram?");
+    expect(gate).toContain("/FBAN|FBAV|Instagram/i");
+  });
+
+  test("Aceitar records cookie_consent and only then loads the pixel", async function ({ page }) {
+    await maskWebdriver(page);
+    const hits = await watchTracking(page);
+    await page.goto(PROD + "/index.html", { waitUntil: "domcontentloaded" });
+    await page.locator("button[data-ck='accepted']").click();
+    const events = await waitFor(hits, function (list) {
+      return list.some(function (event) { return event.event === "cookie_consent"; });
+    }, "missing cookie_consent accepted");
+    const consent = events.filter(function (event) { return event.event === "cookie_consent"; });
+    expect(consent).toHaveLength(1);
+    const pathName = await page.evaluate(function () { return location.pathname; });
+    expect(consent[0].properties.choice).toBe("accepted");
+    expect(consent[0].properties.path).toBe(pathName);
+    expect(consent[0].properties.angle).toBe("home");
+    await waitFor(hits, function () {
+      return hits.some(function (hit) {
+        return /[?&]ev=PageView(?:&|$)/.test(hit.url) && /[?&]id=1506988540335331(?:&|$)/.test(hit.url);
+      });
+    }, "missing PageView after Aceitar");
+  });
+
+  test("Rejeitar records cookie_consent and does not load the pixel", async function ({ page }) {
+    await maskWebdriver(page);
+    const hits = await watchTracking(page);
+    const pixel = [];
+    page.on("request", function (req) {
+      if (/fbevents\.js|facebook\.com\/tr/i.test(req.url())) pixel.push(req.url());
+    });
+    await page.goto(PROD + "/angles-v2/05-angariacao/", { waitUntil: "domcontentloaded" });
+    await page.locator("button[data-ck='rejected']").click();
+    const events = await waitFor(hits, function (list) {
+      return list.some(function (event) { return event.event === "cookie_consent"; });
+    }, "missing cookie_consent rejected");
+    const consent = events.filter(function (event) { return event.event === "cookie_consent"; });
+    expect(consent).toHaveLength(1);
+    const pathName = await page.evaluate(function () { return location.pathname; });
+    expect(consent[0].properties).toMatchObject({
+      choice: "rejected",
+      path: pathName,
+      angle: "05-angariacao"
+    });
+    await page.waitForTimeout(1500);
+    const started = await page.evaluate(function () { return window.__SIA21_MTHD_STARTED === true; });
+    expect(started).toBe(false);
+    expect(pixel, JSON.stringify(pixel)).toEqual([]);
+    expect(hits.some(function (hit) { return /fbevents\.js|facebook\.com\/tr/i.test(hit.url); })).toBe(false);
+  });
+
+  test("ignoring the banner records no cookie_consent", async function ({ page }) {
+    await maskWebdriver(page);
+    const hits = await watchTracking(page);
+    await page.goto(PROD + "/angles-v2/01-tempo/", { waitUntil: "domcontentloaded" });
+    await page.locator("h1").click();
+    await waitFor(hits, function (list) {
+      return list.some(function (event) { return event.event === "$pageview"; });
+    }, "missing pageview after a human click");
+    await page.waitForTimeout(1000);
+    expect(eventsFrom(hits).some(function (event) { return event.event === "cookie_consent"; })).toBe(false);
+  });
+
+  test("cookie buttons match and leave the buy button free", async function ({ page }) {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto(PROD + "/angles-v2/01-tempo/", { waitUntil: "domcontentloaded" });
+    await expect(page.locator("#ck")).toBeVisible();
+    const layout = await page.evaluate(function () {
+      function box(el) {
+        var r = el.getBoundingClientRect();
+        return { top: r.top, left: r.left, right: r.right, bottom: r.bottom, width: r.width, height: r.height };
+      }
+      function overlap(a, b) {
+        if (a.width < 2 || a.height < 2 || b.width < 2 || b.height < 2) return false;
+        return !(a.right <= b.left || a.left >= b.right || a.bottom <= b.top || a.top >= b.bottom);
+      }
+      var rej = document.querySelector("button[data-ck='rejected']");
+      var acc = document.querySelector("button[data-ck='accepted']");
+      var ck = document.getElementById("ck");
+      var hero = document.getElementById("hero-cta");
+      var sticky = document.getElementById("sticky-cta");
+      var rs = getComputedStyle(rej);
+      var as = getComputedStyle(acc);
+      return {
+        rej: box(rej),
+        acc: box(acc),
+        ck: box(ck),
+        heroOverlap: overlap(box(ck), box(hero)),
+        stickyOverlap: overlap(box(ck), box(sticky)),
+        sameBg: rs.backgroundColor === as.backgroundColor,
+        sameColor: rs.color === as.color,
+        sameSize: rs.fontSize === as.fontSize,
+        sameWeight: rs.fontWeight === as.fontWeight,
+        privacy: !!ck.querySelector("a[href*='privacidade']")
+      };
+    });
+    expect(Math.abs(layout.rej.width - layout.acc.width)).toBeLessThanOrEqual(2);
+    expect(Math.abs(layout.rej.height - layout.acc.height)).toBeLessThanOrEqual(2);
+    expect(layout.rej.height).toBeGreaterThanOrEqual(44);
+    expect(layout.sameBg).toBe(true);
+    expect(layout.sameColor).toBe(true);
+    expect(layout.sameSize).toBe(true);
+    expect(layout.sameWeight).toBe(true);
+    expect(layout.privacy).toBe(true);
+    expect(layout.ck.top).toBeLessThan(8);
+    expect(layout.heroOverlap).toBe(false);
+    expect(layout.stickyOverlap).toBe(false);
+    expect(page.locator(".inapp-note")).toHaveCount(0);
+  });
+
+  test("the in-app notice exists only inside Facebook or Instagram", async function ({ page }) {
+    await page.addInitScript(function () {
+      var ua = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/21A329 [FBAN/FBIOS;FBAV/470.0.0.0.0;FBBV/1]";
+      try {
+        Object.defineProperty(Navigator.prototype, "userAgent", { configurable: true, get: function () { return ua; } });
+      } catch (e) {}
+    });
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto(PROD + "/angles-v2/01-tempo/", { waitUntil: "domcontentloaded" });
+    const note = page.locator(".inapp-note").first();
+    await expect(note).toBeVisible();
+    await expect(note).toHaveText("Estás dentro do Facebook ou do Instagram? Se o pagamento não abrir, toca nos três pontos em cima e escolhe «Abrir no browser».");
+    const place = await page.evaluate(function () {
+      var hero = document.getElementById("hero-cta");
+      var heroBox = hero.getBoundingClientRect();
+      var node = hero;
+      var after = null;
+      var guard = 0;
+      while (node && guard < 6) {
+        node = node.nextElementSibling;
+        guard += 1;
+        if (node && node.classList && node.classList.contains("inapp-note")) {
+          after = node;
+          break;
+        }
+      }
+      var afterBox = after ? after.getBoundingClientRect() : null;
+      var notes = Array.prototype.slice.call(document.querySelectorAll(".inapp-note"));
+      var sticky = document.getElementById("sticky-cta").getBoundingClientRect();
+      return {
+        belowHero: !!(afterBox && afterBox.top >= heroBox.bottom - 2),
+        coversSticky: notes.some(function (el) {
+          var r = el.getBoundingClientRect();
+          if (r.width < 2 || sticky.width < 2) return false;
+          return !(r.right <= sticky.left || r.left >= sticky.right || r.bottom <= sticky.top || r.top >= sticky.bottom);
+        }),
+        headerHas: !!document.querySelector("header .inapp-note"),
+        fixed: notes.some(function (el) { return getComputedStyle(el).position === "fixed"; })
+      };
+    });
+    expect(place.belowHero).toBe(true);
+    expect(place.coversSticky).toBe(false);
+    expect(place.headerHas).toBe(false);
+    expect(place.fixed).toBe(false);
   });
 });
 

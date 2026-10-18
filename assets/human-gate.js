@@ -38,13 +38,23 @@
  * ignore target=_blank and cancel the pixel image request if the document
  * unloads in the same turn. The replayed click is marked
  * __SIA21_STRIPE_LEAVING so InitiateCheckout and stripe_checkout_click do
- * not fire a second time.
+ * not fire a second time. A second tap on that same Payment Link during
+ * the wait is not a new checkout: the first valid click locks that link
+ * for 3s, or until its one navigation is issued, whichever comes first.
+ * Further taps on it are ignored, so the intent fires one InitiateCheckout,
+ * one stripe_checkout_click, and opens Stripe once. A different Payment
+ * Link, such as the €33 exit, can still record its own checkout.
  *
  * window.SIA21_onHuman(cb) runs cb now if the visitor is already human,
  * otherwise queues it. window.SIA21_armTracking() turns PostHog pageview,
  * autocapture and session recording on at that moment.
  * window.SIA21_captureWhenHuman(name, props) queues custom PostHog events
  * and drops them on pagehide if no human signal arrived.
+ *
+ * A click on the cookie banner (Aceitar or Rejeitar) is a human signal.
+ * It records PostHog cookie_consent with choice, path and angle before the
+ * queue can be dropped. Leaving the banner untouched records nothing.
+ * The Meta Pixel still starts only after Aceitar. Reject does not load it.
  *
  * PostHog and the Meta Pixel only start on the production host over HTTPS
  * with no explicit port other than 443: 4improvementsportugal-ops.github.io.
@@ -546,6 +556,33 @@
 
   var IC_MIN_MS = 300;
   var IC_CAP_MS = 1200;
+  var CHECKOUT_LOCK_MS = 3000;
+
+  function checkoutLocked() {
+    return typeof w.__SIA21_CHECKOUT_LOCK_UNTIL === "number" && Date.now() < w.__SIA21_CHECKOUT_LOCK_UNTIL;
+  }
+
+  function lockCheckout(anchor) {
+    w.__SIA21_CHECKOUT_LOCK_UNTIL = Date.now() + CHECKOUT_LOCK_MS;
+    w.__SIA21_CHECKOUT_LOCK_HREF = (anchor && anchor.getAttribute && anchor.getAttribute("href")) || "";
+  }
+
+  function unlockCheckout() {
+    w.__SIA21_CHECKOUT_LOCK_UNTIL = 0;
+    w.__SIA21_CHECKOUT_LOCK_HREF = "";
+  }
+
+  function sameLockedCheckout(anchor) {
+    var href = (anchor && anchor.getAttribute && anchor.getAttribute("href")) || "";
+    var locked = w.__SIA21_CHECKOUT_LOCK_HREF || "";
+    return !!href && href === locked;
+  }
+
+  function swallowCheckout(e) {
+    e.preventDefault();
+    try { e.stopPropagation(); } catch (err) {}
+    try { e.stopImmediatePropagation(); } catch (err2) {}
+  }
 
   function pixelTransportReady() {
     return !!(w.fbq && typeof w.fbq.callMethod === "function");
@@ -564,6 +601,9 @@
     w.__SIA21_STRIPE_LEAVING = false;
     w.__SIA21_STRIPE_LEAVE_PENDING = false;
     w.__SIA21_IC_ARMED = false;
+    // Navigation for this intent has been issued. A later offer (the €33
+    // exit, for example) may start its own checkout.
+    unlockCheckout();
   }
 
   function scheduleStripeLeave(anchor) {
@@ -590,6 +630,10 @@
     // The delayed anchor.click() must follow the link. Other listeners
     // see __SIA21_STRIPE_LEAVING and skip a second InitiateCheckout.
     if (w.__SIA21_STRIPE_LEAVING) return;
+    if ((w.__SIA21_STRIPE_LEAVE_PENDING || checkoutLocked()) && sameLockedCheckout(anchor)) {
+      swallowCheckout(e);
+      return;
+    }
     if (w.__SIA21_STRIPE_LEAVE_PENDING) {
       e.preventDefault();
       return;
@@ -599,6 +643,7 @@
       w.__SIA21_CHECKOUT_OK = true;
       w.__SIA21_STRIPE_CLICKED_HERE = true;
       w.__SIA21_STRIPE_LEAVE_PENDING = true;
+      lockCheckout(anchor);
       try { w.sessionStorage.setItem("sia21_stripe_left_at_v1", String(Date.now())); } catch (err) {}
       try { w.sessionStorage.removeItem("sia21_stripe_away_v1"); } catch (err4) {}
       e.preventDefault();
@@ -611,6 +656,73 @@
 
   w.addEventListener("click", onStripeClick, true);
   w.addEventListener("auxclick", onStripeClick, true);
+
+  var ANGLE_SLUGS = [
+    "01-tempo", "02-rgpd", "03-idealista", "04-whatsapp", "05-angariacao",
+    "06-chatgpt-falhou", "sobrecarga", "07-metodo-21-dias", "08-solo-escala",
+    "09-early-37", "10-visitas-ops"
+  ];
+
+  function pageAngle() {
+    var path = "";
+    try { path = w.location.pathname || ""; } catch (e) { path = ""; }
+    for (var i = 0; i < ANGLE_SLUGS.length; i++) {
+      if (path.indexOf("/" + ANGLE_SLUGS[i]) !== -1) return ANGLE_SLUGS[i];
+    }
+    if (path.indexOf("obrigado") !== -1) return "obrigado";
+    return "home";
+  }
+
+  function onCookieChoice(e) {
+    var node = e.target && e.target.closest ? e.target.closest("[data-ck]") : null;
+    if (!node) return;
+    var choice = node.getAttribute("data-ck");
+    if (choice !== "accepted" && choice !== "rejected") return;
+    markHuman();
+    w.SIA21_captureWhenHuman("cookie_consent", {
+      choice: choice,
+      path: (w.location && w.location.pathname) || "",
+      angle: pageAngle()
+    });
+  }
+
+  var INAPP_COPY = "Estás dentro do Facebook ou do Instagram? Se o pagamento não abrir, toca nos três pontos em cima e escolhe «Abrir no browser».";
+
+  function inAppBrowser() {
+    return /FBAN|FBAV|Instagram/i.test(userAgent());
+  }
+
+  function noticeAnchor(anchor) {
+    var node = anchor;
+    var guard = 0;
+    while (node && guard < 4) {
+      var next = node.nextElementSibling;
+      if (!next || !next.classList) return node;
+      if (next.classList.contains("pay-note") || next.classList.contains("tool-note") || next.classList.contains("inapp-note")) {
+        node = next;
+      } else break;
+      guard += 1;
+    }
+    return node;
+  }
+
+  function mountInAppNotice() {
+    if (!inAppBrowser() || !d.body) return;
+    var links = d.querySelectorAll('a[href*="buy.stripe.com"]');
+    for (var i = 0; i < links.length; i++) {
+      var anchor = links[i];
+      if (!anchor || (anchor.closest && anchor.closest("header"))) continue;
+      var host = noticeAnchor(anchor);
+      if (host.classList && host.classList.contains("inapp-note")) continue;
+      var note = d.createElement("p");
+      note.className = "inapp-note";
+      var section = anchor.closest ? anchor.closest("section, #sia21-exit") : null;
+      var cls = section ? String(section.className || "") : "";
+      if (/checkout-gradient|bg-slate-9|bg-\[#0f172a\]|\bhero\b/.test(cls)) note.className += " inapp-note-on-dark";
+      note.textContent = INAPP_COPY;
+      if (host.parentNode) host.parentNode.insertBefore(note, host.nextSibling);
+    }
+  }
 
   function bindEngagement() {
     w.addEventListener("scroll", onScroll, true);
@@ -638,8 +750,17 @@
     w.addEventListener("resize", syncCookieOffset);
   }
 
-  if (d.readyState === "loading") d.addEventListener("DOMContentLoaded", watchCookieBar);
-  else watchCookieBar();
+  function bootChrome() {
+    watchCookieBar();
+    mountInAppNotice();
+    if (inAppBrowser() && d.body && w.MutationObserver && !w.__SIA21_INAPP_OBS) {
+      w.__SIA21_INAPP_OBS = true;
+      new MutationObserver(function () { mountInAppNotice(); }).observe(d.body, { childList: true, subtree: true });
+    }
+  }
+
+  if (d.readyState === "loading") d.addEventListener("DOMContentLoaded", bootChrome);
+  else bootChrome();
 
   // Scroll depth does not use PostHog's scroll manager. That manager listens
   // to window scroll only, and on several mobile webviews scrollY stays 0.
@@ -960,6 +1081,8 @@
   }
 
   bindScrollTracking();
+
+  d.addEventListener("click", onCookieChoice, true);
 
   if (pathMatchesInstant(w.location.pathname)) {
     markHuman();

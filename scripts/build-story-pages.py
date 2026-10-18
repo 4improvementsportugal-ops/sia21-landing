@@ -816,7 +816,6 @@ def render(page):
   <div class="mobile-cta">
     <p class="sticky-price"><b>€37</b><s class="line-through">€47</s></p>
     <a id="sticky-cta" href="{stripe}" target="_blank" rel="noopener">Quero o sistema</a>
-    {pay_light}
   </div>
 </div>
 <div id="ck" class="ck" role="dialog" aria-live="polite" aria-label="Consentimento de cookies" hidden>

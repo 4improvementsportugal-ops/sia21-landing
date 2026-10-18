@@ -323,6 +323,70 @@ test.describe("checkout contrast", function () {
     expect(changed, changed.join("\n")).toEqual([]);
   });
 
+  test("mobile sticky bar and cookie banner stay compact at 390x844", async function ({ page }) {
+    test.setTimeout(180000);
+    const pages = landingPages().filter(function (rel) {
+      const file = fileForLanding(rel);
+      return fs.existsSync(file) && fs.readFileSync(file, "utf8").indexOf("mobile-cta") !== -1;
+    });
+    const problems = [];
+    for (var i = 0; i < pages.length; i++) {
+      var rel = pages[i];
+      await page.setViewportSize({ width: 390, height: 844 });
+      await page.goto(PROD + "/" + rel, { waitUntil: "domcontentloaded" });
+      await page.waitForSelector("#ck:not([hidden])");
+      var metrics = await page.evaluate(function () {
+        function box(el) {
+          if (!el) return null;
+          var r = el.getBoundingClientRect();
+          return { top: r.top, bottom: r.bottom, height: r.height, width: r.width };
+        }
+        var sticky = document.querySelector(".mobile-cta");
+        var ck = document.getElementById("ck");
+        var mail = document.querySelector('a[href^="mailto:"]');
+        var mailStyle = mail ? getComputedStyle(mail) : null;
+        var bg = mailStyle ? mailStyle.backgroundColor : "";
+        var transparent = !bg || bg === "transparent" || /rgba?\(\s*0\s*,\s*0\s*,\s*0\s*,\s*0\s*\)/.test(bg);
+        var hero = document.getElementById("hero-cta");
+        var h1 = document.querySelector("h1");
+        var header = document.querySelector(".offer-page > header") || document.querySelector("header.sticky");
+        var stickyBox = box(sticky);
+        var heroBox = box(hero);
+        var h1Box = box(h1);
+        return {
+          vh: window.innerHeight,
+          stickyH: stickyBox ? stickyBox.height : 0,
+          hasSticky: !!sticky,
+          ckH: box(ck).height,
+          ckTop: box(ck).top,
+          headerH: header ? box(header).height : 0,
+          mailPill: !!(mailStyle && (
+            mailStyle.display === "flex" ||
+            mailStyle.display === "inline-flex" ||
+            parseFloat(mailStyle.minHeight) > 32 ||
+            parseFloat(mailStyle.borderTopLeftRadius) >= 8 ||
+            !transparent
+          )),
+          heroBottom: heroBox ? heroBox.bottom : null,
+          h1Top: h1Box ? h1Box.top : null,
+          h1Bottom: h1Box ? h1Box.bottom : null
+        };
+      });
+      if (!metrics.hasSticky) continue;
+      if (metrics.stickyH > 80) problems.push(rel + " sticky " + Math.round(metrics.stickyH) + "px");
+      if (metrics.ckH > metrics.vh * 0.3) problems.push(rel + " cookie " + Math.round(metrics.ckH) + "px");
+      if (metrics.ckTop >= 8) problems.push(rel + " cookie not at the top");
+      if (metrics.headerH > 52) problems.push(rel + " header " + Math.round(metrics.headerH) + "px");
+      if (metrics.mailPill) problems.push(rel + " email link is a pill");
+      if (metrics.heroBottom != null) {
+        var limit = metrics.vh - metrics.stickyH + 1;
+        if (metrics.h1Top < 0 || metrics.h1Bottom > limit) problems.push(rel + " h1 outside the fold");
+        if (metrics.heroBottom > limit) problems.push(rel + " hero cta below the fold " + Math.round(metrics.heroBottom) + ">" + Math.round(limit));
+      }
+    }
+    expect(problems, problems.join("\n")).toEqual([]);
+  });
+
   test("storytelling pages keep the angle and add format=storytelling", function () {
     const bad = [];
     STORY_FILES.forEach(function (file) {

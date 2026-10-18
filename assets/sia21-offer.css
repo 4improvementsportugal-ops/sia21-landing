@@ -79,9 +79,9 @@ body {
 }
 
 .offer-page .pay-note {
-  margin: 0.75rem 0 0;
-  max-width: 22rem;
-  color: #64748b;
+  margin: 0.75rem auto 0;
+  max-width: 36rem;
+  color: #475569;
   font-size: 0.8125rem;
   font-weight: 600;
   line-height: 1.45;
@@ -98,7 +98,8 @@ body {
 @media (max-width: 640px) {
   .offer-page .mobile-cta {
     display: flex !important;
-    bottom: var(--ck-offset, 0px) !important;
+    flex-wrap: wrap;
+    bottom: 0 !important;
   }
 
   .offer-page main > section:first-of-type {
@@ -184,7 +185,17 @@ body {
     line-height: 1.05 !important;
   }
 
+  /* Dark bands run edge to edge. The beige page background must not
+     show as a gap on either side. The copy stays in a centered column. */
   .offer-page main > section:not(:first-of-type) {
+    width: 100%;
+    max-width: none;
+    margin-left: 0;
+    margin-right: 0;
+  }
+
+  .offer-page main > section:not(:first-of-type) > * {
+    width: min(880px, 100%);
     max-width: 880px;
     margin-left: auto;
     margin-right: auto;

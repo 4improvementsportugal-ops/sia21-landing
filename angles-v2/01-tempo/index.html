@@ -55,7 +55,7 @@ if(window.SIA21_onHuman){SIA21_onHuman(function(){if(window.SIA21_bootPosthog)SI
   }
 </style>
 
-<link rel="stylesheet" href="../../assets/sia21-core.css">
+<link rel="stylesheet" href="../../assets/sia21-core.css"><link rel="stylesheet" href="../../assets/sia21-consent.css">
 <link rel="stylesheet" href="../../assets/sia21-offer.css">
 </head>
 <body>
@@ -81,6 +81,20 @@ if(window.SIA21_onHuman){SIA21_onHuman(function(){if(window.SIA21_bootPosthog)SI
         Plano D1–D21, 80 prompts pt-PT e 7 checklists. PDF com acesso imediato por email após o pagamento.
       </p>
       
+      <section class="receive" aria-labelledby="receive-title">
+<p class="receive-kicker">O que recebes</p>
+<h2 id="receive-title">O valor de cada parte</h2>
+<ul class="receive-list">
+<li><b>Plano D1 a D21.</b> Cada dia diz-te o que fazer, quanto tempo leva e o que tens no fim.</li>
+<li><b>Tempo por dia.</b> Entre 25 e 45 minutos na maioria dos dias. Alguns dias pedem 60.</li>
+<li><b>80 prompts.</b> 80 prompts em português de Portugal para emails, Idealista, WhatsApp, CRM e follow-up. Deixas de escrever do zero.</li>
+<li><b>7 checklists.</b> 7 listas para imprimir: setup, visita, anúncio, angariação, follow-up, semana e compliance.</li>
+<li><b>Regras de segurança.</b> Regras claras do que nunca colar na IA. Usas a IA sem pôr dados de clientes em risco.</li>
+<li><b>Rotina semanal e folha de horas.</b> Uma rotina para a semana e uma folha para anotares o tempo que poupas. Vês nos teus números.</li>
+<li><b>PDF.</b> PDF de 58 páginas, em português de Portugal. Lês no telemóvel ou imprimes.</li>
+<li><b>Ferramentas.</b> Funciona com o ChatGPT grátis ou com o Claude; os planos pagos são opcionais.</li>
+</ul>
+</section>
       <div class="flex flex-col items-center w-full mb-4">
         <p class="flex items-baseline gap-2 mb-1">
           <b class="text-[#0f172a] text-[1.75rem] font-[800] leading-none tracking-tight">€37</b>
@@ -91,7 +105,7 @@ if(window.SIA21_onHuman){SIA21_onHuman(function(){if(window.SIA21_bootPosthog)SI
         <a id="hero-cta" href="https://buy.stripe.com/aFa5kF1OFc4D1fNb6mgrS02" target="_blank" rel="noopener" class="inline-flex items-center justify-center min-h-[52px] w-full px-5 py-3 rounded-full bg-[#1d4ed8] text-white text-[1.0625rem] font-[800] text-center hover:bg-[#1e40af] active:bg-[#1e3a8a] transition-colors shadow-lg">
           Entrar por €37
         </a>
-        <p class="pay-note">Pagamento seguro via Stripe.</p>
+        <p class="pay-note"><span aria-hidden="true">🔒</span> Pagamento seguro na Stripe. Recebes o PDF por email, normalmente em menos de 30 minutos. Dúvidas? <a href="mailto:4improvementsportugal@gmail.com">4improvementsportugal@gmail.com</a></p><p class="tool-note">Funciona com o ChatGPT grátis ou com o Claude; os planos pagos são opcionais.</p>
       </div>
       
       <p class="text-[#1e293b] text-[0.875rem] font-[600] flex items-center gap-2 bg-white px-3 py-2 rounded-lg border border-[#e2e8f0]">
@@ -176,7 +190,7 @@ if(window.SIA21_onHuman){SIA21_onHuman(function(){if(window.SIA21_bootPosthog)SI
         <a id="close-cta" href="https://buy.stripe.com/aFa5kF1OFc4D1fNb6mgrS02" target="_blank" rel="noopener" class="inline-flex items-center justify-center min-h-[52px] w-full px-5 py-3 rounded-full bg-[#1d4ed8] text-white text-[1.0625rem] font-[800] text-center hover:bg-[#1e40af] active:bg-[#1e3a8a] transition-colors shadow-[0_24px_48px_-20px_rgba(15,23,42,0.35)]">
           Entrar por €37
         </a>
-        <p class="pay-note pay-note-on-dark">Pagamento seguro via Stripe.</p>
+        <p class="pay-note pay-note-on-dark"><span aria-hidden="true">🔒</span> Pagamento seguro na Stripe. Recebes o PDF por email, normalmente em menos de 30 minutos. Dúvidas? <a href="mailto:4improvementsportugal@gmail.com">4improvementsportugal@gmail.com</a></p><p class="tool-note tool-note-on-dark">Funciona com o ChatGPT grátis ou com o Claude; os planos pagos são opcionais.</p>
       </div>
     </section>
       <footer class="legal-foot" aria-label="Informação legal">
@@ -195,11 +209,11 @@ if(window.SIA21_onHuman){SIA21_onHuman(function(){if(window.SIA21_bootPosthog)SI
     </div>
     <a id="sticky-cta" href="https://buy.stripe.com/aFa5kF1OFc4D1fNb6mgrS02" target="_blank" rel="noopener" class="flex-1 inline-flex items-center justify-center min-h-[52px] px-5 py-3 rounded-full bg-[#1d4ed8] text-white text-[1rem] font-[800] text-center hover:bg-[#1e40af] active:bg-[#1e3a8a] transition-colors">
       Entrar por €37
-    </a>
+    </a><p class="pay-note"><span aria-hidden="true">🔒</span> Pagamento seguro na Stripe. Recebes o PDF por email, normalmente em menos de 30 minutos. Dúvidas? <a href="mailto:4improvementsportugal@gmail.com">4improvementsportugal@gmail.com</a></p><p class="tool-note">Funciona com o ChatGPT grátis ou com o Claude; os planos pagos são opcionais.</p>
   </div>
 </div>
 
-<div id="ck" class="ck" role="dialog" aria-live="polite" aria-label="Consentimento de cookies" hidden><div class="ck-in"><p><b>Usamos cookies.</b> Necessários para a página. Com autorização, o Meta Pixel mede campanhas. <a href="../../privacidade.html#cookies">Saber mais</a></p><div class="ck-btns"><button type="button" class="ck-b" data-ck="rejected">Rejeitar</button><button type="button" class="ck-b" data-ck="accepted">Aceitar</button></div></div></div>
+<div id="ck" class="ck" role="dialog" aria-live="polite" aria-label="Consentimento de cookies" hidden><div class="ck-in"><p><b>Usamos cookies.</b> Os necessários fazem a página funcionar. Com a tua autorização, o Meta Pixel mede as campanhas. <a href="../../privacidade.html#cookies">Política de Privacidade</a></p><div class="ck-btns"><button type="button" class="ck-b" data-ck="rejected">Rejeitar</button><button type="button" class="ck-b" data-ck="accepted">Aceitar</button></div></div></div>
 <script src="../../assets/mthd-pixel.js"></script>
 <script src="../../assets/sia21-conv.js"></script>
 <script>(function(){

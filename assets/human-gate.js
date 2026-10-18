@@ -46,6 +46,11 @@
  * window.SIA21_captureWhenHuman(name, props) queues custom PostHog events
  * and drops them on pagehide if no human signal arrived.
  *
+ * A click on the cookie banner (Aceitar or Rejeitar) is a human signal.
+ * It records PostHog cookie_consent with choice, path and angle before the
+ * queue can be dropped. Leaving the banner untouched records nothing.
+ * The Meta Pixel still starts only after Aceitar. Reject does not load it.
+ *
  * PostHog and the Meta Pixel only start on the production host over HTTPS
  * with no explicit port other than 443: 4improvementsportugal-ops.github.io.
  * localhost, 127.0.0.1, ::1, 0.0.0.0, any other port (including a preview on
@@ -612,6 +617,73 @@
   w.addEventListener("click", onStripeClick, true);
   w.addEventListener("auxclick", onStripeClick, true);
 
+  var ANGLE_SLUGS = [
+    "01-tempo", "02-rgpd", "03-idealista", "04-whatsapp", "05-angariacao",
+    "06-chatgpt-falhou", "sobrecarga", "07-metodo-21-dias", "08-solo-escala",
+    "09-early-37", "10-visitas-ops"
+  ];
+
+  function pageAngle() {
+    var path = "";
+    try { path = w.location.pathname || ""; } catch (e) { path = ""; }
+    for (var i = 0; i < ANGLE_SLUGS.length; i++) {
+      if (path.indexOf("/" + ANGLE_SLUGS[i]) !== -1) return ANGLE_SLUGS[i];
+    }
+    if (path.indexOf("obrigado") !== -1) return "obrigado";
+    return "home";
+  }
+
+  function onCookieChoice(e) {
+    var node = e.target && e.target.closest ? e.target.closest("[data-ck]") : null;
+    if (!node) return;
+    var choice = node.getAttribute("data-ck");
+    if (choice !== "accepted" && choice !== "rejected") return;
+    markHuman();
+    w.SIA21_captureWhenHuman("cookie_consent", {
+      choice: choice,
+      path: (w.location && w.location.pathname) || "",
+      angle: pageAngle()
+    });
+  }
+
+  var INAPP_COPY = "Estás dentro do Facebook ou do Instagram? Se o pagamento não abrir, toca nos três pontos em cima e escolhe «Abrir no browser».";
+
+  function inAppBrowser() {
+    return /FBAN|FBAV|Instagram/i.test(userAgent());
+  }
+
+  function noticeAnchor(anchor) {
+    var node = anchor;
+    var guard = 0;
+    while (node && guard < 4) {
+      var next = node.nextElementSibling;
+      if (!next || !next.classList) return node;
+      if (next.classList.contains("pay-note") || next.classList.contains("tool-note") || next.classList.contains("inapp-note")) {
+        node = next;
+      } else break;
+      guard += 1;
+    }
+    return node;
+  }
+
+  function mountInAppNotice() {
+    if (!inAppBrowser() || !d.body) return;
+    var links = d.querySelectorAll('a[href*="buy.stripe.com"]');
+    for (var i = 0; i < links.length; i++) {
+      var anchor = links[i];
+      if (!anchor || (anchor.closest && anchor.closest("header"))) continue;
+      var host = noticeAnchor(anchor);
+      if (host.classList && host.classList.contains("inapp-note")) continue;
+      var note = d.createElement("p");
+      note.className = "inapp-note";
+      var section = anchor.closest ? anchor.closest("section, #sia21-exit") : null;
+      var cls = section ? String(section.className || "") : "";
+      if (/checkout-gradient|bg-slate-9|bg-\[#0f172a\]|\bhero\b/.test(cls)) note.className += " inapp-note-on-dark";
+      note.textContent = INAPP_COPY;
+      if (host.parentNode) host.parentNode.insertBefore(note, host.nextSibling);
+    }
+  }
+
   function bindEngagement() {
     w.addEventListener("scroll", onScroll, true);
     w.addEventListener("mousemove", onMove, true);
@@ -638,8 +710,17 @@
     w.addEventListener("resize", syncCookieOffset);
   }
 
-  if (d.readyState === "loading") d.addEventListener("DOMContentLoaded", watchCookieBar);
-  else watchCookieBar();
+  function bootChrome() {
+    watchCookieBar();
+    mountInAppNotice();
+    if (inAppBrowser() && d.body && w.MutationObserver && !w.__SIA21_INAPP_OBS) {
+      w.__SIA21_INAPP_OBS = true;
+      new MutationObserver(function () { mountInAppNotice(); }).observe(d.body, { childList: true, subtree: true });
+    }
+  }
+
+  if (d.readyState === "loading") d.addEventListener("DOMContentLoaded", bootChrome);
+  else bootChrome();
 
   // Scroll depth does not use PostHog's scroll manager. That manager listens
   // to window scroll only, and on several mobile webviews scrollY stays 0.
@@ -960,6 +1041,8 @@
   }
 
   bindScrollTracking();
+
+  d.addEventListener("click", onCookieChoice, true);
 
   if (pathMatchesInstant(w.location.pathname)) {
     markHuman();

@@ -77,7 +77,7 @@
 
   var RETORNO_LEAD = "Retorno esperado:";
   var RETORNO_BODY = " Em ~21 dias ficas operacional com IA para criar anúncios (Idealista e restantes) mais rápido, com processo repetível.";
-  var PROOF_LINE = "Já confiam em nós mais de 1.000 consultores imobiliários.";
+  var PROOF_LINE = "Mais de 1000 compras em ofertas semelhantes da 4Improvements";
 
   var STEP_KEY = "sia21_exit_step_v2";
   var DISMISS_KEY = "sia21_exit_33_dismissed_v1";
@@ -354,25 +354,12 @@
     }
   }
 
-  // Illustrative FOMO pool, not real buyers. Portuguese first names and
-  // cities/zones below are fictional combinations for this toast only.
-  var PROOF_NAMES = ["Ana", "João", "Miguel", "Sofia", "Rita", "Pedro", "Inês", "Tiago", "Mariana", "André", "Beatriz", "Diogo", "Catarina", "Rui", "Leonor", "Francisco", "Marta", "Gonçalo", "Sara", "Nuno", "Helena", "Bruno"];
-  var PROOF_CITIES = ["Lisboa", "Porto", "Braga", "Coimbra", "Faro", "Setúbal", "Cascais", "Aveiro", "Guimarães", "Leiria", "Viseu", "Évora", "Funchal", "Almada", "Oeiras", "Matosinhos", "Vila Nova de Gaia", "Sintra"];
-  var lastProof = "";
-
   function rand(min, max) {
     return Math.floor(min + Math.random() * (max - min + 1));
   }
 
   function nextProof() {
-    var line = "";
-    var guard = 0;
-    do {
-      line = PROOF_NAMES[rand(0, PROOF_NAMES.length - 1)] + " de " + PROOF_CITIES[rand(0, PROOF_CITIES.length - 1)] + " comprou agora";
-      guard += 1;
-    } while (line === lastProof && guard < 5);
-    lastProof = line;
-    return line;
+    return PROOF_LINE;
   }
 
   function toastOffset() {
@@ -385,8 +372,10 @@
         if (w.getComputedStyle(el).display === "none") shown = false;
       } catch (e) {}
       if (!shown) return;
-      var top = el.getBoundingClientRect().top;
-      if (top < floor) floor = top;
+      var rect;
+      try { rect = el.getBoundingClientRect(); } catch (err) { return; }
+      if (!rect || rect.bottom < w.innerHeight * 0.55) return;
+      if (rect.top < floor) floor = rect.top;
     }
     consider(d.getElementById("ck"));
     consider(d.querySelector(".mobile-cta"));
@@ -446,7 +435,7 @@
 
   function placeProof() {
     if (d.getElementById("sia21-proof")) return;
-    if ((d.body.textContent || "").indexOf("mais de 1.000 consultores") !== -1) return;
+    if ((d.body.textContent || "").indexOf("Mais de 1000 compras") !== -1) return;
     var el = d.createElement("p");
     el.id = "sia21-proof";
     el.className = "sia21-proof";
@@ -741,7 +730,7 @@
       stopTimer();
       timerNum.textContent = "00:00";
       title.textContent = "O tempo da última oferta acabou";
-      copy.textContent = "Já confiam em nós mais de 1.000 consultores imobiliários. A oferta de €14 terminou. Volta ao pagamento do Early Bird a €37.";
+      copy.textContent = "Mais de 1000 compras em ofertas semelhantes da 4Improvements. A oferta de €14 terminou. Volta ao pagamento do Early Bird a €37.";
       var deal = actions.querySelector(".sia21-exit-primary");
       if (deal && deal.tagName === "A") {
         deal.href = payLink(37);
@@ -841,7 +830,7 @@
       }
       kicker.textContent = "Última oferta";
       title.textContent = "Volta ao pagamento agora";
-      copy.textContent = "Já confiam em nós mais de 1.000 consultores imobiliários. Última oferta: volta ao Payment Link agora. Early Bird €37 passa a €14.";
+      copy.textContent = "Mais de 1000 compras em ofertas semelhantes da 4Improvements. Última oferta: volta ao Payment Link agora. Early Bird €37 passa a €14.";
       actions.appendChild(makeLink(payLink(14), "early-14", "Volta ao pagamento a €14"));
       actions.appendChild(makeSecondary("Sair na mesma", function () {
         var back = fromBack;

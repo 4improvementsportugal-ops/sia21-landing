@@ -19,9 +19,11 @@
  * sessionStorage key sia21_purchase_fired_<sid>), so a reload, the back
  * button, or a second webview does not fire again.
  *
- * A visit with no session id, a fake id, or a test id (cs_test_) sends
- * no Purchase. PageView on the thank-you page is separate and can still
- * fire for a real visitor.
+ * A visit with no session id, a fake id, or a test id (cs_test_, or any
+ * obvious test token such as TEST, FAKE, DUMMY, SAMPLE) sends no Purchase.
+ * SIA21_allowCapture() also refuses every Meta and PostHog event for those
+ * ids. PageView on the thank-you page is separate and can still fire for a
+ * real visitor with a real cs_live_ id or with no session id.
  *
  * There is no PostHog "purchase" event. Anything that sends one later
  * has to go through SIA21_firePurchaseOnce so it shares this flag.
@@ -44,8 +46,17 @@
     return (w.location.pathname || "").indexOf("obrigado") !== -1;
   }
 
+  function obviousTestId(value) {
+    if (typeof w.SIA21_obviousTestId === "function") return w.SIA21_obviousTestId(value);
+    var raw = String(value || "");
+    return /^cs_test_/i.test(raw) || /test|fake|dummy|sample|example|placeholder|headless|xxx/i.test(raw);
+  }
+
   function isLiveSession(value) {
-    return /^cs_live_[A-Za-z0-9]+$/.test(String(value || "").trim());
+    var raw = String(value || "").trim();
+    if (!/^cs_live_[A-Za-z0-9]+$/.test(raw)) return false;
+    if (obviousTestId(raw)) return false;
+    return true;
   }
 
   function sessionId() {

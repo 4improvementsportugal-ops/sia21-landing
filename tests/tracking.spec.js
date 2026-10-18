@@ -7,35 +7,16 @@ const LOCAL = "http://127.0.0.1:4173";
 const PREVIEW = "http://4improvementsportugal-ops.github.io:4173";
 const TRACKING = /posthog\.com|facebook\.net|facebook\.com/i;
 const FBE_SHIM = fs.readFileSync(path.join(__dirname, "fbevents-shim.js"), "utf8");
+const PH_STUB = fs.readFileSync(path.join(__dirname, "posthog-stub.js"), "utf8");
 const LIVE_SESSION = "cs_live_a8Kd2mQ9pL4sT7vX1nR6bY3c";
 const OTHER_SESSION = "cs_live_b7Nm3pQ2rL8sT4vY6wZ1cD5e";
 
-const assetCache = new Map();
-
 function isPosthogAsset(url) {
-  try {
-    var host = new URL(url).hostname;
-    return /(^|\.)([a-z0-9-]+-)?assets\.i\.posthog\.com$/i.test(host) || /-assets\.i\.posthog\.com$/i.test(host);
-  } catch (e) {
-    return false;
-  }
+  return /posthog\.com\/.+\.js(?:\?|$)/i.test(url) || /-assets\.i\.posthog\.com/i.test(url);
 }
 
 function isFacebookScript(url) {
   return /fbevents\.js/i.test(url);
-}
-
-async function posthogAsset(url) {
-  const key = url;
-  if (assetCache.has(key)) return assetCache.get(key);
-  const res = await fetch(key);
-  const payload = {
-    status: res.status,
-    type: res.headers.get("content-type") || "application/javascript",
-    body: Buffer.from(await res.arrayBuffer())
-  };
-  assetCache.set(key, payload);
-  return payload;
 }
 
 async function fulfillTracking(route) {
@@ -46,8 +27,7 @@ async function fulfillTracking(route) {
       return;
     }
     if (isPosthogAsset(url)) {
-      const asset = await posthogAsset(url);
-      await route.fulfill({ status: asset.status, contentType: asset.type, body: asset.body });
+      await route.fulfill({ status: 200, contentType: "application/javascript", body: PH_STUB });
       return;
     }
     await route.fulfill({ status: 200, contentType: "application/json", body: "{}" });

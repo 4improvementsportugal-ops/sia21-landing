@@ -10,9 +10,9 @@ module.exports = defineConfig({
     headless: true,
     launchOptions: {
       // The production hostname on :4173 still reaches the local server.
-      // Facebook and PostHog ingestion resolve nowhere, so a missed route
-      // cannot deliver a pixel or a capture. The SDK host eu-assets is left
-      // alone; specs fulfill every ingestion URL.
+      // Facebook, PostHog ingestion, and the PostHog SDK host resolve nowhere,
+      // so a missed route cannot deliver a pixel, a capture, or array.js.
+      // Specs fulfill those URLs with local stubs.
       args: [
         "--host-resolver-rules=" + [
           "MAP 4improvementsportugal-ops.github.io 127.0.0.1",
@@ -23,7 +23,11 @@ module.exports = defineConfig({
           "MAP www.facebook.net 0.0.0.0",
           "MAP eu.i.posthog.com 0.0.0.0",
           "MAP us.i.posthog.com 0.0.0.0",
-          "MAP app.posthog.com 0.0.0.0"
+          "MAP eu-assets.i.posthog.com 0.0.0.0",
+          "MAP us-assets.i.posthog.com 0.0.0.0",
+          "MAP app.posthog.com 0.0.0.0",
+          "MAP eu.posthog.com 0.0.0.0",
+          "MAP us.posthog.com 0.0.0.0"
         ].join(", ")
       ]
     }

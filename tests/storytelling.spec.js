@@ -2,13 +2,49 @@ const fs = require("fs");
 const path = require("path");
 const { test, expect } = require("@playwright/test");
 
-const PROD = "http://4improvementsportugal-ops.github.io:4173";
+const PROD = "https://4improvementsportugal-ops.github.io";
+const LOCAL = "http://127.0.0.1:4173";
+const PREVIEW = "http://4improvementsportugal-ops.github.io:4173";
 const PAGE = "/v3/storytelling/";
 const STRIPE_37 = "https://buy.stripe.com/aFa5kF1OFc4D1fNb6mgrS02";
 const EARLY_33 = "https://buy.stripe.com/fZueVf1OFc4D7Eb1vMgrS04";
 const EARLY_14 = "https://buy.stripe.com/6oU3cx3WN0lVbUr0rIgrS05";
 const TRACKING = /posthog\.com|facebook\.net|facebook\.com/i;
+const FBE_SHIM = fs.readFileSync(path.join(__dirname, "fbevents-shim.js"), "utf8");
+const PH_STUB = fs.readFileSync(path.join(__dirname, "posthog-stub.js"), "utf8");
 const H1 = "Pedes tudo à IA do zero? Vê o teu dia antes e depois de teres prompts prontos.";
+
+function isPosthogAsset(url) {
+  return /posthog\.com\/.+\.js(?:\?|$)/i.test(url) || /-assets\.i\.posthog\.com/i.test(url);
+}
+
+async function fulfillTracking(route) {
+  const url = route.request().url();
+  if (/fbevents\.js/i.test(url)) {
+    await route.fulfill({ status: 200, contentType: "application/javascript", body: FBE_SHIM });
+    return;
+  }
+  if (isPosthogAsset(url)) {
+    await route.fulfill({ status: 200, contentType: "application/javascript", body: PH_STUB });
+    return;
+  }
+  await route.fulfill({ status: 200, contentType: "application/json", body: "{}" });
+}
+
+async function proxyProd(route) {
+  const url = new URL(route.request().url());
+  const res = await fetch(LOCAL + url.pathname + url.search);
+  const body = Buffer.from(await res.arrayBuffer());
+  const headers = {};
+  const type = res.headers.get("content-type");
+  if (type) headers["content-type"] = type;
+  await route.fulfill({ status: res.status, headers: headers, body: body });
+}
+
+async function installHarness(page) {
+  await page.route(PROD + "/**", proxyProd);
+  await page.route(TRACKING, function (route) { return fulfillTracking(route); });
+}
 
 function collectEvents(raw) {
   if (!raw) return [];
@@ -52,13 +88,7 @@ async function watchTracking(page) {
   await page.route(TRACKING, async function (route) {
     const req = route.request();
     hits.push({ url: req.url(), method: req.method(), body: req.postData() || "" });
-    const url = req.url();
-    const eventCall = req.method() !== "GET" || /facebook\.com\/tr\b/i.test(url) || /\/e\/?(?:\?|$)/.test(url);
-    if (eventCall) {
-      await route.fulfill({ status: 200, contentType: "text/plain", body: "" });
-      return;
-    }
-    await route.continue();
+    await fulfillTracking(route);
   });
   return hits;
 }
@@ -91,8 +121,43 @@ async function maskWebdriver(page) {
     try {
       Object.defineProperty(navigator, "webdriver", { configurable: true, get: function () { return false; } });
     } catch (e2) {}
+    try {
+      var proto = Navigator.prototype;
+      var desc = Object.getOwnPropertyDescriptor(proto, "userAgentData");
+      if (!desc || !desc.get) return;
+      var read = desc.get;
+      function current() {
+        try { return read.call(navigator); } catch (err) { return null; }
+      }
+      function clean(data) {
+        var brands = (data.brands || []).map(function (item) {
+          if (item && /headless/i.test(String(item.brand || ""))) return { brand: "Google Chrome", version: item.version };
+          return item;
+        });
+        return {
+          brands: brands,
+          mobile: data.mobile,
+          platform: data.platform,
+          toJSON: function () { return { brands: brands, mobile: data.mobile, platform: data.platform }; },
+          getHighEntropyValues: function () {
+            return Promise.resolve({ brands: brands, mobile: data.mobile, platform: data.platform });
+          }
+        };
+      }
+      Object.defineProperty(proto, "userAgentData", {
+        configurable: true,
+        get: function () {
+          var data = current();
+          return data ? clean(data) : data;
+        }
+      });
+    } catch (e3) {}
   });
 }
+
+test.beforeEach(async function ({ page }) {
+  await installHarness(page);
+});
 
 test.describe("storytelling preview", function () {
   test("copy stays inside the approved lines and is not linked from live pages", function () {
@@ -144,6 +209,31 @@ test.describe("storytelling preview", function () {
     expect(hits, JSON.stringify(hits.map(function (hit) { return hit.url; }))).toEqual([]);
   });
 
+  test("the :4173 preview stays silent even after a human signal", async function ({ page }) {
+    await maskWebdriver(page);
+    await page.addInitScript(function () {
+      try { localStorage.setItem("4i_cookie_consent_v1", "accepted"); } catch (e) {}
+    });
+    const hits = await watchTracking(page);
+    await page.goto(PREVIEW + PAGE, { waitUntil: "domcontentloaded" });
+    await page.mouse.wheel(0, 900);
+    await page.mouse.move(40, 180);
+    await page.mouse.move(70, 220);
+    await page.mouse.move(100, 260);
+    await page.mouse.move(130, 300);
+    await page.waitForTimeout(1200);
+    const flags = await page.evaluate(function () {
+      return {
+        allow: window.SIA21_allowCapture(),
+        host: window.SIA21_isProductionHost(),
+        port: location.port,
+        protocol: location.protocol
+      };
+    });
+    expect(flags).toEqual({ allow: false, host: false, port: "4173", protocol: "http:" });
+    expect(hits, JSON.stringify(hits.map(function (hit) { return hit.url; }))).toEqual([]);
+  });
+
   test("scroll depth and checkout identify the storytelling variant", async function ({ page }) {
     await maskWebdriver(page);
     await page.addInitScript(function () {
@@ -192,9 +282,11 @@ test.describe("storytelling preview", function () {
     }, { timeout: 15000 }).toBe(true);
     const view = hits.filter(function (hit) { return /[?&]ev=ViewContent(?:&|$)/.test(hit.url); })[0];
     expect(view.url).toContain("v3-storytelling");
-    expect(view.url).toMatch(/(?:cd\[value\]|value)=37/);
+    expect(decodeURIComponent(view.url)).toMatch(/(?:cd\[value\]|value)=37/);
     await expect.poll(function () {
-      return hits.some(function (hit) { return /[?&]ev=InitiateCheckout(?:&|$)/.test(hit.url) && /(?:cd\[value\]|value)=37/.test(hit.url); });
+      return hits.some(function (hit) {
+        return /[?&]ev=InitiateCheckout(?:&|$)/.test(hit.url) && /(?:cd\[value\]|value)=37/.test(decodeURIComponent(hit.url));
+      });
     }, { timeout: 15000 }).toBe(true);
   });
 

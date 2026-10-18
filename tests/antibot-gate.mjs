@@ -29,6 +29,7 @@ const PORT = 9921;
 const LOCAL = `http://127.0.0.1:${PORT}`;
 const ORIGIN = "https://4improvementsportugal-ops.github.io";
 const FBE_SHIM = fs.readFileSync(path.join(root, "tests", "fbevents-shim.js"), "utf8");
+const PH_STUB = fs.readFileSync(path.join(root, "tests", "posthog-stub.js"), "utf8");
 const TRACKING = /posthog\.com|facebook\.net|facebook\.com/i;
 const BLOCKED_HOSTS = [
   "MAP 4improvementsportugal-ops.github.io 0.0.0.0",
@@ -39,7 +40,11 @@ const BLOCKED_HOSTS = [
   "MAP www.facebook.net 0.0.0.0",
   "MAP eu.i.posthog.com 0.0.0.0",
   "MAP us.i.posthog.com 0.0.0.0",
-  "MAP app.posthog.com 0.0.0.0"
+  "MAP eu-assets.i.posthog.com 0.0.0.0",
+  "MAP us-assets.i.posthog.com 0.0.0.0",
+  "MAP app.posthog.com 0.0.0.0",
+  "MAP eu.posthog.com 0.0.0.0",
+  "MAP us.posthog.com 0.0.0.0"
 ].join(", ");
 const HUMAN_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36";
 
@@ -102,28 +107,8 @@ async function waitUntil(fn, ms) {
   return false;
 }
 
-const assetCache = new Map();
-
 function isPosthogAsset(url) {
-  try {
-    const host = new URL(url).hostname;
-    return /-assets\.i\.posthog\.com$/i.test(host);
-  } catch (e) {
-    return false;
-  }
-}
-
-async function posthogAsset(url) {
-  const key = url;
-  if (assetCache.has(key)) return assetCache.get(key);
-  const res = await fetch(key);
-  const payload = {
-    status: res.status,
-    type: res.headers.get("content-type") || "application/javascript",
-    body: Buffer.from(await res.arrayBuffer())
-  };
-  assetCache.set(key, payload);
-  return payload;
+  return /posthog\.com\/.+\.js(?:\?|$)/i.test(url) || /-assets\.i\.posthog\.com/i.test(url);
 }
 
 async function fulfillTracking(route) {
@@ -134,8 +119,7 @@ async function fulfillTracking(route) {
       return;
     }
     if (isPosthogAsset(url)) {
-      const asset = await posthogAsset(url);
-      await route.fulfill({ status: asset.status, contentType: asset.type, body: asset.body });
+      await route.fulfill({ status: 200, contentType: "application/javascript", body: PH_STUB });
       return;
     }
     await route.fulfill({ status: 200, contentType: "application/json", body: "{}" });

@@ -12,8 +12,10 @@
  *
  *   c1_<fbpTs>_<fbpRand>_<fbcTs>_<fbclid>
  *
- * The server splits with split("_", 4): four cuts, so the fbclid keeps
- * its own underscores. Only [A-Za-z0-9_-]. A bad fbclid is dropped, never
+ * Five parts. The fbclid is the whole remainder after the 4th underscore,
+ * rejoined, because it may contain underscores. JavaScript
+ * String.split("_", 4) truncates and must not be used. See
+ * docs/CAPI-CONTRACT.md. Only [A-Za-z0-9_-]. A bad fbclid is dropped, never
  * edited. A value longer than 200 characters drops the fbc and keeps the
  * fbp. The fbclid is never truncated.
  *

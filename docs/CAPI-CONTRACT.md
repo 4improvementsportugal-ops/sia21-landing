@@ -4,7 +4,7 @@ The landing page and the Stripe webhook dedupe the same purchase and share the M
 
 ## Purchase
 
-On the root thank-you page (`obrigado.html`, also requested as `/obrigado`), `SIA21_firePurchaseOnce` in `assets/sia21-purchase.js` is the only `fbq('track', 'Purchase')`.
+Purchase fires only from `/obrigado.html`. `SIA21_firePurchaseOnce` in `assets/sia21-purchase.js` is the only `fbq('track', 'Purchase')`. It does not fire on the landing pages, and it does not fire on `ghl-agencias`.
 
 ```js
 fbq('track', 'Purchase', {
@@ -22,11 +22,28 @@ If `session_id` is missing, or it is not a live id (`cs_test_`, or any other non
 
 The webhook sends the same purchase with `event_name = Purchase` and `event_id = session.id` (the Checkout Session id, `cs_live_...`). The browser `eventID` and the webhook `event_id` are that same id.
 
-This does not apply to `ghl-agencias`.
-
 ## client_reference_id
 
-When a visitor clicks a `buy.stripe.com` link (home, `angles/`, `angles-v2/` including sobrecarga, the €33 and €14 exit offers, and the other Payment Links on those pages) and cookie consent is already accepted, the link gains `client_reference_id`. Consent is `localStorage['4i_cookie_consent_v1'] === 'accepted'`, from this visit or an earlier one.
+`client_reference_id` is added to every `buy.stripe.com` click on all 12 live landing pages, once cookie consent is accepted. On each page that includes the Core Payment Link (€37), the exit offer at €33, and the exit offer at €14:
+
+| LP | Path |
+| --- | --- |
+| Home | `/` (`index.html`) |
+| Tempo | `/angles-v2/01-tempo/` |
+| RGPD | `/angles-v2/02-rgpd/` |
+| Idealista | `/angles-v2/03-idealista/` |
+| WhatsApp | `/angles-v2/04-whatsapp/` |
+| Angariação | `/angles-v2/05-angariacao/` |
+| ChatGPT | `/angles/06-chatgpt-falhou/` |
+| Método 21 dias | `/angles-v2/07-metodo-21-dias/` |
+| Solo | `/angles-v2/08-solo-escala/` |
+| Early €37 | `/angles-v2/09-early-37/` |
+| Visitas | `/angles-v2/10-visitas-ops/` |
+| Sobrecarga | `/angles-v2/sobrecarga/` |
+
+Core is `https://buy.stripe.com/aFa5kF1OFc4D1fNb6mgrS02`. Exit €33 is `https://buy.stripe.com/fZueVf1OFc4D7Eb1vMgrS04`. Exit €14 is `https://buy.stripe.com/6oU3cx3WN0lVbUr0rIgrS05`. Any other `buy.stripe.com` click on these 12 pages is included the same way.
+
+Consent is `localStorage['4i_cookie_consent_v1'] === 'accepted'`, from this visit or an earlier one.
 
 If consent is missing or rejected, the parameter is not added.
 
@@ -51,15 +68,7 @@ If the full value is longer than 200 characters, the fbc is dropped and the fbp 
 
 ### Parsing
 
-Python `value.split('_', 4)` makes four cuts and five fields. The `fbclid` is the remainder, so underscores inside it stay intact. The JavaScript equivalent is `value.split('_', 5)`.
-
-```text
-c1_1711111111111_2222222222_1700000000000_abc_D-1
-  → ['c1', '1711111111111', '2222222222', '1700000000000', 'abc_D-1']
-
-c1_1711111111111_2222222222_0_
-  → ['c1', '1711111111111', '2222222222', '0', '']
-```
+The value has 5 parts. The first four are fixed. The fbclid is the whole remainder after the 4th underscore. If that fbclid contains underscores, they stay inside it. Rejoin every field from index 4 onward. Do not treat those underscores as more fields.
 
 | Index | Field |
 | --- | --- |
@@ -67,6 +76,35 @@ c1_1711111111111_2222222222_0_
 | 1 | `_fbp` creation time, or `0` |
 | 2 | `_fbp` random, or `0` |
 | 3 | `_fbc` creation time, or `0` |
-| 4 | `fbclid`, or `''` |
+| 4+ | `fbclid`, or empty. The whole remainder, rejoined with `_`. |
+
+Do not use JavaScript `String.split('_', 4)`. That limit truncates the array to 4 elements and discards the rest. It does not keep the remainder. `String.split('_', 5)` truncates the same way as soon as the fbclid itself contains an underscore.
+
+```js
+'c1_1711111111111_2222222222_1700000000000_abc_D-1'.split('_', 4)
+// ['c1', '1711111111111', '2222222222', '1700000000000']
+// the fbclid 'abc_D-1' is gone
+```
+
+Split with no limit and rejoin from index 4, or match the remainder with a regex:
+
+```js
+var parts = value.split('_');
+var fbpTs = parts[1];
+var fbpRand = parts[2];
+var fbcTs = parts[3];
+var fbclid = parts.slice(4).join('_'); // remainder after the 4th underscore
+```
+
+```js
+var match = /^c1_(\d+)_(\d+)_(\d+)_(.*)$/.exec(value);
+// match[1] fbpTs, match[2] fbpRand, match[3] fbcTs, match[4] fbclid
+```
+
+`c1_1711111111111_2222222222_1700000000000_abc_D-1` parses as fbpTs `1711111111111`, fbpRand `2222222222`, fbcTs `1700000000000`, fbclid `abc_D-1`.
+
+`c1_1711111111111_2222222222_0_` parses as fbpTs `1711111111111`, fbpRand `2222222222`, fbcTs `0`, fbclid `''`.
+
+Python `str.split('_', 4)` is a different function: its maxsplit keeps the remainder as the fifth field. That happens to be the right cut. It is not what JavaScript's `split` does.
 
 The click handler reads the current `href`, copies it with `URL`, and sets the parameter with `URLSearchParams`. Query parameters already on the Payment Link stay in place. The href is updated before the double-tap lock records it, so a second tap on that same link is still the same checkout.

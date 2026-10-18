@@ -29,6 +29,17 @@
  * and InitiateCheckout listeners sit after this one, so a blocked click
  * does not emit them.
  *
+ * An allowed click is itself a human signal: this handler calls markHuman()
+ * before those listeners run, so InitiateCheckout can fire on that click
+ * even when the gate was still closed. The default navigation is held and
+ * replayed with anchor.click() after the pixel has callMethod and about
+ * 300ms have passed (capped around 1.2s), or on the next turn when no
+ * InitiateCheckout was armed. Facebook and Instagram Android webviews often
+ * ignore target=_blank and cancel the pixel image request if the document
+ * unloads in the same turn. The replayed click is marked
+ * __SIA21_STRIPE_LEAVING so InitiateCheckout and stripe_checkout_click do
+ * not fire a second time.
+ *
  * window.SIA21_onHuman(cb) runs cb now if the visitor is already human,
  * otherwise queues it. window.SIA21_armTracking() turns PostHog pageview,
  * autocapture and session recording on at that moment.
@@ -493,16 +504,66 @@
     if (!isAutomated()) checkoutArmed = true;
   }
 
+  var IC_MIN_MS = 300;
+  var IC_CAP_MS = 1200;
+
+  function pixelTransportReady() {
+    return !!(w.fbq && typeof w.fbq.callMethod === "function");
+  }
+
+  function leaveForStripe(anchor) {
+    if (w.__SIA21_STRIPE_LEAVING) return;
+    w.__SIA21_STRIPE_LEAVING = true;
+    try {
+      anchor.click();
+    } catch (err) {
+      try { w.location.href = anchor.href; } catch (err2) {}
+    }
+    // The synthetic click has finished dispatching. A later real click
+    // (exit offer, sticky bar, upsell) can arm InitiateCheckout again.
+    w.__SIA21_STRIPE_LEAVING = false;
+    w.__SIA21_STRIPE_LEAVE_PENDING = false;
+    w.__SIA21_IC_ARMED = false;
+  }
+
+  function scheduleStripeLeave(anchor) {
+    var started = Date.now();
+    function tick() {
+      var waited = Date.now() - started;
+      if (w.__SIA21_IC_ARMED !== true) {
+        leaveForStripe(anchor);
+        return;
+      }
+      if ((pixelTransportReady() && waited >= IC_MIN_MS) || waited >= IC_CAP_MS) {
+        leaveForStripe(anchor);
+        return;
+      }
+      w.setTimeout(tick, 50);
+    }
+    w.setTimeout(tick, 0);
+  }
+
   function onStripeClick(e) {
     var anchor = stripeAnchor(e);
     if (!anchor) return;
     if (e.type === "auxclick" && e.button !== 1) return;
+    // The delayed anchor.click() must follow the link. Other listeners
+    // see __SIA21_STRIPE_LEAVING and skip a second InitiateCheckout.
+    if (w.__SIA21_STRIPE_LEAVING) return;
+    if (w.__SIA21_STRIPE_LEAVE_PENDING) {
+      e.preventDefault();
+      return;
+    }
     if (checkoutAllowed()) {
       checkoutArmed = false;
       w.__SIA21_CHECKOUT_OK = true;
       w.__SIA21_STRIPE_CLICKED_HERE = true;
+      w.__SIA21_STRIPE_LEAVE_PENDING = true;
       try { w.sessionStorage.setItem("sia21_stripe_left_at_v1", String(Date.now())); } catch (err) {}
       try { w.sessionStorage.removeItem("sia21_stripe_away_v1"); } catch (err4) {}
+      e.preventDefault();
+      if (!fired) markHuman();
+      scheduleStripeLeave(anchor);
       return;
     }
     holdCheckout(e, anchor);

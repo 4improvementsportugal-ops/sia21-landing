@@ -7,9 +7,24 @@
  * paths such as /sia21-landing/obrigado.html (indexOf !== -1).
  * Purchase on thank-you pages stays in onInit and does not wait for PageView.
  * This file must not call fbq("track", "Purchase"). That call lives only in
- * assets/sia21-purchase.js.
+ * assets/sia21-purchase.js. The fbq stub drops every other Purchase
+ * (track, trackCustom, trackSingle, trackSingleCustom) unless
+ * window.__SIA21_PURCHASE_ALLOW is true, which only firePurchaseOnce sets.
  * SIA21_trackingSuppressed() (human-gate.js) blocks fbevents.js and every fbq
  * call for QA flags, stored sia21_qa, webdriver, and automated user agents.
+ *
+ * Before the fbevents.js tag is inserted, and again immediately before
+ * fbq("init"), this file queues:
+ *   fbq("set", "autoConfig", false, pixelId)
+ *   fbq("set", "autoConfig", false)
+ *   fbq("set", "smartSetup", false, pixelId)
+ *   fbq("set", "smartSetup", false)
+ * The call with a pixel id only opts that pixel out of the AutomaticSetup
+ * group. The call without an id is what sets disableAutoConfig. The inferred
+ * button-click listener (SubscribedButtonClick, which Meta can record as
+ * Purchase for text such as "Comprar agora") returns immediately when that
+ * flag is set. The pixel config later opts InferredEvents back in; the
+ * global flag still stops the listener.
  */
 (function (w, d) {
   "use strict";
@@ -23,25 +38,70 @@
     return false;
   }
 
+  function isPurchaseCommand(args) {
+    var cmd = String(args && args[0] || "");
+    if (cmd === "track" || cmd === "trackCustom") return args[1] === "Purchase";
+    if (cmd === "trackSingle" || cmd === "trackSingleCustom") return args[2] === "Purchase";
+    return false;
+  }
+
+  function purchaseBlocked(args) {
+    return isPurchaseCommand(args) && w.__SIA21_PURCHASE_ALLOW !== true;
+  }
+
+  function lockAutomatic(pixelId) {
+    if (typeof w.fbq !== "function") return;
+    var id = String(pixelId || DEFAULT_PIXEL_ID);
+    try { w.fbq("set", "autoConfig", false, id); } catch (e) {}
+    try { w.fbq("set", "autoConfig", false); } catch (e2) {}
+    try { w.fbq("set", "smartSetup", false, id); } catch (e3) {}
+    try { w.fbq("set", "smartSetup", false); } catch (e4) {}
+  }
+
   function ensureFbqStub() {
     if (trackingBlocked()) return;
-    if (w.fbq) return;
-    !(function (f, b, e, v, n, t, s) {
-      if (f.fbq) return;
-      n = f.fbq = function () {
-        n.callMethod ? n.callMethod.apply(n, arguments) : n.queue.push(arguments);
-      };
-      if (!f._fbq) f._fbq = n;
-      n.push = n;
-      n.loaded = !0;
-      n.version = "2.0";
-      n.queue = [];
-      t = b.createElement(e);
-      t.async = !0;
-      t.src = v;
-      s = b.getElementsByTagName(e)[0];
-      s.parentNode.insertBefore(t, s);
-    })(w, d, "script", "https://connect.facebook.net/en_US/fbevents.js");
+    if (w.fbq) {
+      lockAutomatic(DEFAULT_PIXEL_ID);
+      return;
+    }
+    var n = function () {
+      if (purchaseBlocked(arguments)) return;
+      if (n.callMethod) n.callMethod.apply(n, arguments);
+      else n.queue.push(arguments);
+    };
+    w.fbq = n;
+    if (!w._fbq) w._fbq = n;
+    n.push = n;
+    n.loaded = true;
+    n.version = "2.0";
+    n.queue = [];
+    var rawCall = null;
+    try {
+      Object.defineProperty(n, "callMethod", {
+        configurable: true,
+        enumerable: true,
+        get: function () { return rawCall; },
+        set: function (fn) {
+          if (typeof fn !== "function") {
+            rawCall = fn;
+            return;
+          }
+          rawCall = function () {
+            if (purchaseBlocked(arguments)) return;
+            return fn.apply(this, arguments);
+          };
+        }
+      });
+    } catch (e) {}
+    // Queue the kill switch before the tag exists so it is ahead of init
+    // when fbevents drains fbq.queue.
+    lockAutomatic(DEFAULT_PIXEL_ID);
+    var t = d.createElement("script");
+    t.async = true;
+    t.src = "https://connect.facebook.net/en_US/fbevents.js";
+    var s = d.getElementsByTagName("script")[0];
+    if (s && s.parentNode) s.parentNode.insertBefore(t, s);
+    else (d.head || d.documentElement).appendChild(t);
   }
 
   function pathMatchesInstant(pathname, instantPaths) {
@@ -89,7 +149,7 @@
     if (trackingBlocked() || typeof w.fbq !== "function") return;
 
     try { w.fbq("consent", "grant"); } catch (e) {}
-    try { w.fbq("set", "autoConfig", false, pixelId); } catch (e) {}
+    lockAutomatic(pixelId);
     w.fbq("init", pixelId);
 
     w.__SIA21_MTHD_ONINIT_DONE = true;

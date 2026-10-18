@@ -22,7 +22,9 @@
        INSTANT_PATH (/obrigado.html, /obrigado, /ghl-agencias/obrigado.html).
        Upsell InitiateCheckout and stripe_checkout_click follow the Stripe
        gate: a prior engagement signal, 1.5s on the page, and webdriver false.
-       The instant path does not bypass that. PageView for a real visitor stays immediate.
+       The instant path does not bypass that. An allowed click still waits
+       until the pixel request is out (human-gate.js, about 300ms) before
+       the link is followed. PageView for a real visitor stays immediate.
        SIA21_trackingSuppressed() still blocks the pixel entirely (no fbevents.js, no fbq).
     4) Purchase fires only for a live Stripe session id (starts with cs_live_),
        when tracking is not suppressed, and only once per session id.
@@ -163,6 +165,7 @@ if(window.SIA21_onHuman){SIA21_onHuman(function(){if(window.SIA21_bootPosthog)SI
 
     box.addEventListener("click", function(e){ var b = e.target.closest("[data-ck]"); if (b) decide(b.getAttribute("data-ck")); });
     document.addEventListener("click", function(e){
+      if (window.__SIA21_STRIPE_LEAVING) return;
       if (e.target.closest("[data-ck-open]")) { e.preventDefault(); show(); return; }
       var a = e.target.closest('a[href*="buy.stripe.com"]');
       if (!a) return;
@@ -173,6 +176,7 @@ if(window.SIA21_onHuman){SIA21_onHuman(function(){if(window.SIA21_bootPosthog)SI
       }
       if (window.__SIA21_MTHD_STARTED && window.__SIA21_HUMAN && window.fbq && !(typeof window.SIA21_trackingSuppressed === "function" && window.SIA21_trackingSuppressed())) {
         fbq('track','InitiateCheckout',{value:label,currency:'EUR',content_name:'Upsell obrigado SIA21'});
+        window.__SIA21_IC_ARMED = true;
       }
     });
 

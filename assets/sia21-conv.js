@@ -44,8 +44,12 @@
  * window.__SIA21_HUMAN and dropped on pagehide if that signal never comes.
  * Exit popups stay closed until SIA21_mayShowExit() (scroll, mouse movement
  * or visible dwell already happened, and navigator.webdriver is false).
- * A click is not enough. stripe_checkout_click and InitiateCheckout fire
- * only when human-gate.js let this click through to buy.stripe.com.
+ * stripe_checkout_click and InitiateCheckout fire only when human-gate.js
+ * let this click through to buy.stripe.com. The allowed click opens the
+ * human gate itself, so InitiateCheckout does not wait for an earlier
+ * signal. The same handler sets window.__SIA21_IC_ARMED so the gate can
+ * hold navigation until the pixel request is queued. A replayed click
+ * (window.__SIA21_STRIPE_LEAVING) is ignored.
  */
 (function (w, d) {
   "use strict";
@@ -215,10 +219,12 @@
   }
 
   function onCheckoutClick(e) {
+    if (w.__SIA21_STRIPE_LEAVING) return;
     var anchor = e.target && e.target.closest ? e.target.closest('a[href*="buy.stripe.com"]') : null;
     if (!anchor) return;
     if (w.__SIA21_CHECKOUT_OK !== true) return;
     capturePh("stripe_checkout_click", { angle: angleSlug(), price: stripePrice(anchor) });
+    // human-gate.js calls markHuman() on this same click before we run.
     if (!w.__SIA21_HUMAN || !pixelReady() || isThankYou()) return;
     var value = checkoutValue(anchor);
     var payload = {
@@ -230,7 +236,8 @@
     };
     remember("InitiateCheckout", payload);
     if (trackingBlocked() || typeof w.fbq !== "function") return;
-    try { w.fbq("track", "InitiateCheckout", payload); } catch (err) {}
+    try { w.fbq("track", "InitiateCheckout", payload); } catch (err) { return; }
+    w.__SIA21_IC_ARMED = true;
   }
 
   function wrapPixel() {

@@ -5,24 +5,42 @@
  *
  * Playwright's Chromium is a bot: Meta withholds facebook.com/tr while
  * navigator.webdriver is true, and PostHog drops capture when _is_bot() is
- * true. The idle case uses that default browser and also a hidden tab with
- * the PostHog bot filter turned off, so a pageview that escaped the gate
- * would still show up. The scroll, thank-you, and dwell cases turn the bot
- * filter off and clear webdriver so the requests are observable.
+ * true (including a HeadlessChrome client hint). The idle case uses that
+ * default browser and also a hidden tab with the PostHog bot filter turned
+ * off, so a pageview that escaped the gate would still show up. The scroll,
+ * thank-you, and dwell cases clear webdriver and the HeadlessChrome brand
+ * so the requests are observable. Every facebook and PostHog request is
+ * fulfilled locally. Ingestion hosts resolve to 0.0.0.0, so a missed route
+ * still cannot reach Meta or PostHog.
  */
 import { spawn } from "node:child_process";
 import { createRequire } from "node:module";
 import { once } from "node:events";
 import zlib from "node:zlib";
+import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-const require = createRequire("/tmp/node_modules/playwright/package.json");
+const require = createRequire(path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../package.json"));
 const { chromium } = require("playwright");
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const PORT = 9921;
-const ORIGIN = `http://127.0.0.1:${PORT}`;
+const LOCAL = `http://127.0.0.1:${PORT}`;
+const ORIGIN = "https://4improvementsportugal-ops.github.io";
+const FBE_SHIM = fs.readFileSync(path.join(root, "tests", "fbevents-shim.js"), "utf8");
+const TRACKING = /posthog\.com|facebook\.net|facebook\.com/i;
+const BLOCKED_HOSTS = [
+  "MAP 4improvementsportugal-ops.github.io 0.0.0.0",
+  "MAP facebook.com 0.0.0.0",
+  "MAP www.facebook.com 0.0.0.0",
+  "MAP connect.facebook.net 0.0.0.0",
+  "MAP facebook.net 0.0.0.0",
+  "MAP www.facebook.net 0.0.0.0",
+  "MAP eu.i.posthog.com 0.0.0.0",
+  "MAP us.i.posthog.com 0.0.0.0",
+  "MAP app.posthog.com 0.0.0.0"
+].join(", ");
 const HUMAN_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36";
 
 function sleep(ms) {
@@ -84,6 +102,61 @@ async function waitUntil(fn, ms) {
   return false;
 }
 
+const assetCache = new Map();
+
+function isPosthogAsset(url) {
+  try {
+    const host = new URL(url).hostname;
+    return /-assets\.i\.posthog\.com$/i.test(host);
+  } catch (e) {
+    return false;
+  }
+}
+
+async function posthogAsset(url) {
+  const key = url;
+  if (assetCache.has(key)) return assetCache.get(key);
+  const res = await fetch(key);
+  const payload = {
+    status: res.status,
+    type: res.headers.get("content-type") || "application/javascript",
+    body: Buffer.from(await res.arrayBuffer())
+  };
+  assetCache.set(key, payload);
+  return payload;
+}
+
+async function fulfillTracking(route) {
+  const url = route.request().url();
+  try {
+    if (/fbevents\.js/i.test(url)) {
+      await route.fulfill({ status: 200, contentType: "application/javascript", body: FBE_SHIM });
+      return;
+    }
+    if (isPosthogAsset(url)) {
+      const asset = await posthogAsset(url);
+      await route.fulfill({ status: asset.status, contentType: asset.type, body: asset.body });
+      return;
+    }
+    await route.fulfill({ status: 200, contentType: "application/json", body: "{}" });
+  } catch (e) {
+    try { await route.fulfill({ status: 200, contentType: "application/json", body: "{}" }); } catch (e2) {}
+  }
+}
+
+async function installRoutes(context) {
+  await context.route(ORIGIN + "/**", async (route) => {
+    const url = new URL(route.request().url());
+    const res = await fetch(LOCAL + url.pathname + url.search);
+    const body = Buffer.from(await res.arrayBuffer());
+    const headers = {};
+    const type = res.headers.get("content-type");
+    if (type) headers["content-type"] = type;
+    await route.fulfill({ status: res.status, headers, body });
+  });
+  await context.route(TRACKING, (route) => fulfillTracking(route));
+}
+
 async function arm(context, mode) {
   await context.addInitScript((mode) => {
     try { localStorage.setItem("4i_cookie_consent_v1", "accepted"); } catch (e) {}
@@ -94,6 +167,34 @@ async function arm(context, mode) {
           get: () => false
         });
       } catch (e) {}
+      try {
+        var proto = Navigator.prototype;
+        var desc = Object.getOwnPropertyDescriptor(proto, "userAgentData");
+        if (desc && desc.get) {
+          var read = desc.get;
+          Object.defineProperty(proto, "userAgentData", {
+            configurable: true,
+            get: function () {
+              var data;
+              try { data = read.call(navigator); } catch (err) { return undefined; }
+              if (!data) return data;
+              var brands = (data.brands || []).map(function (item) {
+                if (item && /headless/i.test(String(item.brand || ""))) return { brand: "Google Chrome", version: item.version };
+                return item;
+              });
+              return {
+                brands: brands,
+                mobile: data.mobile,
+                platform: data.platform,
+                toJSON: function () { return { brands: brands, mobile: data.mobile, platform: data.platform }; },
+                getHighEntropyValues: function () {
+                  return Promise.resolve({ brands: brands, mobile: data.mobile, platform: data.platform });
+                }
+              };
+            }
+          });
+        }
+      } catch (e2) {}
     }
     if (mode === "hidden") {
       try {
@@ -128,7 +229,16 @@ async function main() {
     stdio: "ignore"
   });
   await sleep(300);
-  const browser = await chromium.launch({ headless: true });
+  const browser = await chromium.launch({
+    headless: true,
+    args: ["--host-resolver-rules=" + BLOCKED_HOSTS]
+  });
+  const openContext = browser.newContext.bind(browser);
+  browser.newContext = async function (options) {
+    const context = await openContext(options || {});
+    await installRoutes(context);
+    return context;
+  };
   const results = [];
   let failed = 0;
 
@@ -532,9 +642,11 @@ async function main() {
         var box = document.getElementById("sia21-exit");
         return box && box.hidden === false && /€14/.test(box.textContent || "");
       }, null, { timeout: 2000 }).then(() => true).catch(() => false);
-      const ok = afterReturn.hidden && afterReturn.dismissed !== "1" && !/€14/.test(afterReturn.text) && !/€14/.test(afterQuiet.text) && /€33/.test(afterQuiet.text) && fourteen;
+      // A return while €33 is already open must not count as a dismissal
+      // and must not jump to €14. The next real dismissal is what opens €14.
+      const ok = !afterReturn.hidden && afterReturn.dismissed !== "1" && /€33/.test(afterReturn.text) && !/€14/.test(afterReturn.text) && !/€14/.test(afterQuiet.text) && /€33/.test(afterQuiet.text) && fourteen;
       report(
-        "€14 only after dismissing €33, not on return from Stripe",
+        "€14 only after dismissing €33; a Stripe return does not skip ahead",
         ok,
         JSON.stringify({ afterReturn, afterQuiet, fourteen })
       );
@@ -569,8 +681,8 @@ async function main() {
         return box && box.hidden === false && /€33/.test(box.textContent || "") && !/€14/.test(box.textContent || "");
       }, null, { timeout: 2000 }).then(() => true).catch(() => false);
       report(
-        "return from Stripe stays quiet, the next leave shows €33",
-        onReturn.hidden && !/€33/.test(onReturn.text) && onLeave,
+        "return from Stripe opens €33 and does not skip to €14",
+        !onReturn.hidden && /€33/.test(onReturn.text) && !/€14/.test(onReturn.text) && onLeave,
         JSON.stringify({ onReturn, onLeave })
       );
       await context.close();

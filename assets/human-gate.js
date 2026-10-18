@@ -46,17 +46,22 @@
  * window.SIA21_captureWhenHuman(name, props) queues custom PostHog events
  * and drops them on pagehide if no human signal arrived.
  *
- * PostHog and the Meta Pixel only start on the production host
- * (4improvementsportugal-ops.github.io). SIA21_trackingSuppressed() is the
- * shared QA gate for this file, sia21-conv.js, sia21-purchase.js, mthd-pixel.js
- * and the inline pixel callers. It is true for ?qa=1, ?test=1 and ?debug=1
- * (not ?sia21_debug=1, which only shortens exit timers), for localStorage or
- * sessionStorage sia21_qa (also the older sia21_qa_v1), for navigator.webdriver,
- * and for an automated user agent (HeadlessChrome, Headless, Playwright,
- * Puppeteer, Lighthouse, bot, crawler, spider) or another clear automation
- * global. Seeing an opt-out flag stores sia21_qa in both storages so a later
- * page such as obrigado stays quiet. While suppressed, fbevents.js is not
- * loaded and neither fbq nor posthog.capture runs. SIA21_bootPosthog() is what
+ * PostHog and the Meta Pixel only start on the production host over HTTPS
+ * with no explicit port other than 443: 4improvementsportugal-ops.github.io.
+ * localhost, 127.0.0.1, ::1, 0.0.0.0, any other port (including a preview on
+ * :4173), http://, and file:// never capture. An obvious test checkout id in
+ * the URL (cs_test_, or a value containing test, fake, dummy, sample,
+ * example, placeholder, headless, or xxx) also refuses every Meta and PostHog
+ * event. SIA21_trackingSuppressed() is the shared QA gate for this file,
+ * sia21-conv.js, sia21-purchase.js, mthd-pixel.js and the inline pixel
+ * callers. It is true for ?qa=1, ?test=1 and ?debug=1 (not ?sia21_debug=1,
+ * which only shortens exit timers), for localStorage or sessionStorage
+ * sia21_qa (also the older sia21_qa_v1), for navigator.webdriver, and for an
+ * automated user agent (HeadlessChrome, Headless, Playwright, Puppeteer,
+ * Lighthouse, bot, crawler, spider) or another clear automation global.
+ * Seeing an opt-out flag stores sia21_qa in both storages so a later page
+ * such as obrigado stays quiet. While suppressed, fbevents.js is not loaded
+ * and neither fbq nor posthog.capture runs. SIA21_bootPosthog() is what
  * pages call, and only from SIA21_onHuman.
  *
  * Scroll depth is sia21_scroll (25/50/75/100, plus section ids when the
@@ -191,8 +196,43 @@
   w.__SIA21_QA = qaOn();
   w.__SIA21_INTERNAL = internalOn();
 
+  function isObviousTestId(value) {
+    var raw = String(value || "").trim();
+    if (!raw) return false;
+    if (/^cs_test_/i.test(raw)) return true;
+    return /test|fake|dummy|sample|example|placeholder|headless|xxx/i.test(raw);
+  }
+
+  w.SIA21_obviousTestId = isObviousTestId;
+
+  function obviousTestSession() {
+    var params;
+    try { params = new URLSearchParams(w.location.search || ""); } catch (e) { return false; }
+    var names = ["session_id", "checkout_session_id", "stripe_session_id", "cs_id"];
+    var i;
+    for (i = 0; i < names.length; i++) {
+      if (isObviousTestId(params.get(names[i]) || "")) return true;
+    }
+    var found = false;
+    params.forEach(function (value) {
+      if (found) return;
+      if (/^cs_(?:live|test)_/i.test(value) && isObviousTestId(value)) found = true;
+    });
+    return found;
+  }
+
   w.SIA21_isProductionHost = function () {
-    try { return (w.location.hostname || "") === PROD_HOST; } catch (e) { return false; }
+    try {
+      var loc = w.location;
+      if (!loc || loc.protocol === "file:") return false;
+      var host = String(loc.hostname || "").replace(/\.+$/, "").toLowerCase();
+      if (!host || host === "localhost" || host === "127.0.0.1" || host === "::1" || host === "[::1]" || host === "0.0.0.0") return false;
+      if (host !== PROD_HOST) return false;
+      var port = String(loc.port || "");
+      if (port && port !== "443") return false;
+      if (loc.protocol !== "https:") return false;
+      return true;
+    } catch (e) { return false; }
   };
 
   w.SIA21_trackingSuppressed = function () {
@@ -207,7 +247,7 @@
   };
 
   w.SIA21_allowCapture = function () {
-    return w.SIA21_isProductionHost() && !w.SIA21_trackingSuppressed();
+    return w.SIA21_isProductionHost() && !w.SIA21_trackingSuppressed() && !obviousTestSession();
   };
 
   function beforeSend(event) {

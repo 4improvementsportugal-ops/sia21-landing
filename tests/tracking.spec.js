@@ -2,9 +2,75 @@ const fs = require("fs");
 const path = require("path");
 const { test, expect } = require("@playwright/test");
 
-const PROD = "http://4improvementsportugal-ops.github.io:4173";
+const PROD = "https://4improvementsportugal-ops.github.io";
 const LOCAL = "http://127.0.0.1:4173";
+const PREVIEW = "http://4improvementsportugal-ops.github.io:4173";
 const TRACKING = /posthog\.com|facebook\.net|facebook\.com/i;
+const FBE_SHIM = fs.readFileSync(path.join(__dirname, "fbevents-shim.js"), "utf8");
+const LIVE_SESSION = "cs_live_a8Kd2mQ9pL4sT7vX1nR6bY3c";
+const OTHER_SESSION = "cs_live_b7Nm3pQ2rL8sT4vY6wZ1cD5e";
+
+const assetCache = new Map();
+
+function isPosthogAsset(url) {
+  try {
+    var host = new URL(url).hostname;
+    return /(^|\.)([a-z0-9-]+-)?assets\.i\.posthog\.com$/i.test(host) || /-assets\.i\.posthog\.com$/i.test(host);
+  } catch (e) {
+    return false;
+  }
+}
+
+function isFacebookScript(url) {
+  return /fbevents\.js/i.test(url);
+}
+
+async function posthogAsset(url) {
+  const key = url;
+  if (assetCache.has(key)) return assetCache.get(key);
+  const res = await fetch(key);
+  const payload = {
+    status: res.status,
+    type: res.headers.get("content-type") || "application/javascript",
+    body: Buffer.from(await res.arrayBuffer())
+  };
+  assetCache.set(key, payload);
+  return payload;
+}
+
+async function fulfillTracking(route) {
+  const url = route.request().url();
+  try {
+    if (isFacebookScript(url)) {
+      await route.fulfill({ status: 200, contentType: "application/javascript", body: FBE_SHIM });
+      return;
+    }
+    if (isPosthogAsset(url)) {
+      const asset = await posthogAsset(url);
+      await route.fulfill({ status: asset.status, contentType: asset.type, body: asset.body });
+      return;
+    }
+    await route.fulfill({ status: 200, contentType: "application/json", body: "{}" });
+  } catch (e) {
+    try { await route.fulfill({ status: 200, contentType: "application/json", body: "{}" }); } catch (e2) {}
+  }
+}
+
+async function proxyProd(route) {
+  const url = new URL(route.request().url());
+  const localUrl = LOCAL + url.pathname + url.search;
+  const res = await fetch(localUrl);
+  const body = Buffer.from(await res.arrayBuffer());
+  const headers = {};
+  const type = res.headers.get("content-type");
+  if (type) headers["content-type"] = type;
+  await route.fulfill({ status: res.status, headers: headers, body: body });
+}
+
+async function installHarness(page) {
+  await page.route(PROD + "/**", proxyProd);
+  await page.route(TRACKING, function (route) { return fulfillTracking(route); });
+}
 
 function collectEvents(raw) {
   if (!raw) return [];
@@ -49,11 +115,7 @@ async function watchTracking(page) {
   await page.route(TRACKING, async function (route) {
     const req = route.request();
     hits.push({ url: req.url(), method: req.method(), body: req.postData() || "" });
-    if (req.method() === "GET") {
-      await route.continue();
-      return;
-    }
-    await route.fulfill({ status: 200, contentType: "application/json", body: "{}" });
+    await fulfillTracking(route);
   });
   return hits;
 }
@@ -79,6 +141,9 @@ async function waitFor(hits, pred, label) {
 }
 
 async function maskWebdriver(page) {
+  // Pixel 5's UA string is a normal Chrome, but headless still reports the
+  // HeadlessChrome brand. PostHog treats that brand as a bot and drops capture
+  // before a request exists, so the harness would never see the event.
   await page.addInitScript(function () {
     try {
       Object.defineProperty(Navigator.prototype, "webdriver", { configurable: true, get: function () { return false; } });
@@ -86,6 +151,37 @@ async function maskWebdriver(page) {
     try {
       Object.defineProperty(navigator, "webdriver", { configurable: true, get: function () { return false; } });
     } catch (e2) {}
+    try {
+      var proto = Navigator.prototype;
+      var desc = Object.getOwnPropertyDescriptor(proto, "userAgentData");
+      if (!desc || !desc.get) return;
+      var read = desc.get;
+      function current() {
+        try { return read.call(navigator); } catch (e) { return null; }
+      }
+      function clean(data) {
+        var brands = (data.brands || []).map(function (item) {
+          if (item && /headless/i.test(String(item.brand || ""))) return { brand: "Google Chrome", version: item.version };
+          return item;
+        });
+        return {
+          brands: brands,
+          mobile: data.mobile,
+          platform: data.platform,
+          toJSON: function () { return { brands: brands, mobile: data.mobile, platform: data.platform }; },
+          getHighEntropyValues: function () {
+            return Promise.resolve({ brands: brands, mobile: data.mobile, platform: data.platform });
+          }
+        };
+      }
+      Object.defineProperty(proto, "userAgentData", {
+        configurable: true,
+        get: function () {
+          var data = current();
+          return data ? clean(data) : data;
+        }
+      });
+    } catch (e3) {}
   });
 }
 
@@ -176,6 +272,10 @@ async function stuckScrollOffsets(page) {
   });
 }
 
+test.beforeEach(async function ({ page }) {
+  await installHarness(page);
+});
+
 test.describe("tracking", function () {
   test.use({ viewport: { width: 390, height: 844 } });
 
@@ -184,6 +284,65 @@ test.describe("tracking", function () {
     await page.goto(PROD + "/index.html", { waitUntil: "domcontentloaded" });
     await page.waitForTimeout(1500);
     expect(hits, JSON.stringify(hits.map(function (hit) { return hit.url; }))).toEqual([]);
+  });
+
+  test("an explicit preview port on http stays silent", async function ({ page }) {
+    await maskWebdriver(page);
+    await page.addInitScript(function () {
+      try { localStorage.setItem("4i_cookie_consent_v1", "accepted"); } catch (e) {}
+    });
+    const hits = await watchTracking(page);
+    await page.goto(PREVIEW + "/index.html", { waitUntil: "domcontentloaded" });
+    await page.mouse.wheel(0, 900);
+    await page.locator("h1").click();
+    await page.waitForTimeout(1200);
+    const flags = await page.evaluate(function () {
+      return {
+        allow: window.SIA21_allowCapture(),
+        host: window.SIA21_isProductionHost(),
+        port: location.port,
+        protocol: location.protocol
+      };
+    });
+    expect(flags).toEqual({ allow: false, host: false, port: "4173", protocol: "http:" });
+    expect(hits, JSON.stringify(hits.map(function (hit) { return hit.url; }))).toEqual([]);
+  });
+
+  test("obvious test session ids do not fire Meta or PostHog", async function ({ page }) {
+    await maskWebdriver(page);
+    await page.addInitScript(function () {
+      try { localStorage.setItem("4i_cookie_consent_v1", "accepted"); } catch (e) {}
+    });
+    const hits = await watchTracking(page);
+    await page.goto(PROD + "/obrigado.html?session_id=cs_live_TESTSESSION123&amount=37", { waitUntil: "load" });
+    await page.waitForTimeout(1500);
+    await page.goto(PROD + "/obrigado.html?session_id=cs_test_FAKESESSION&amount=14", { waitUntil: "load" });
+    await page.waitForTimeout(1000);
+    const state = await page.evaluate(function () {
+      return {
+        allow: window.SIA21_allowCapture(),
+        purchase: window.SIA21_firePurchaseOnce()
+      };
+    });
+    expect(state).toEqual({ allow: false, purchase: false });
+    expect(hits, JSON.stringify(hits.map(function (hit) { return hit.url; }))).toEqual([]);
+  });
+
+  test("a mobile tap requests PageView for the production pixel and nothing else", async function ({ page }) {
+    await maskWebdriver(page);
+    await page.addInitScript(function () {
+      try { localStorage.setItem("4i_cookie_consent_v1", "accepted"); } catch (e) {}
+    });
+    const hits = await watchTracking(page);
+    await page.goto(PROD + "/angles-v2/01-tempo/", { waitUntil: "domcontentloaded" });
+    await page.locator("h1").click();
+    await page.mouse.wheel(0, 700);
+    await expect.poll(function () {
+      return hits.filter(function (hit) {
+        return /[?&]ev=PageView(?:&|$)/.test(hit.url) && /[?&]id=1506988540335331(?:&|$)/.test(hit.url);
+      }).length;
+    }, { timeout: 15000 }).toBeGreaterThan(0);
+    expect(hits.some(function (hit) { return /[?&]ev=(?:Purchase|InitiateCheckout)(?:&|$)/.test(hit.url); })).toBe(false);
   });
 
   test("localhost stays silent after a human signal", async function ({ page }) {
@@ -217,7 +376,7 @@ test.describe("tracking", function () {
 
   test("scroll depths and a flushed pageleave", async function ({ page }) {
     // PostHog drops captures when it classifies the browser as a bot.
-    // Headless Playwright reports webdriver, so this test speaks as a real mobile browser.
+    // Headless Playwright reports webdriver and a HeadlessChrome client hint.
     await maskWebdriver(page);
     const hits = await watchTracking(page);
     await page.goto(PROD + "/index.html", { waitUntil: "domcontentloaded" });
@@ -540,7 +699,7 @@ test.describe("tracking", function () {
   test("loading and reloading obrigado fires Purchase once per checkout session", async function ({ page }) {
     await maskWebdriver(page);
     const purchases = await acceptAndCountPurchases(page);
-    const sid = "cs_live_TESTSESSION123";
+    const sid = LIVE_SESSION;
     await page.goto(PROD + "/obrigado.html?session_id=" + sid + "&amount=37", { waitUntil: "load" });
     await expect.poll(function () { return purchases.length; }, { timeout: 15000 }).toBe(1);
     const first = new URL(purchases[0]);
@@ -562,7 +721,7 @@ test.describe("tracking", function () {
     expect(purchases).toHaveLength(1);
     expect(purchaseEid(purchases[0])).toBe(sid);
 
-    const other = "cs_live_OTHERSESSION456";
+    const other = OTHER_SESSION;
     await page.goto(PROD + "/obrigado.html?session_id=" + other + "&amount=37", { waitUntil: "load" });
     await expect.poll(function () { return purchases.length; }, { timeout: 15000 }).toBe(2);
     expect(purchaseEid(purchases[1])).toBe(other);

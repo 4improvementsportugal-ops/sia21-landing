@@ -103,6 +103,18 @@ if ! grep -q '4improvementsportugal-ops.github.io' assets/human-gate.js; then
   echo "FAIL assets/human-gate.js must limit capture to the production host"
   fail=1
 fi
+if ! grep -q 'protocol !== "https:"' assets/human-gate.js; then
+  echo "FAIL assets/human-gate.js must refuse non-HTTPS hosts"
+  fail=1
+fi
+if ! grep -q 'SIA21_obviousTestId' assets/human-gate.js; then
+  echo "FAIL assets/human-gate.js must refuse obvious test checkout ids"
+  fail=1
+fi
+if grep -q 'route.continue' tests/tracking.spec.js; then
+  echo "FAIL tests/tracking.spec.js must not continue tracking requests"
+  fail=1
+fi
 if ! grep -q 'sia21_qa_v1' assets/human-gate.js; then
   echo "FAIL assets/human-gate.js must honour the qa opt-out flag"
   fail=1

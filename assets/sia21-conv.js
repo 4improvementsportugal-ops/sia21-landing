@@ -49,7 +49,9 @@
  * human gate itself, so InitiateCheckout does not wait for an earlier
  * signal. The same handler sets window.__SIA21_IC_ARMED so the gate can
  * hold navigation until the pixel request is queued. A replayed click
- * (window.__SIA21_STRIPE_LEAVING) is ignored.
+ * (window.__SIA21_STRIPE_LEAVING) is ignored. A second tap while that
+ * navigation is held does not fire another stripe_checkout_click or
+ * InitiateCheckout.
  */
 (function (w, d) {
   "use strict";
@@ -218,11 +220,22 @@
     try { w.fbq("track", "ViewContent", payload); } catch (e) {}
   }
 
+  function checkoutIntentLocked() {
+    if (w.__SIA21_STRIPE_LEAVE_PENDING === true) return true;
+    return typeof w.__SIA21_CHECKOUT_LOCK_UNTIL === "number" && Date.now() < w.__SIA21_CHECKOUT_LOCK_UNTIL;
+  }
+
   function onCheckoutClick(e) {
     if (w.__SIA21_STRIPE_LEAVING) return;
     var anchor = e.target && e.target.closest ? e.target.closest('a[href*="buy.stripe.com"]') : null;
     if (!anchor) return;
     if (w.__SIA21_CHECKOUT_OK !== true) return;
+    // The gate already stops a second tap on the same Payment Link. This
+    // is the same rule when that click still reaches here. A different
+    // link, such as the €33 exit, is a new intent.
+    var href = anchor.getAttribute("href") || "";
+    if (checkoutIntentLocked() && href && href === w.__SIA21_CHECKOUT_SENT_HREF) return;
+    w.__SIA21_CHECKOUT_SENT_HREF = href;
     capturePh("stripe_checkout_click", { angle: angleSlug(), price: stripePrice(anchor) });
     // human-gate.js calls markHuman() on this same click before we run.
     if (!w.__SIA21_HUMAN || !pixelReady() || isThankYou()) return;

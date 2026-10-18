@@ -1,5 +1,6 @@
 const fs = require("fs");
 const path = require("path");
+const { execFileSync } = require("child_process");
 const { test, expect } = require("@playwright/test");
 
 const PROD = "https://4improvementsportugal-ops.github.io";
@@ -7,6 +8,57 @@ const LOCAL = "http://127.0.0.1:4173";
 const TRUST = "Recebes o PDF por email, normalmente em menos de 30 minutos";
 const TOOLS = "Funciona com o ChatGPT grátis ou com o Claude; os planos pagos são opcionais.";
 const EARLY = "https://buy.stripe.com/aFa5kF1OFc4D1fNb6mgrS02";
+const PROOF = "Mais de 1000 compras em ofertas semelhantes da 4Improvements";
+const STORY_FILES = [
+  "index.html",
+  "angles-v2/01-tempo/index.html",
+  "angles-v2/02-rgpd/index.html",
+  "angles-v2/03-idealista/index.html",
+  "angles-v2/04-whatsapp/index.html",
+  "angles-v2/05-angariacao/index.html",
+  "angles-v2/07-metodo-21-dias/index.html",
+  "angles-v2/08-solo-escala/index.html",
+  "angles-v2/09-early-37/index.html",
+  "angles-v2/10-visitas-ops/index.html",
+  "angles-v2/sobrecarga/index.html",
+  "angles/06-chatgpt-falhou/index.html"
+];
+
+function liveCopyFiles() {
+  const files = ["index.html", "obrigado.html", "angles-v2/index.html"];
+  ["angles", "angles-v2"].forEach(function (dir) {
+    fs.readdirSync(dir).forEach(function (name) {
+      const file = path.join(dir, name, "index.html");
+      if (fs.existsSync(file) && fs.statSync(file).isFile()) files.push(file);
+    });
+  });
+  return files.sort();
+}
+
+function fileForLanding(rel) {
+  return rel.endsWith(".html") ? rel : rel.replace(/\/$/, "/index.html");
+}
+
+function stripeLinks(html) {
+  const found = html.match(/https:\/\/buy\.stripe\.com\/[A-Za-z0-9]+/g) || [];
+  return Array.from(new Set(found)).sort();
+}
+
+function h1State() {
+  var el = document.querySelector("h1");
+  if (!el) return { ok: false, why: "missing" };
+  var cs = getComputedStyle(el);
+  var box = el.getBoundingClientRect();
+  var text = (el.innerText || "").replace(/\s+/g, " ").trim();
+  var clip = cs.webkitBackgroundClip || cs.backgroundClip;
+  var transparent = cs.color === "transparent" || /rgba?\(\s*0\s*,\s*0\s*,\s*0\s*,\s*0\s*\)/.test(cs.color);
+  return {
+    ok: box.height >= 20 && box.width >= 40 && text.length > 8 && cs.visibility !== "hidden" && Number(cs.opacity) > 0.9 && (!transparent || clip === "text"),
+    h: Math.round(box.height),
+    color: cs.color,
+    text: text.slice(0, 48)
+  };
+}
 
 function landingPages() {
   const pages = ["index.html", "obrigado.html"];
@@ -220,14 +272,64 @@ test.describe("checkout contrast", function () {
       if (!ui.gate) problems.push(rel + " human gate did not boot");
       if (!ui.privacy) problems.push(rel + " banner has no privacy link");
       if (ui.dw > 2 || ui.dh > 2 || ui.h < 44 || !ui.same) problems.push(rel + " cookie buttons are not equal");
+      var h1 = await page.evaluate(h1State);
+      if (!h1.ok) problems.push(rel + " h1 not visible " + JSON.stringify(h1));
       var mobile = await page.evaluate(auditContrast);
       mobile.fails.forEach(function (row) { problems.push(rel + " contrast " + row); });
       await page.setViewportSize({ width: 1280, height: 900 });
       await page.waitForTimeout(100);
+      var h1desk = await page.evaluate(h1State);
+      if (!h1desk.ok) problems.push(rel + " desktop h1 not visible " + JSON.stringify(h1desk));
       var desk = await page.evaluate(auditContrast);
       desk.fails.forEach(function (row) { problems.push(rel + " desktop contrast " + row); });
       desk.bands.forEach(function (row) { problems.push(rel + " beige gap " + row); });
     }
     expect(problems, problems.join("\n")).toEqual([]);
+  });
+
+  test("live pages mention 55 páginas and no other page count", function () {
+    const bad = [];
+    liveCopyFiles().forEach(function (file) {
+      const html = fs.readFileSync(file, "utf8");
+      const counts = html.match(/\d+\s*páginas\b/gi) || [];
+      counts.forEach(function (hit) {
+        if (!/^55\s*páginas$/i.test(hit)) bad.push(file + " has " + hit);
+      });
+      if (html.indexOf("58 páginas") !== -1) bad.push(file + " still says 58 páginas");
+    });
+    expect(bad, bad.join("\n")).toEqual([]);
+  });
+
+  test("the only 1000 claim is Pedro's exact social proof", function () {
+    const bad = [];
+    liveCopyFiles().forEach(function (file) {
+      const html = fs.readFileSync(file, "utf8");
+      const residue = html.split(PROOF).join("");
+      if (/1000/.test(residue)) bad.push(file + " has a 1000 claim outside the approved sentence");
+      if (/mil consultores/i.test(residue)) bad.push(file + " still mentions mil consultores");
+      if (/1000\s*\+|mais de 1000 consultores|1000\+ consultores/i.test(html)) bad.push(file + " has a variant of the social proof");
+    });
+    expect(bad, bad.join("\n")).toEqual([]);
+  });
+
+  test("checkout links on every landing match main", function () {
+    const changed = [];
+    landingPages().forEach(function (rel) {
+      const file = fileForLanding(rel);
+      const here = stripeLinks(fs.readFileSync(file, "utf8"));
+      const main = stripeLinks(execFileSync("git", ["show", "origin/main:" + file], { encoding: "utf8" }));
+      if (here.join("\n") !== main.join("\n")) changed.push(file + "\n  now " + here.join(" ") + "\n  main " + main.join(" "));
+    });
+    expect(changed, changed.join("\n")).toEqual([]);
+  });
+
+  test("storytelling pages keep the angle and add format=storytelling", function () {
+    const bad = [];
+    STORY_FILES.forEach(function (file) {
+      const html = fs.readFileSync(file, "utf8");
+      if (html.indexOf('next.format = "storytelling"') === -1) bad.push(file + " missing format=storytelling");
+      if (html.indexOf("v3-storytelling") !== -1) bad.push(file + " overwrites the angle with the preview variant");
+    });
+    expect(bad, bad.join("\n")).toEqual([]);
   });
 });

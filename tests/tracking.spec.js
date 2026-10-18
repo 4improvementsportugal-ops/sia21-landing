@@ -805,7 +805,7 @@ test.describe("tracking", function () {
     await page.evaluate(function () {
       window.fbq("track", "Purchase", { value: 37, currency: "EUR" }, { eventID: "cs_live_NOTATHANKYOU" });
     });
-    await page.locator("a", { hasText: "Comprar agora" }).click();
+    await page.locator("#hero-cta").click();
     await page.waitForTimeout(1600);
     expect(purchases).toEqual([]);
     await page.goto(PROD + "/angles/01-tempo/?session_id=cs_live_ANGLEPAGE", { waitUntil: "domcontentloaded" });
@@ -851,7 +851,7 @@ test.describe("tracking", function () {
       if (/buy\.stripe\.com/.test(url)) order.push("nav");
     });
     const hits = await armCheckout(page, PROD + "/index.html");
-    await page.locator("a", { hasText: "Comprar agora" }).click();
+    await page.locator("#hero-cta").click();
     await expect.poll(function () { return icUrls(hits).length; }, { timeout: 15000 }).toBe(1);
     const ic = new URL(icUrls(hits)[0]);
     expect(ic.searchParams.get("cd[value]")).toBe("37");
@@ -875,7 +875,7 @@ test.describe("tracking", function () {
     const popups = [];
     page.on("popup", function (popup) { popups.push(popup); });
     const hits = await armCheckout(page, PROD + "/index.html");
-    const cta = page.locator("a", { hasText: "Comprar agora" });
+    const cta = page.locator("#hero-cta");
     await cta.click({ noWaitAfter: true });
     await page.waitForTimeout(200);
     await cta.click({ noWaitAfter: true });
@@ -1011,7 +1011,7 @@ test.describe("tracking", function () {
     "7 listas para imprimir: setup, visita, anúncio, angariação, follow-up, semana e compliance.",
     "Regras claras do que nunca colar na IA. Usas a IA sem pôr dados de clientes em risco.",
     "Uma rotina para a semana e uma folha para anotares o tempo que poupas. Vês nos teus números.",
-    "PDF de 58 páginas, em português de Portugal. Lês no telemóvel ou imprimes.",
+    "PDF de 55 páginas, em português de Portugal. Lês no telemóvel ou imprimes.",
     TOOLS_LINE
   ];
   const EARLY_37 = "https://buy.stripe.com/aFa5kF1OFc4D1fNb6mgrS02";
@@ -1071,6 +1071,7 @@ test.describe("tracking", function () {
     expect(consent[0].properties.choice).toBe("accepted");
     expect(consent[0].properties.path).toBe(pathName);
     expect(consent[0].properties.angle).toBe("home");
+    expect(consent[0].properties.format).toBe("storytelling");
     await waitFor(hits, function () {
       return hits.some(function (hit) {
         return /[?&]ev=PageView(?:&|$)/.test(hit.url) && /[?&]id=1506988540335331(?:&|$)/.test(hit.url);

@@ -1,7 +1,9 @@
 /**
  * SIA21 Purchase, once per Stripe checkout.
  *
- * This is the only fbq("track", "Purchase") call in the repo.
+ * This is the only fbq("track", "Purchase") call in the repo. It sets
+ * window.__SIA21_PURCHASE_ALLOW around that call. The stub in
+ * assets/mthd-pixel.js drops every other Purchase.
  * obrigado.html calls SIA21_firePurchaseOnce from the pixel onInit,
  * after cookie consent. Thank-you pages stay on the instant human-gate
  * path. This file does not wait for a click and does not run elsewhere.
@@ -134,7 +136,9 @@
     };
     // Mark first so a second onInit in this turn cannot send again.
     markFired(sid);
+    w.__SIA21_PURCHASE_ALLOW = true;
     try { w.fbq("track", "Purchase", payload, { eventID: sid }); } catch (e) {}
+    w.__SIA21_PURCHASE_ALLOW = false;
     return true;
   }
 

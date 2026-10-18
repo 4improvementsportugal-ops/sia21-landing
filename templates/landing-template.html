@@ -22,8 +22,10 @@
      imediato para um visitante real. Purchase só com session_id cs_live_, sem
      supressão, e uma vez por sessão (localStorage + sessionStorage, eventID = session_id).
   6. Exit/last offer só com SIA21_mayShowExit() (scroll, rato ou dwell antes; nunca com webdriver).
-  7. buy.stripe.com só navega com sinal anterior ao clique, 1,5 s na página e webdriver false.
-     stripe_checkout_click e InitiateCheckout seguem esse clique. O handler está em human-gate.js.
+  7. buy.stripe.com só navega com engagement anterior, 1,5 s na página e webdriver false.
+     O clique permitido abre o gate e dispara InitiateCheckout; a saída espera ~300 ms
+     para o pixel. O handler está em human-gate.js. autoConfig/smartSetup false
+     (com e sem id) ficam antes de fbq('init') em mthd-pixel.js.
   Se copiares este ficheiro para uma subpasta, corrige os src (../assets, ../../assets, …).
 -->
 <script src="../assets/human-gate.js"></script>

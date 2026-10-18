@@ -594,6 +594,158 @@ test.describe("tracking", function () {
     expect(flagged).toBeNull();
   });
 
+  test("autoConfig false is set before init and stray Purchase calls are dropped", async function ({ page }) {
+    await maskWebdriver(page);
+    await page.addInitScript(function () {
+      try { localStorage.setItem("4i_cookie_consent_v1", "accepted"); } catch (e) {}
+    });
+    await page.route(/fbevents\.js/i, function (route) {
+      return route.fulfill({ status: 200, contentType: "application/javascript", body: "/* held */" });
+    });
+    await page.goto(PROD + "/index.html", { waitUntil: "domcontentloaded" });
+    await page.mouse.wheel(0, 700);
+    await page.waitForFunction(function () {
+      return window.fbq && window.fbq.queue && window.fbq.queue.length > 0;
+    });
+    const queue = await page.evaluate(function () {
+      return (window.fbq.queue || []).map(function (args) { return Array.prototype.slice.call(args); });
+    });
+    const initAt = queue.findIndex(function (cmd) {
+      return cmd[0] === "init" && cmd[1] === "1506988540335331";
+    });
+    expect(initAt).toBeGreaterThan(0);
+    const before = queue.slice(0, initAt);
+    expect(before.some(function (cmd) {
+      return cmd[0] === "set" && cmd[1] === "autoConfig" && cmd[2] === false && cmd.length === 3;
+    })).toBe(true);
+    expect(before.some(function (cmd) {
+      return cmd[0] === "set" && cmd[1] === "autoConfig" && cmd[2] === false && cmd[3] === "1506988540335331";
+    })).toBe(true);
+    expect(before.some(function (cmd) {
+      return cmd[0] === "set" && cmd[1] === "smartSetup" && cmd[2] === false && cmd.length === 3;
+    })).toBe(true);
+    await page.evaluate(function () {
+      window.fbq("track", "Purchase", { value: 37, currency: "EUR" }, { eventID: "cs_live_EVIL" });
+      window.fbq("trackSingle", "1506988540335331", "Purchase", { value: 37, currency: "EUR" });
+    });
+    const blocked = await page.evaluate(function () {
+      return (window.fbq.queue || []).map(function (args) { return Array.prototype.slice.call(args); });
+    });
+    expect(blocked.some(function (cmd) { return cmd.indexOf("Purchase") !== -1; })).toBe(false);
+    await page.evaluate(function () {
+      window.__SIA21_PURCHASE_ALLOW = true;
+      window.fbq("track", "Purchase", { value: 37, currency: "EUR" }, { eventID: "cs_live_OK" });
+      window.__SIA21_PURCHASE_ALLOW = false;
+    });
+    const allowed = await page.evaluate(function () {
+      return (window.fbq.queue || []).map(function (args) { return Array.prototype.slice.call(args); });
+    });
+    expect(allowed.some(function (cmd) {
+      return cmd[0] === "track" && cmd[1] === "Purchase" && cmd[3] && cmd[3].eventID === "cs_live_OK";
+    })).toBe(true);
+  });
+
+  test("Purchase never fires on non-obrigado pages", async function ({ page }) {
+    await maskWebdriver(page);
+    const purchases = [];
+    await page.addInitScript(function () {
+      try { localStorage.setItem("4i_cookie_consent_v1", "accepted"); } catch (e) {}
+    });
+    await page.route(/facebook\.com\/tr/i, async function (route) {
+      const url = route.request().url();
+      if (/[?&]ev=Purchase(?:&|$)/.test(url)) purchases.push(url);
+      await route.fulfill({ status: 200, contentType: "text/plain", body: "" });
+    });
+    page.on("popup", function (popup) { popup.close().catch(function () {}); });
+    await page.route(/buy\.stripe\.com/, function (route) { return route.abort(); });
+    await page.goto(PROD + "/index.html?session_id=cs_live_NOTATHANKYOU", { waitUntil: "domcontentloaded" });
+    await page.mouse.wheel(0, 800);
+    await page.waitForFunction(function () {
+      return window.__SIA21_HUMAN === true && typeof window.fbq === "function" && window.SIA21_checkoutAllowed();
+    });
+    await page.evaluate(function () {
+      window.fbq("track", "Purchase", { value: 37, currency: "EUR" }, { eventID: "cs_live_NOTATHANKYOU" });
+    });
+    await page.locator("a", { hasText: "Comprar agora" }).click();
+    await page.waitForTimeout(1600);
+    expect(purchases).toEqual([]);
+    await page.goto(PROD + "/angles/01-tempo/?session_id=cs_live_ANGLEPAGE", { waitUntil: "domcontentloaded" });
+    await page.mouse.wheel(0, 800);
+    await page.waitForFunction(function () { return typeof window.fbq === "function"; });
+    await page.evaluate(function () {
+      window.fbq("track", "Purchase", { value: 14, currency: "EUR" }, { eventID: "cs_live_ANGLEPAGE" });
+      window.fbq("trackSingle", "1506988540335331", "Purchase", { value: 14, currency: "EUR" });
+    });
+    await page.waitForTimeout(1000);
+    expect(purchases).toEqual([]);
+  });
+
+  async function armCheckout(page, url) {
+    await page.addInitScript(function () {
+      try { localStorage.setItem("4i_cookie_consent_v1", "accepted"); } catch (e) {}
+    });
+    const hits = [];
+    await page.route(/facebook\.com\/tr/i, async function (route) {
+      hits.push(route.request().url());
+      await route.fulfill({ status: 200, contentType: "text/plain", body: "" });
+    });
+    page.on("popup", function (popup) { popup.close().catch(function () {}); });
+    await page.route(/buy\.stripe\.com/, function (route) { return route.abort(); });
+    await page.goto(url, { waitUntil: "domcontentloaded" });
+    await page.mouse.wheel(0, 800);
+    await page.waitForFunction(function () {
+      return window.__SIA21_ENGAGED === true && window.SIA21_checkoutAllowed && window.SIA21_checkoutAllowed();
+    });
+    return hits;
+  }
+
+  function icUrls(hits) {
+    return hits.filter(function (url) { return /[?&]ev=InitiateCheckout(?:&|$)/.test(url); });
+  }
+
+  test("InitiateCheckout fires on a Stripe link click before navigation", async function ({ page }) {
+    await maskWebdriver(page);
+    const order = [];
+    page.on("request", function (req) {
+      const url = req.url();
+      if (/[?&]ev=InitiateCheckout(?:&|$)/.test(url)) order.push("ic");
+      if (/buy\.stripe\.com/.test(url)) order.push("nav");
+    });
+    const hits = await armCheckout(page, PROD + "/index.html");
+    await page.locator("a", { hasText: "Comprar agora" }).click();
+    await expect.poll(function () { return icUrls(hits).length; }, { timeout: 15000 }).toBe(1);
+    const ic = new URL(icUrls(hits)[0]);
+    expect(ic.searchParams.get("cd[value]")).toBe("37");
+    expect(ic.searchParams.get("cd[currency]")).toBe("EUR");
+    expect(ic.searchParams.get("cd[content_name]")).toBe("Sistema IA do Consultor");
+    expect(page.url()).toContain("/index.html");
+    const icAt = order.indexOf("ic");
+    const navAt = order.indexOf("nav");
+    expect(icAt).toBeGreaterThanOrEqual(0);
+    if (navAt !== -1) expect(icAt).toBeLessThan(navAt);
+    expect(hits.some(function (url) { return /[?&]ev=Purchase(?:&|$)/.test(url); })).toBe(false);
+  });
+
+  test("InitiateCheckout fires for the sticky bar and the €33 exit offer", async function ({ page }) {
+    await maskWebdriver(page);
+    const hits = await armCheckout(page, PROD + "/angles-v2/05-angariacao/?sia21_debug=1");
+    await page.locator("#sticky-cta").click();
+    await expect.poll(function () { return icUrls(hits).length; }, { timeout: 15000 }).toBe(1);
+    expect(new URL(icUrls(hits)[0]).searchParams.get("cd[value]")).toBe("37");
+    await page.evaluate(function () {
+      try { sessionStorage.setItem("sia21_stripe_left_at_v1", String(Date.now() - 120000)); } catch (e) {}
+      window.__SIA21_STRIPE_CLICKED_HERE = false;
+    });
+    await hidePage(page);
+    await page.waitForTimeout(500);
+    await showPage(page);
+    await expect(page.locator("#sia21-exit a.sia21-exit-primary")).toBeVisible({ timeout: 8000 });
+    await page.locator("#sia21-exit a.sia21-exit-primary").click();
+    await expect.poll(function () { return icUrls(hits).length; }, { timeout: 15000 }).toBe(2);
+    expect(new URL(icUrls(hits)[1]).searchParams.get("cd[value]")).toBe("33");
+    expect(hits.some(function (url) { return /[?&]ev=Purchase(?:&|$)/.test(url); })).toBe(false);
+  });
+
   async function countFbq(page) {
     await page.addInitScript(function () {
       window.__fbqCalls = [];

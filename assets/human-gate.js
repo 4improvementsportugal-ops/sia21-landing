@@ -38,7 +38,12 @@
  * ignore target=_blank and cancel the pixel image request if the document
  * unloads in the same turn. The replayed click is marked
  * __SIA21_STRIPE_LEAVING so InitiateCheckout and stripe_checkout_click do
- * not fire a second time.
+ * not fire a second time. A second tap on that same Payment Link during
+ * the wait is not a new checkout: the first valid click locks that link
+ * for 3s, or until its one navigation is issued, whichever comes first.
+ * Further taps on it are ignored, so the intent fires one InitiateCheckout,
+ * one stripe_checkout_click, and opens Stripe once. A different Payment
+ * Link, such as the €33 exit, can still record its own checkout.
  *
  * window.SIA21_onHuman(cb) runs cb now if the visitor is already human,
  * otherwise queues it. window.SIA21_armTracking() turns PostHog pageview,
@@ -551,6 +556,33 @@
 
   var IC_MIN_MS = 300;
   var IC_CAP_MS = 1200;
+  var CHECKOUT_LOCK_MS = 3000;
+
+  function checkoutLocked() {
+    return typeof w.__SIA21_CHECKOUT_LOCK_UNTIL === "number" && Date.now() < w.__SIA21_CHECKOUT_LOCK_UNTIL;
+  }
+
+  function lockCheckout(anchor) {
+    w.__SIA21_CHECKOUT_LOCK_UNTIL = Date.now() + CHECKOUT_LOCK_MS;
+    w.__SIA21_CHECKOUT_LOCK_HREF = (anchor && anchor.getAttribute && anchor.getAttribute("href")) || "";
+  }
+
+  function unlockCheckout() {
+    w.__SIA21_CHECKOUT_LOCK_UNTIL = 0;
+    w.__SIA21_CHECKOUT_LOCK_HREF = "";
+  }
+
+  function sameLockedCheckout(anchor) {
+    var href = (anchor && anchor.getAttribute && anchor.getAttribute("href")) || "";
+    var locked = w.__SIA21_CHECKOUT_LOCK_HREF || "";
+    return !!href && href === locked;
+  }
+
+  function swallowCheckout(e) {
+    e.preventDefault();
+    try { e.stopPropagation(); } catch (err) {}
+    try { e.stopImmediatePropagation(); } catch (err2) {}
+  }
 
   function pixelTransportReady() {
     return !!(w.fbq && typeof w.fbq.callMethod === "function");
@@ -569,6 +601,9 @@
     w.__SIA21_STRIPE_LEAVING = false;
     w.__SIA21_STRIPE_LEAVE_PENDING = false;
     w.__SIA21_IC_ARMED = false;
+    // Navigation for this intent has been issued. A later offer (the €33
+    // exit, for example) may start its own checkout.
+    unlockCheckout();
   }
 
   function scheduleStripeLeave(anchor) {
@@ -595,6 +630,10 @@
     // The delayed anchor.click() must follow the link. Other listeners
     // see __SIA21_STRIPE_LEAVING and skip a second InitiateCheckout.
     if (w.__SIA21_STRIPE_LEAVING) return;
+    if ((w.__SIA21_STRIPE_LEAVE_PENDING || checkoutLocked()) && sameLockedCheckout(anchor)) {
+      swallowCheckout(e);
+      return;
+    }
     if (w.__SIA21_STRIPE_LEAVE_PENDING) {
       e.preventDefault();
       return;
@@ -604,6 +643,7 @@
       w.__SIA21_CHECKOUT_OK = true;
       w.__SIA21_STRIPE_CLICKED_HERE = true;
       w.__SIA21_STRIPE_LEAVE_PENDING = true;
+      lockCheckout(anchor);
       try { w.sessionStorage.setItem("sia21_stripe_left_at_v1", String(Date.now())); } catch (err) {}
       try { w.sessionStorage.removeItem("sia21_stripe_away_v1"); } catch (err4) {}
       e.preventDefault();

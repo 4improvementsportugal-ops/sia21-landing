@@ -885,6 +885,35 @@ test.describe("tracking", function () {
     expect(hits.some(function (url) { return /[?&]ev=Purchase(?:&|$)/.test(url); })).toBe(false);
   });
 
+  test("two taps 200ms apart fire one InitiateCheckout, one stripe_checkout_click and one navigation", async function ({ page }) {
+    await maskWebdriver(page);
+    const tracked = await watchTracking(page);
+    const navs = [];
+    page.on("request", function (req) {
+      if (/buy\.stripe\.com/i.test(req.url())) navs.push(req.url());
+    });
+    const popups = [];
+    page.on("popup", function (popup) { popups.push(popup); });
+    const hits = await armCheckout(page, PROD + "/index.html");
+    const cta = page.locator("a", { hasText: "Comprar agora" });
+    await cta.click({ noWaitAfter: true });
+    await page.waitForTimeout(200);
+    await cta.click({ noWaitAfter: true });
+    function checkoutClicks() {
+      return tracked.reduce(function (n, hit) {
+        var blob = (hit.body || "") + "\n" + hit.url;
+        return n + (blob.split("stripe_checkout_click").length - 1);
+      }, 0);
+    }
+    await expect.poll(function () { return icUrls(hits).length; }, { timeout: 15000 }).toBe(1);
+    await expect.poll(checkoutClicks, { timeout: 15000 }).toBe(1);
+    await page.waitForTimeout(1400);
+    expect(icUrls(hits)).toHaveLength(1);
+    expect(checkoutClicks()).toBe(1);
+    expect(navs.length + popups.length).toBe(1);
+    expect(page.url()).toContain("/index.html");
+  });
+
   test("InitiateCheckout fires for the sticky bar and the €33 exit offer", async function ({ page }) {
     await maskWebdriver(page);
     const hits = await armCheckout(page, PROD + "/angles-v2/05-angariacao/?sia21_debug=1");

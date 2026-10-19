@@ -134,7 +134,7 @@ async function showPage(page) {
 function publishedStripePages() {
   const fs = require("fs");
   const path = require("path");
-  const files = ["index.html", "obrigado.html", path.join("v3", "storytelling", "index.html")];
+  const files = ["index.html", "obrigado.html", path.join("v3", "storytelling", "index.html"), path.join("v4", "index.html")];
   ["angles", "angles-v2"].forEach(function (root) {
     fs.readdirSync(root).forEach(function (name) {
       const file = path.join(root, name, "index.html");

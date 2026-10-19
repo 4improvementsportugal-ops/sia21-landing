@@ -733,6 +733,8 @@
 
   function mountInAppNotice() {
     if (!inAppBrowser() || !d.body) return;
+    /* /v4/ opts out. PR 26, which removes this notice, is not on main. */
+    if (d.body.getAttribute("data-no-inapp") === "1") return;
     var links = d.querySelectorAll('a[href*="buy.stripe.com"]');
     for (var i = 0; i < links.length; i++) {
       var anchor = links[i];

@@ -1,2 +1,4 @@
 
 .superdesign/
+node_modules/
+test-results/

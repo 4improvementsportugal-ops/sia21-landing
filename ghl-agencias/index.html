@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt-PT" class="scroll-smooth" data-hero="preco">
+<html lang="pt-PT" class="scroll-smooth" data-hero="preco" data-versao="ia-equipa">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -14,7 +14,7 @@
 <script src="../assets/human-gate.js"></script>
 <script>
 !function(t,e){var o,n,p,r;e.__SV||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.crossOrigin="anonymous",p.async=!0,p.src=s.api_host.replace(".i.posthog.com","-assets.i.posthog.com")+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],Object.defineProperty(u,"toString",{configurable:!0,enumerable:!0,writable:!0,value:function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e}}),Object.defineProperty(u.people,"toString",{configurable:!0,enumerable:!0,writable:!0,value:function(){return u.toString(1)+".people (stub)"}}),o="init capture register register_once register_for_session unregister unregister_for_session getFeatureFlag getFeatureFlagResult isFeatureEnabled reloadFeatureFlags updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures on onFeatureFlags onSessionId getSurveys getActiveMatchingSurveys renderSurvey canRenderSurvey getNextSurveyStep identify setPersonProperties group resetGroups setPersonPropertiesForFlags resetPersonPropertiesForFlags setGroupPropertiesForFlags resetGroupPropertiesForFlags reset get_distinct_id getGroups get_session_id get_session_replay_url alias set_config startSessionRecording stopSessionRecording sessionRecordingStarted captureException loadToolbar get_property getSessionProperty createPersonProfile opt_in_capturing opt_out_capturing has_opted_in_capturing has_opted_out_capturing clear_opt_in_out_capturing debug".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
-posthog.init('phc_knF2fZccBcGVgHcayHbPfcYfXguFx3jzxaBksdduz9R3',{api_host:'https://eu.i.posthog.com',person_profiles:'identified_only',capture_pageview:false,capture_pageleave:false,autocapture:false,enable_heatmaps:false,disable_session_recording:true});if(window.SIA21_armTracking)SIA21_armTracking();
+posthog.init('phc_knF2fZccBcGVgHcayHbPfcYfXguFx3jzxaBksdduz9R3',{api_host:'https://eu.i.posthog.com',person_profiles:'identified_only',capture_pageview:false,capture_pageleave:false,autocapture:false,enable_heatmaps:false,disable_session_recording:true});posthog.register({versao:"ia-equipa"});if(window.SIA21_armTracking)SIA21_armTracking();
 </script>
 <script>
 posthog.onFeatureFlags(function () {
@@ -572,17 +572,17 @@ posthog.onFeatureFlags(function () {
     var position=link.getAttribute("data-cta")||"";
     if(href.indexOf("buy.stripe.com")!==-1){
       if(window.__SIA21_CHECKOUT_OK!==true)return;
-      captureGhl("stripe_checkout_click",{price:497,value:497,angle:"ghl-agencias"});
+      captureGhl("stripe_checkout_click",{price:497,value:497,angle:"ghl-agencias",versao:"ia-equipa"});
       if(window.__SIA21_HUMAN&&window.__SIA21_MTHD_STARTED&&window.fbq){
         fbq("track","InitiateCheckout",{value:497,currency:"EUR",content_name:"Configuração Go High Level",content_ids:["ghl-agencias-497"],content_type:"product"});
       }
       return;
     }
-    if(position)captureGhl("ghl497_cta_click",{placement:position});
+    if(position)captureGhl("ghl497_cta_click",{placement:position,versao:"ia-equipa"});
     var isCalendar=href.indexOf("leadconnectorhq.com")!==-1||href.indexOf("#calendario")!==-1;
     if(!isCalendar)return;
     var id=position||"calendario";
-    captureGhl("calendar_cta_click",{cta_id:id,position:id});
+    captureGhl("calendar_cta_click",{cta_id:id,position:id,versao:"ia-equipa"});
     if(window.__SIA21_HUMAN&&window.__SIA21_MTHD_STARTED&&window.fbq){
       fbq("track","Schedule",{content_name:"Call de avaliação GHL",content_ids:["ghl-agencias-497"]});
     }
@@ -593,7 +593,7 @@ posthog.onFeatureFlags(function () {
     var io=new IntersectionObserver(function(entries){
       if(seen||!entries[0].isIntersecting)return;
       seen=true;
-      captureGhl("ghl497_calendar_view");
+      captureGhl("ghl497_calendar_view",{versao:"ia-equipa"});
       io.disconnect();
     },{threshold:0.35});
     io.observe(cal);

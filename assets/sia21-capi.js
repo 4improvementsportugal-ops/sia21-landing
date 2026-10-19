@@ -13,14 +13,18 @@
  * or a previous one). Without that, the parameter is not added and _fbc
  * is not written.
  *
- *   c1_<fbpTs>_<fbpRand>_<fbcTs>_<fbclid>
+ *   c1_<fbpTs>_<fbpRand>_<fbcTs>_<fbclid>_p-<page>_u-<utm>
  *
- * Five parts. The fbclid is the whole remainder after the 4th underscore,
- * rejoined, because it may contain underscores. JavaScript
- * String.split("_", 4) truncates and must not be used. See
- * docs/CAPI-CONTRACT.md. Only [A-Za-z0-9_-]. A bad fbclid is dropped, never
- * edited. A value longer than 200 characters drops the fbc and keeps the
- * fbp. The fbclid is never truncated.
+ * The first five parts are unchanged. _p-<page> and, when the landing URL
+ * has a safe utm_content, _u-<utm> are a suffix after the fbclid. The
+ * fbclid is still the remainder after the 4th underscore, then the suffix
+ * is stripped from the end. A value with no _p- suffix parses as before.
+ * JavaScript String.split("_", 4) truncates and must not be used. See
+ * docs/CAPI-CONTRACT.md. Only [A-Za-z0-9_-]. A bad fbclid or utm_content
+ * is dropped, never edited. A value longer than 200 characters drops the
+ * utm first, then the fbc, and keeps the page code. The fbclid is never
+ * truncated. utm_content is also copied onto the Payment Link when it fits
+ * Stripe's 150 character UTM limit.
  *
  * _fbp is fb.1.<ts>.<rand> (both numeric). _fbc is fb.1.<ts>.<fbclid>.
  * If the landing URL has ?fbclid= and there is no _fbc yet, the cookie is
@@ -38,6 +42,8 @@
   var MAX_LEN = 200;
   var FBC_MAX_AGE = 90 * 24 * 60 * 60;
   var SAFE_ID = /^[A-Za-z0-9_-]+$/;
+  var PAGE_CODE = /^[a-z0-9]+$/;
+  var UTM_MAX = 150;
   var REF_SHAPE = /^c1_[0-9]+_[0-9]+_[0-9]+_[A-Za-z0-9_-]*$/;
 
   var landingFbclid = "";
@@ -119,6 +125,59 @@
     return { ts: match[1], fbclid: match[2] };
   }
 
+  function pagePath() {
+    var path = "";
+    try { path = String(w.location.pathname || ""); } catch (e) { return ""; }
+    path = path.replace(/\/index\.html$/, "/");
+    path = path.replace(/\.html$/, "");
+    if (path.length > 1 && path.charAt(path.length - 1) === "/") path = path.slice(0, -1);
+    return path;
+  }
+
+  function pageCode() {
+    var path = pagePath();
+    if (path === "" || path === "/" || path === "/index") return "home";
+    if (path === "/v4") return "v4";
+    if (path === "/v3/storytelling") return "v3";
+    if (path === "/obrigado") return "obg";
+    var v1 = /^\/angles\/(0[1-9]|10)(?:-|$)/.exec(path);
+    if (v1) return "a" + v1[1];
+    var v2 = /^\/angles-v2\/(0[1-9]|10)(?:-|$)/.exec(path);
+    if (v2) return "b" + v2[1];
+    if (path === "/angles-v2/sobrecarga") return "bsob";
+    var slug = path.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 12);
+    return PAGE_CODE.test(slug) ? slug : "unk";
+  }
+
+  function utmContent() {
+    var raw = "";
+    try { raw = new URLSearchParams(w.location.search || "").get("utm_content") || ""; } catch (e) { return ""; }
+    if (!raw || raw.length > UTM_MAX || !SAFE_ID.test(raw)) return "";
+    return raw;
+  }
+
+  function parseClientReference(value) {
+    var match = /^c1_([0-9]+)_([0-9]+)_([0-9]+)_(.*)$/.exec(value || "");
+    if (!match) return null;
+    var rest = match[4];
+    var page = "";
+    var utm = "";
+    var attr = /^(.*)_p-([a-z0-9]+)(?:_u-([A-Za-z0-9_-]+))?$/.exec(rest);
+    if (attr) {
+      rest = attr[1];
+      page = attr[2];
+      utm = attr[3] || "";
+    }
+    return {
+      fbpTs: match[1],
+      fbpRand: match[2],
+      fbcTs: match[3],
+      fbclid: rest,
+      page: page,
+      utm: utm
+    };
+  }
+
   function clientReferenceId() {
     if (!consentAccepted()) return "";
     ensureFbc();
@@ -132,8 +191,17 @@
       fbcTs = fbc.ts;
       fbclid = fbc.fbclid;
     }
-    var full = "c1_" + fbpTs + "_" + fbpRand + "_" + fbcTs + "_" + fbclid;
-    if (full.length > MAX_LEN) full = "c1_" + fbpTs + "_" + fbpRand + "_0_";
+    var page = pageCode();
+    var utm = utmContent();
+    if (!PAGE_CODE.test(page)) page = "unk";
+    function build(useFbcTs, useFbclid, useUtm) {
+      var value = "c1_" + fbpTs + "_" + fbpRand + "_" + useFbcTs + "_" + useFbclid + "_p-" + page;
+      if (useUtm) value += "_u-" + useUtm;
+      return value;
+    }
+    var full = build(fbcTs, fbclid, utm);
+    if (full.length > MAX_LEN) full = build(fbcTs, fbclid, "");
+    if (full.length > MAX_LEN) full = build("0", "", "");
     if (!REF_SHAPE.test(full) || full.length > MAX_LEN) return "";
     return full;
   }
@@ -157,8 +225,12 @@
     try { url = new URL(raw); } catch (e) { return false; }
     if (url.protocol !== "https:" || url.hostname !== "buy.stripe.com") return false;
     var params = new URLSearchParams(url.search);
-    if (params.get("client_reference_id") === ref) return true;
+    var utm = utmContent();
+    var sameRef = params.get("client_reference_id") === ref;
+    var sameUtm = !utm || params.get("utm_content") === utm;
+    if (sameRef && sameUtm) return true;
     params.set("client_reference_id", ref);
+    if (utm) params.set("utm_content", utm);
     url.search = params.toString();
     var next = url.toString();
     if (next === raw) return true;
@@ -218,6 +290,7 @@
   }
 
   w.SIA21_clientReferenceId = clientReferenceId;
+  w.SIA21_parseClientReference = parseClientReference;
   w.SIA21_attachClientReference = attachClientReference;
   w.SIA21_decorateStripeLinks = decorateStripeLinks;
 

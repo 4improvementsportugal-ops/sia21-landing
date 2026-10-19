@@ -4,7 +4,37 @@ const PROD = "https://4improvementsportugal-ops.github.io";
 const LOCAL = "http://127.0.0.1:4173";
 const TRACKING = /posthog\.com|facebook\.net|facebook\.com/i;
 const FBP = "fb.1.1711111111111.2222222222";
-const FBP_REF = "c1_1711111111111_2222222222_0_";
+
+function pageCodeFromPath(pathname) {
+  var path = String(pathname || "");
+  path = path.replace(/\/index\.html$/, "/");
+  path = path.replace(/\.html$/, "");
+  if (path.length > 1 && path.charAt(path.length - 1) === "/") path = path.slice(0, -1);
+  if (path === "" || path === "/" || path === "/index") return "home";
+  if (path === "/v4") return "v4";
+  if (path === "/v3/storytelling") return "v3";
+  if (path === "/obrigado") return "obg";
+  var v1 = /^\/angles\/(0[1-9]|10)(?:-|$)/.exec(path);
+  if (v1) return "a" + v1[1];
+  var v2 = /^\/angles-v2\/(0[1-9]|10)(?:-|$)/.exec(path);
+  if (v2) return "b" + v2[1];
+  if (path === "/angles-v2/sobrecarga") return "bsob";
+  var slug = path.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 12);
+  return /^[a-z0-9]+$/.test(slug) ? slug : "unk";
+}
+
+function expectedRef(pathname, options) {
+  options = options || {};
+  var fbpTs = options.noFbp ? "0" : (options.fbpTs || "1711111111111");
+  var fbpRand = options.noFbp ? "0" : (options.fbpRand || "2222222222");
+  var fbcTs = options.fbcTs != null ? String(options.fbcTs) : "0";
+  var fbclid = options.fbclid || "";
+  var utm = options.utm || "";
+  var page = options.page || pageCodeFromPath(pathname);
+  var value = "c1_" + fbpTs + "_" + fbpRand + "_" + fbcTs + "_" + fbclid + "_p-" + page;
+  if (utm) value += "_u-" + utm;
+  return value;
+}
 const CORE_37 = "aFa5kF1OFc4D1fNb6mgrS02";
 const EARLY_33 = "fZueVf1OFc4D7Eb1vMgrS04";
 const EARLY_14 = "6oU3cx3WN0lVbUr0rIgrS05";
@@ -255,11 +285,22 @@ test.describe("meta capi browser", function () {
     expect(preservedUrl.searchParams.get("locale")).toBe("pt");
     expect(preservedUrl.searchParams.get("prefilled_email")).toBe("a@b.pt");
     expect(preservedUrl.hash).toBe("#pay");
-    expect(preservedUrl.searchParams.get("client_reference_id")).toBe(FBP_REF);
-    expect(splitRef(preservedUrl.searchParams.get("client_reference_id"))).toEqual(["c1", "1711111111111", "2222222222", "0", ""]);
+    const homeRef = expectedRef("/index.html");
+    expect(preservedUrl.searchParams.get("client_reference_id")).toBe(homeRef);
+    expect(splitRef(preservedUrl.searchParams.get("client_reference_id"))).toEqual(["c1", "1711111111111", "2222222222", "0", "_p-home"]);
+    const parsed = await page.evaluate(function (value) {
+      return {
+        now: window.SIA21_parseClientReference(value),
+        old: window.SIA21_parseClientReference("c1_1711111111111_2222222222_1700000000000_abc_D-1"),
+        bare: window.SIA21_parseClientReference("c1_1711111111111_2222222222_0_")
+      };
+    }, homeRef);
+    expect(parsed.now).toEqual({ fbpTs: "1711111111111", fbpRand: "2222222222", fbcTs: "0", fbclid: "", page: "home", utm: "" });
+    expect(parsed.old).toEqual({ fbpTs: "1711111111111", fbpRand: "2222222222", fbcTs: "1700000000000", fbclid: "abc_D-1", page: "", utm: "" });
+    expect(parsed.bare).toEqual({ fbpTs: "1711111111111", fbpRand: "2222222222", fbcTs: "0", fbclid: "", page: "", utm: "" });
     await allowCheckout(page);
     const ref = await checkoutRef(page, page.locator("#hero-cta"), navs);
-    expect(ref).toBe(FBP_REF);
+    expect(ref).toBe(homeRef);
   });
 
   test("consent and ?fbclid=abc_D-1 sets _fbc and c1_..._ts_abc_D-1", async function ({ page }) {
@@ -276,8 +317,11 @@ test.describe("meta capi browser", function () {
     expect(await readCookie(page, "_fbc")).toBe(fbc);
     await allowCheckout(page);
     const ref = await checkoutRef(page, page.locator("#hero-cta"), navs);
-    expect(ref).toBe("c1_1711111111111_2222222222_" + ts + "_abc_D-1");
-    expect(splitRef(ref)).toEqual(["c1", "1711111111111", "2222222222", ts, "abc_D-1"]);
+    expect(ref).toBe(expectedRef("/angles-v2/sobrecarga/", { fbcTs: ts, fbclid: "abc_D-1" }));
+    const parsed = await page.evaluate(function (value) { return window.SIA21_parseClientReference(value); }, ref);
+    expect(parsed.fbclid).toBe("abc_D-1");
+    expect(parsed.page).toBe("bsob");
+    expect(parsed.fbcTs).toBe(ts);
   });
 
   test("Aceitar on the landing with fbclid stores _fbc, and no _fbp uses 0_0", async function ({ page }) {
@@ -289,8 +333,11 @@ test.describe("meta capi browser", function () {
     const ts = fbc.split(".")[2];
     await allowCheckout(page);
     const ref = await checkoutRef(page, page.locator("#hero-cta"), navs);
-    expect(ref).toBe("c1_0_0_" + ts + "_abc_D-1");
-    expect(splitRef(ref)[4]).toBe("abc_D-1");
+    expect(ref).toBe(expectedRef("/angles-v2/01-tempo/", { noFbp: true, fbcTs: ts, fbclid: "abc_D-1" }));
+    const parsed = await page.evaluate(function (value) { return window.SIA21_parseClientReference(value); }, ref);
+    expect(parsed.fbclid).toBe("abc_D-1");
+    expect(parsed.page).toBe("b01");
+    expect(parsed.fbpTs).toBe("0");
   });
 
   test("fbclid with an invalid character drops the fbc", async function ({ page }) {
@@ -299,7 +346,7 @@ test.describe("meta capi browser", function () {
     await allowCheckout(page);
     const buy = page.locator('a.btn[href*="buy.stripe.com"]').last();
     const ref = await checkoutRef(page, buy, navs);
-    expect(ref).toBe(FBP_REF);
+    expect(ref).toBe(expectedRef("/angles/01-tempo/"));
     expect(ref).not.toContain("abc");
     expect(await readCookie(page, "_fbc")).toBe("");
   });
@@ -309,7 +356,7 @@ test.describe("meta capi browser", function () {
     const navs = await arm(page, PROD + "/index.html?fbclid=" + longId, { consent: true, fbp: FBP });
     await allowCheckout(page);
     const ref = await checkoutRef(page, page.locator("#hero-cta"), navs);
-    expect(ref).toBe(FBP_REF);
+    expect(ref).toBe(expectedRef("/index.html"));
     expect(ref.length).toBeLessThanOrEqual(200);
     expect(ref).not.toContain(longId);
     const boundary = await page.evaluate(function () {
@@ -319,18 +366,23 @@ test.describe("meta capi browser", function () {
         document.cookie = "_fbc=fb.1.3333333333333." + id + "; path=/; Secure";
       }
       var head = "c1_1711111111111_2222222222_3333333333333_";
-      var keep = "b".repeat(200 - head.length);
+      var suffix = "_p-home";
+      var keep = "b".repeat(200 - head.length - suffix.length);
       write(keep);
       var kept = window.SIA21_clientReferenceId();
       write(keep + "c");
       var dropped = window.SIA21_clientReferenceId();
-      return { head: head.length, kept: kept, dropped: dropped };
+      return { head: head.length, suffix: suffix.length, keep: keep.length, kept: kept, dropped: dropped };
     });
     expect(boundary.head).toBe(42);
+    expect(boundary.suffix).toBe(7);
+    expect(boundary.keep).toBe(151);
     expect(boundary.kept.length).toBe(200);
-    expect(boundary.kept).toBe("c1_1711111111111_2222222222_3333333333333_" + "b".repeat(158));
-    expect(splitRef(boundary.kept)[4]).toBe("b".repeat(158));
-    expect(boundary.dropped).toBe(FBP_REF);
+    expect(boundary.kept).toBe("c1_1711111111111_2222222222_3333333333333_" + "b".repeat(151) + "_p-home");
+    const keptParsed = await page.evaluate(function (value) { return window.SIA21_parseClientReference(value); }, boundary.kept);
+    expect(keptParsed.fbclid).toBe("b".repeat(151));
+    expect(keptParsed.page).toBe("home");
+    expect(boundary.dropped).toBe(expectedRef("/index.html"));
   });
 
   test("the €33 exit offer appends client_reference_id on click", async function ({ page }) {
@@ -343,12 +395,12 @@ test.describe("meta capi browser", function () {
     await expect(offer).toBeVisible({ timeout: 8000 });
     await expect.poll(async function () {
       return offer.getAttribute("href");
-    }).toContain("client_reference_id=" + FBP_REF);
+    }).toContain("client_reference_id=" + expectedRef("/angles-v2/sobrecarga/"));
     const before = await offer.getAttribute("href");
     expect(new URL(before).pathname).toContain(EARLY_33);
-    expect(new URL(before).searchParams.get("client_reference_id")).toBe(FBP_REF);
+    expect(new URL(before).searchParams.get("client_reference_id")).toBe(expectedRef("/angles-v2/sobrecarga/"));
     const ref = await checkoutRef(page, offer, navs);
-    expect(ref).toBe(FBP_REF);
+    expect(ref).toBe(expectedRef("/angles-v2/sobrecarga/"));
     const href = await offer.getAttribute("href");
     expect(new URL(href).pathname).toContain(EARLY_33);
   });
@@ -386,7 +438,7 @@ test.describe("meta capi browser", function () {
     expect(ids).toEqual([KIT_LITE, KIT_PRO].sort());
     upsells.links.forEach(function (link) {
       expect(link.prefix).toBe(true);
-      expect(link.ref).toBe(FBP_REF);
+      expect(link.ref).toBe(expectedRef("/obrigado.html"));
     });
     await page.context().route(/buy\.stripe\.com/i, function (route) { return route.abort(); });
     page.on("popup", function (popup) { popup.close().catch(function () {}); });
@@ -409,9 +461,11 @@ test.describe("meta capi browser", function () {
       await arm(page, PROD + url, { consent: true, fbp: FBP });
       const snap = await stripeSnapshot(page);
       expect(snap.links.length).toBeGreaterThan(0);
+      const want = expectedRef(url);
       snap.links.forEach(function (link) {
         expect(link.prefix).toBe(true);
-        expect(link.ref).toBe(FBP_REF);
+        expect(link.ref).toBe(want);
+        expect(new URL("https://buy.stripe.com/x?client_reference_id=" + link.ref).searchParams.get("client_reference_id").length).toBeLessThanOrEqual(200);
       });
       rows.push({
         url: url,
@@ -435,10 +489,10 @@ test.describe("meta capi browser", function () {
     await showPage(page);
     const offer33 = page.locator("#sia21-exit a.sia21-exit-primary");
     await expect(offer33).toBeVisible({ timeout: 8000 });
-    await expect.poll(async function () { return offer33.getAttribute("href"); }).toContain(FBP_REF);
+    await expect.poll(async function () { return offer33.getAttribute("href"); }).toContain(expectedRef("/angles-v2/sobrecarga/"));
     const href33 = await offer33.getAttribute("href");
     expect(new URL(href33).pathname).toContain(EARLY_33);
-    expect(new URL(href33).searchParams.get("client_reference_id")).toBe(FBP_REF);
+    expect(new URL(href33).searchParams.get("client_reference_id")).toBe(expectedRef("/angles-v2/sobrecarga/"));
     await page.locator("#sia21-exit button.sia21-exit-secondary").click();
     await expect(page.locator("#sia21-exit")).toBeHidden();
     await page.evaluate(function () {
@@ -449,10 +503,10 @@ test.describe("meta capi browser", function () {
     await allowCheckout(page);
     const offer14 = page.locator("#sia21-exit a.sia21-exit-primary");
     await expect(offer14).toBeVisible({ timeout: 8000 });
-    await expect.poll(async function () { return offer14.getAttribute("href"); }).toContain(FBP_REF);
+    await expect.poll(async function () { return offer14.getAttribute("href"); }).toContain(expectedRef("/angles-v2/sobrecarga/"));
     const href14 = await offer14.getAttribute("href");
     expect(new URL(href14).pathname).toContain(EARLY_14);
-    expect(new URL(href14).searchParams.get("client_reference_id")).toBe(FBP_REF);
+    expect(new URL(href14).searchParams.get("client_reference_id")).toBe(expectedRef("/angles-v2/sobrecarga/"));
 
     const injected = await page.evaluate(function (id) {
       var a = document.createElement("a");
@@ -467,11 +521,11 @@ test.describe("meta capi browser", function () {
       return { id: id };
     }, FUTURE_27);
     const future = page.locator('a[href*="' + injected.id + '"]').first();
-    await expect.poll(async function () { return future.getAttribute("href"); }).toContain("client_reference_id=" + FBP_REF);
+    await expect.poll(async function () { return future.getAttribute("href"); }).toContain("client_reference_id=" + expectedRef("/angles-v2/sobrecarga/"));
     const futureHref = await future.getAttribute("href");
     expect(new URL(futureHref).pathname).toContain(FUTURE_27);
     expect(new URL(futureHref).searchParams.get("locale")).toBe("pt");
-    expect(new URL(futureHref).searchParams.get("client_reference_id")).toBe(FBP_REF);
+    expect(new URL(futureHref).searchParams.get("client_reference_id")).toBe(expectedRef("/angles-v2/sobrecarga/"));
     const leftAlone = await page.evaluate(function (id) {
       var nodes = document.querySelectorAll("a");
       var http = "";
@@ -557,9 +611,9 @@ test.describe("meta capi browser", function () {
     await page.locator("button[data-ck='accepted']").click();
     await expect.poll(async function () {
       return page.locator('a[href*="' + KIT_PRO + '"]').getAttribute("href");
-    }).toContain(FBP_REF);
+    }).toContain(expectedRef("/obrigado.html"));
     const lite = await page.locator('a[href*="' + KIT_LITE + '"]').getAttribute("href");
-    expect(new URL(lite).searchParams.get("client_reference_id")).toBe(FBP_REF);
+    expect(new URL(lite).searchParams.get("client_reference_id")).toBe(expectedRef("/obrigado.html"));
   });
 
   test("ghl-agencias never receives client_reference_id", async function ({ page }) {
@@ -581,6 +635,68 @@ test.describe("meta capi browser", function () {
       window.SIA21_decorateStripeLinks(document);
       return document.getElementById("ghl-probe").getAttribute("href");
     });
-    expect(new URL(restored).searchParams.get("client_reference_id")).toBe(FBP_REF);
+    expect(new URL(restored).searchParams.get("client_reference_id")).toBe(expectedRef("/obrigado.html"));
+  });
+
+  test("LP 06 and /v4/ checkout URLs carry the page code and utm_content", async function ({ page }) {
+    test.setTimeout(180000);
+    const fs = require("fs");
+    const sides = [
+      { path: "/v4/", utm: "criativo-v4", page: "v4", cta: "#hero-cta" },
+      { path: "/angles/06-chatgpt-falhou/", utm: "criativo-a06", page: "a06", cta: "#hero-cta" }
+    ];
+    const shown = [];
+    for (var i = 0; i < sides.length; i++) {
+      const side = sides[i];
+      await arm(page, PROD + side.path + "?utm_content=" + side.utm, { consent: true, fbp: FBP });
+      const want = expectedRef(side.path, { utm: side.utm });
+      const cta = page.locator(side.cta);
+      await expect.poll(async function () { return cta.getAttribute("href"); }).toContain("client_reference_id=");
+      const href = await cta.getAttribute("href");
+      const url = new URL(href);
+      const ref = url.searchParams.get("client_reference_id");
+      expect(ref).toBe(want);
+      expect(url.searchParams.get("utm_content")).toBe(side.utm);
+      const parsed = await page.evaluate(function (value) { return window.SIA21_parseClientReference(value); }, ref);
+      expect(parsed.page).toBe(side.page);
+      expect(parsed.utm).toBe(side.utm);
+      expect(parsed.fbpTs).toBe("1711111111111");
+      expect(parsed.fbclid).toBe("");
+      shown.push({
+        path: side.path,
+        checkout: href,
+        client_reference_id: ref,
+        page: parsed.page,
+        utm_content: parsed.utm
+      });
+    }
+
+    await arm(page, PROD + "/v4/?utm_content=bad.value", { consent: true, fbp: FBP });
+    const badCta = page.locator("#hero-cta");
+    await expect.poll(async function () { return badCta.getAttribute("href"); }).toContain("client_reference_id=");
+    const badHref = await badCta.getAttribute("href");
+    const badRef = new URL(badHref).searchParams.get("client_reference_id");
+    expect(badRef).toBe(expectedRef("/v4/"));
+    expect(new URL(badHref).searchParams.get("utm_content")).toBeNull();
+    expect(badRef).not.toContain("bad");
+
+    const rows = [];
+    const files = publishedStripePages();
+    for (var j = 0; j < files.length; j++) {
+      const file = files[j];
+      const path = pageUrl(file);
+      await arm(page, PROD + path, { consent: true, fbp: FBP });
+      const snap = await stripeSnapshot(page);
+      const want = expectedRef(path);
+      expect(snap.links.length).toBeGreaterThan(0);
+      snap.links.forEach(function (link) { expect(link.ref).toBe(want); });
+      rows.push({
+        path: path,
+        page: pageCodeFromPath(path),
+        client_reference_id: want,
+        checkout: "https://buy.stripe.com/" + snap.links[0].id + "?client_reference_id=" + want
+      });
+    }
+    fs.writeFileSync("/tmp/capi-ab-refs.json", JSON.stringify({ sides: shown, pages: rows }, null, 2));
   });
 });

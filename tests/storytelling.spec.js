@@ -247,7 +247,7 @@ test.describe("storytelling preview", function () {
     const priceHref = await page.locator("#preco .cta").getAttribute("href");
     const priceUrl = new URL(priceHref);
     expect(priceUrl.origin + priceUrl.pathname).toBe(STRIPE_37);
-    expect(priceUrl.searchParams.get("client_reference_id")).toBe("c1_0_0_0_");
+    expect(priceUrl.searchParams.get("client_reference_id")).toBe("c1_0_0_0__p-v3");
     await expect(page.locator(".sia21-retorno")).toHaveCount(0);
     await expect(page.locator("#sia21-toast")).toHaveCount(0);
     await page.mouse.wheel(0, 500);

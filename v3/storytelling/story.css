@@ -966,12 +966,23 @@ section[id] {
     text-align: left !important;
   }
 
-  .hero-shell {
-    grid-template-columns: 250px minmax(0, 1fr);
+  /* Same container as assets/sia21-story.css. offer.css otherwise
+     stretches this shell to the viewport padding. */
+  .offer-page main > section.hero > .hero-shell {
+    width: min(1120px, 100%);
+    max-width: 1120px;
+    margin-left: auto;
+    margin-right: auto;
+    grid-template-columns: auto minmax(0, max-content);
     column-gap: 3.25rem;
-    align-items: center;
+    align-items: center !important;
+    justify-content: center;
     justify-items: start;
     text-align: left;
+  }
+
+  .offer-page main > section.hero > .hero-shell > .hero-copy {
+    max-width: 42rem;
   }
 
   .hero-copy {
@@ -1056,6 +1067,13 @@ section[id] {
 
   .method-notes {
     grid-template-columns: 1fr 1fr;
+  }
+
+  .offer-page main > section.wide > * {
+    width: min(1120px, 100%);
+    max-width: 1120px;
+    margin-left: auto;
+    margin-right: auto;
   }
 }
 

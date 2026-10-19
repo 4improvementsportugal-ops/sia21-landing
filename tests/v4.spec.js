@@ -181,4 +181,24 @@ test.describe("v4 variante", function () {
     expect(box.w).toBeLessThanOrEqual(240);
     expect(box.h).toBeGreaterThan(100);
   });
+
+  test("the PDF pages read as pages at 390px", async function ({ page }) {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto(PROD + PAGE, { waitUntil: "domcontentloaded" });
+    const shots = page.locator(".shot-page img");
+    await expect(shots).toHaveCount(3);
+    await shots.first().scrollIntoViewIfNeeded();
+    const boxes = await shots.evaluateAll(function (nodes) {
+      return nodes.map(function (el) {
+        var r = el.getBoundingClientRect();
+        return { w: Math.round(r.width), h: Math.round(r.height), lazy: el.getAttribute("loading"), width: el.getAttribute("width"), height: el.getAttribute("height") };
+      });
+    });
+    boxes.forEach(function (box) {
+      expect(box.lazy).toBe("lazy");
+      expect(Number(box.width)).toBeGreaterThan(600);
+      expect(Number(box.height)).toBeGreaterThan(900);
+      expect(box.h).toBeGreaterThanOrEqual(295);
+    });
+  });
 });

@@ -178,6 +178,10 @@
   margin-top: 1.35rem;
 }
 
+.shot {
+  margin: 0;
+}
+
 .shot img {
   display: block;
   width: 100%;
@@ -188,7 +192,8 @@
 }
 
 .shot-cover {
-  max-width: 260px;
+  width: min(260px, 100%);
+  margin-inline: auto;
 }
 
 .shot-page {

@@ -25,7 +25,7 @@ const STORY_FILES = [
 ];
 
 function liveCopyFiles() {
-  const files = ["index.html", "obrigado.html", "angles-v2/index.html"];
+  const files = ["index.html", "obrigado.html", "angles-v2/index.html", "v4/index.html"];
   ["angles", "angles-v2"].forEach(function (dir) {
     fs.readdirSync(dir).forEach(function (name) {
       const file = path.join(dir, name, "index.html");
@@ -61,7 +61,7 @@ function h1State() {
 }
 
 function landingPages() {
-  const pages = ["index.html", "obrigado.html"];
+  const pages = ["index.html", "obrigado.html", "v4/"];
   ["angles", "angles-v2"].forEach(function (dir) {
     fs.readdirSync(dir).forEach(function (name) {
       const file = path.join(dir, name, "index.html");
@@ -231,7 +231,7 @@ test.describe("checkout contrast", function () {
   test("every landing page has the trust line, an equal cookie choice, the human gate and AA contrast", async function ({ page }) {
     test.setTimeout(240000);
     const pages = landingPages();
-    expect(pages.length).toBe(22);
+    expect(pages.length).toBe(23);
     const problems = [];
     for (var i = 0; i < pages.length; i++) {
       var rel = pages[i];
@@ -247,7 +247,8 @@ test.describe("checkout contrast", function () {
       if (html.indexOf(TRUST) === -1) problems.push(rel + " missing trust line");
       if (html.indexOf(TOOLS) === -1) problems.push(rel + " missing ChatGPT line");
       if (rel.indexOf("obrigado") === -1 && html.indexOf(EARLY) === -1) problems.push(rel + " missing the €37 payment link");
-      if (html.indexOf("€47") === -1 && rel.indexOf("obrigado") === -1) problems.push(rel + " missing the struck €47");
+      var struck = html.indexOf("€47") !== -1 || (html.indexOf("47 €") !== -1 && html.indexOf("line-through") !== -1);
+      if (!struck && rel.indexOf("obrigado") === -1) problems.push(rel + " missing the struck 47 €");
       var ui = await page.evaluate(function () {
         function box(el) {
           var r = el.getBoundingClientRect();
@@ -317,7 +318,12 @@ test.describe("checkout contrast", function () {
     landingPages().forEach(function (rel) {
       const file = fileForLanding(rel);
       const here = stripeLinks(fs.readFileSync(file, "utf8"));
-      const main = stripeLinks(execFileSync("git", ["show", "origin/main:" + file], { encoding: "utf8" }));
+      var main;
+      try {
+        main = stripeLinks(execFileSync("git", ["show", "origin/main:" + file], { encoding: "utf8" }));
+      } catch (e) {
+        main = stripeLinks(fs.readFileSync("index.html", "utf8"));
+      }
       if (here.join("\n") !== main.join("\n")) changed.push(file + "\n  now " + here.join(" ") + "\n  main " + main.join(" "));
     });
     expect(changed, changed.join("\n")).toEqual([]);

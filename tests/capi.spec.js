@@ -14,13 +14,20 @@ function fnv1a(text) {
   return h >>> 0;
 }
 
+function asSlot(value) {
+  return /^[a-z0-9-]{1,12}$/.test(value || "") ? value : "x";
+}
+
 function shortenSlot(raw) {
-  var clean = String(raw || "").replace(/[^A-Za-z0-9-]/g, "-");
+  var clean = String(raw || "").toLowerCase().replace(/[^a-z0-9-]/g, "-");
   if (!clean) return "x";
-  if (clean.length <= 12) return clean;
-  var hash = (fnv1a(clean) >>> 0).toString(36);
-  while (hash.length < 7) hash = "0" + hash;
-  return clean.slice(0, 5) + hash;
+  var code = clean;
+  if (clean.length > 12) {
+    var hash = (fnv1a(clean) >>> 0).toString(36);
+    while (hash.length < 7) hash = "0" + hash;
+    code = clean.slice(0, 5) + hash;
+  }
+  return asSlot(code);
 }
 
 function pageCodeFromPath(pathname) {
@@ -39,7 +46,7 @@ function pageCodeFromPath(pathname) {
   if (path === "/angles-v2/sobrecarga") return "v2-sob";
   var parts = path.split("/");
   var tail = parts.length ? parts[parts.length - 1] : "";
-  return shortenSlot(String(tail).toLowerCase());
+  return shortenSlot(tail);
 }
 
 function expectedRef(pathname, options) {
@@ -254,8 +261,22 @@ test.describe("meta capi browser", function () {
     expect(shortenSlot("06-chatgpt-1019-v4")).toBe("06-ch07rk8jc");
     expect(shortenSlot("teste-06-chatgpt-1018-v2-37a")).not.toBe(shortenSlot("06-chatgpt-1019-v4"));
     expect(shortenSlot("")).toBe("x");
+    expect(shortenSlot("X")).toBe("x");
+    expect(shortenSlot("x")).toBe("x");
+    expect(shortenSlot("X")).not.toBe("X");
     expect(shortenSlot("bad.value")).toBe("bad-value");
+    expect(shortenSlot("Bad.Value")).toBe("bad-value");
+    expect(shortenSlot("TESTE-06-CHATGPT-1018-V2-37A")).toBe("teste0k7xmj9");
     expect(shortenSlot("criativo-v4")).toBe("criativo-v4");
+    ["teste0k7xmj9", "06-ch07rk8jc", "bad-value", "criativo-v4", "x", "a06", "v4"].forEach(function (code) {
+      expect(code).toMatch(/^[a-z0-9-]{1,12}$/);
+      expect(code).not.toMatch(/[A-Z]/);
+    });
+    ["c0_a06_teste0k7xmj9", "c0_v4_06-ch07rk8jc", "c0_a06_x", "c0_v4_x"].forEach(function (bare) {
+      expect(bare.split("_")).toHaveLength(3);
+      expect(bare.split("_")[1]).toMatch(/^[a-z0-9-]{1,12}$/);
+      expect(bare.split("_")[2]).toMatch(/^[a-z0-9-]{1,12}$/);
+    });
     expect(pageCodeFromPath("/")).toBe("idx");
     expect(pageCodeFromPath("/angles/06-chatgpt-falhou/")).toBe("a06");
     expect(pageCodeFromPath("/angles/01-tempo/")).toBe("a01");
@@ -686,6 +707,8 @@ test.describe("meta capi browser", function () {
 
   test("LP 06 and /v4/ build c2 with consent and c0 without it", async function ({ page }) {
     const cases = [
+      { path: "/v4/", utm: "X", consent: false },
+      { path: "/angles/06-chatgpt-falhou/", utm: "TESTE-06-CHATGPT-1018-V2-37A", consent: false },
       { path: "/angles/06-chatgpt-falhou/", utm: "teste-06-chatgpt-1018-v2-37a", consent: false },
       { path: "/v4/", utm: "06-chatgpt-1019-v4", consent: false },
       { path: "/angles/06-chatgpt-falhou/", utm: "teste-06-chatgpt-1018-v2-37a", consent: true },
@@ -701,6 +724,11 @@ test.describe("meta capi browser", function () {
       const parsed = await page.evaluate(function (value) { return window.SIA21_parseClientReference(value); }, ref);
       expect(parsed.page).toBe(pageCodeFromPath(item.path));
       expect(parsed.utm).toBe(shortenSlot(item.utm));
+      expect(parsed.page).toMatch(/^[a-z0-9-]{1,12}$/);
+      expect(parsed.utm).toMatch(/^[a-z0-9-]{1,12}$/);
+      expect(parsed.page).not.toBe("X");
+      expect(parsed.utm).not.toBe("X");
+      if (!item.consent) expect(ref.split("_")).toHaveLength(3);
       if (item.consent) {
         expect(parsed.fbpTs).toBe("1711111111111");
         expect(parsed.fbclid).toBe("");
@@ -711,6 +739,27 @@ test.describe("meta capi browser", function () {
       }
     }
     expect(shortenSlot("teste-06-chatgpt-1018-v2-37a")).not.toBe(shortenSlot("06-chatgpt-1019-v4"));
+    const parsedRules = await page.evaluate(function () {
+      return {
+        upper: window.SIA21_parseClientReference("c0_X_X"),
+        invalid: window.SIA21_parseClientReference("c0_A06_FOO"),
+        four: window.SIA21_parseClientReference("c0_a06_teste0k7xmj9_extra"),
+        two: window.SIA21_parseClientReference("c0_a06"),
+        ok: window.SIA21_parseClientReference("c0_a06_teste0k7xmj9"),
+        c2x: window.SIA21_parseClientReference("c2_X_Y_1_2_0_"),
+        old: window.SIA21_parseClientReference("c1_1711111111111_2222222222_0_")
+      };
+    });
+    expect(parsedRules.upper).toEqual({ fbpTs: "", fbpRand: "", fbcTs: "", fbclid: "", page: "x", utm: "x" });
+    expect(parsedRules.invalid).toEqual({ fbpTs: "", fbpRand: "", fbcTs: "", fbclid: "", page: "x", utm: "x" });
+    expect(parsedRules.four).toBeNull();
+    expect(parsedRules.two).toBeNull();
+    expect(parsedRules.ok).toEqual({ fbpTs: "", fbpRand: "", fbcTs: "", fbclid: "", page: "a06", utm: "teste0k7xmj9" });
+    expect("c0_a06_teste0k7xmj9".split("_")).toHaveLength(3);
+    expect(parsedRules.c2x.page).toBe("x");
+    expect(parsedRules.c2x.utm).toBe("x");
+    expect(parsedRules.c2x.fbpTs).toBe("1");
+    expect(parsedRules.old).toEqual({ fbpTs: "1711111111111", fbpRand: "2222222222", fbcTs: "0", fbclid: "", page: "", utm: "" });
   });
 
   test("LP 06 and /v4/ checkout URLs carry the page code and utm_content", async function ({ page }) {

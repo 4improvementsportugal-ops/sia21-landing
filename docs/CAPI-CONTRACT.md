@@ -65,7 +65,7 @@ without consent: c0_<pag>_<utm>
 
 `c0_` has no fbp and no fbc. The `_fbc` cookie is still written only after consent.
 
-`fbclid` is always the last field of `c2_`: everything after the sixth underscore, including further underscores. `pag` and `utm` are `[A-Za-z0-9-]` only, so they never contain `_`.
+`fbclid` is always the last field of `c2_`: everything after the sixth underscore, including further underscores. `pag` and `utm` are lowercase `[a-z0-9-]` only, so they never contain `_`. `c0_` has exactly three parts (`c0`, `pag`, `utm`).
 
 | Piece | Source |
 | --- | --- |
@@ -76,7 +76,7 @@ without consent: c0_<pag>_<utm>
 | No `_fbp` yet | `0` and `0`: `c2_<pag>_<utm>_0_0_<fbcTs>_<fbclid>`. |
 | No `_fbc` | `fbcTs` is `0` and `fbclid` is empty: `c2_<pag>_<utm>_<fbpTs>_<fbpRand>_0_`. |
 
-`pag` and `utm` each allow only `[A-Za-z0-9-]`. Any other character, including `_`, is replaced with `-`. The result is at most 12 characters. An empty result is `x`.
+`pag` and `utm` each allow only lowercase `[a-z0-9-]`, at most 12 characters. The only empty value is lowercase `x`. Uppercase `X` is never generated. A field that is not a lowercase code counts as `x`.
 
 Page codes:
 
@@ -95,10 +95,11 @@ Any other path uses the last segment, lowercased, through the same 12-character 
 
 ### utm_content shortened to 12 characters
 
-1. Replace every character outside `[A-Za-z0-9-]` with `-`. Do not delete characters and do not change case.
-2. If nothing remains, the code is `x`.
-3. If the sanitized value is 12 characters or fewer, that value is the code.
-4. If it is longer, the code is the first 5 characters plus 7 characters of base36. The 7 characters are the FNV-1a 32-bit hash of the whole sanitized string, unsigned, zero-padded. Offset basis `2166136261`, prime `16777619`.
+1. Lowercase the whole value. Case is folded before the hash, so `TESTE-06-CHATGPT-1018-V2-37A` and `teste-06-chatgpt-1018-v2-37a` are the same code.
+2. Replace every character outside `[a-z0-9-]` with `-`. Do not delete characters.
+3. If nothing remains, or the result is not `[a-z0-9-]{1,12}`, the code is `x`. Uppercase `X` is not a code: after the lowercase step it is `x`.
+4. If the sanitized value is 12 characters or fewer, that value is the code.
+5. If it is longer, the code is the first 5 characters plus 7 characters of base36. The 7 characters are the FNV-1a 32-bit hash of the whole sanitized string, unsigned, zero-padded. Offset basis `2166136261`, prime `16777619`. The hash is lowercase base36.
 
 A 12-character prefix would collide for campaign names that share an opening. The hash is of the whole sanitized string, so these two do not:
 
@@ -123,10 +124,17 @@ New checkouts are `c2_` or `c0_`. A `c1_` value already stored is a different sh
 
 For `c2_`, cut on the first six underscores. The seventh piece is the fbclid, rejoined if it contained underscores. Do not use JavaScript `String.split('_', 6)`. That limit drops the remainder.
 
+A `pag` or `utm` that is not `[a-z0-9-]{1,12}` counts as `x`. That includes an empty field, any uppercase letter, and uppercase `X`. Only a field whose whole value is lowercase `x` was stored as empty. An invalid field is read the same way.
+
+`c0_` must have exactly three parts. `value.split('_')` has length 3, and the first part is `c0`. Any other count does not parse. `pag` and `utm` contain no `_`, so a generated `c0_` cannot grow a fourth part.
+
 ```js
-var c2 = /^c2_([A-Za-z0-9-]{1,12})_([A-Za-z0-9-]{1,12})_(\d+)_(\d+)_(\d+)_(.*)$/.exec(value);
-var pag = c2[1];
-var utm = c2[2];
+function asSlot(value) {
+  return /^[a-z0-9-]{1,12}$/.test(value) ? value : "x";
+}
+var c2 = /^c2_([^_]*)_([^_]*)_(\d+)_(\d+)_(\d+)_(.*)$/.exec(value);
+var pag = asSlot(c2[1]);
+var utm = asSlot(c2[2]);
 var fbpTs = c2[3];
 var fbpRand = c2[4];
 var fbcTs = c2[5];
@@ -134,9 +142,13 @@ var fbclid = c2[6];
 ```
 
 ```js
-var c0 = /^c0_([A-Za-z0-9-]{1,12})_([A-Za-z0-9-]{1,12})$/.exec(value);
-var pag = c0[1];
-var utm = c0[2];
+var parts = value.split("_");
+if (parts.length !== 3 || parts[0] !== "c0") {
+  // not a c0 value
+} else {
+  var pag = asSlot(parts[1]);
+  var utm = asSlot(parts[2]);
+}
 ```
 
 Examples, with `_fbp` `fb.1.1711111111111.2222222222` and no `_fbc`:

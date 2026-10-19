@@ -19,9 +19,11 @@
  * fbclid is the last field: everything after the 6th underscore. pag and
  * utm never contain an underscore, so that cut is stable. A historical
  * c1_ value is not rewritten and its parser is unchanged. See
- * docs/CAPI-CONTRACT.md. pag and utm are [A-Za-z0-9-], at most 12
- * characters, or x when missing. A longer utm_content is shortened with
- * a fixed hash of the whole sanitized value. A bad fbclid is dropped,
+ * docs/CAPI-CONTRACT.md. pag and utm are lowercase [a-z0-9-], at most
+ * 12 characters. The only empty value is lowercase x. Uppercase X is
+ * never written. A slot that is not a lowercase code counts as x. A
+ * longer utm_content is shortened with a fixed hash of the whole
+ * sanitized value. c0 is exactly c0, pag and utm. A bad fbclid is dropped,
  * never edited. A value longer than 200 characters drops the fbc and
  * keeps pag, utm and the fbp. The fbclid is never truncated. A Stripe-safe
  * utm_content is also copied onto the Payment Link (150 character limit).
@@ -42,10 +44,10 @@
   var MAX_LEN = 200;
   var FBC_MAX_AGE = 90 * 24 * 60 * 60;
   var SAFE_ID = /^[A-Za-z0-9_-]+$/;
-  var SLOT = /^[A-Za-z0-9-]{1,12}$/;
+  var SLOT = /^[a-z0-9-]{1,12}$/;
   var UTM_MAX = 150;
-  var C2_SHAPE = /^c2_[A-Za-z0-9-]{1,12}_[A-Za-z0-9-]{1,12}_[0-9]+_[0-9]+_[0-9]+_[A-Za-z0-9_-]*$/;
-  var C0_SHAPE = /^c0_[A-Za-z0-9-]{1,12}_[A-Za-z0-9-]{1,12}$/;
+  var C2_SHAPE = /^c2_[a-z0-9-]{1,12}_[a-z0-9-]{1,12}_[0-9]+_[0-9]+_[0-9]+_[A-Za-z0-9_-]*$/;
+  var C0_SHAPE = /^c0_[a-z0-9-]{1,12}_[a-z0-9-]{1,12}$/;
 
   var landingFbclid = "";
   var landingSeenAt = 0;
@@ -151,11 +153,15 @@
     return s;
   }
 
+  function asSlot(value) {
+    return SLOT.test(value || "") ? value : "x";
+  }
+
   function shortenSlot(raw) {
-    var clean = String(raw || "").replace(/[^A-Za-z0-9-]/g, "-");
+    var clean = String(raw || "").toLowerCase().replace(/[^a-z0-9-]/g, "-");
     if (!clean) return "x";
-    if (clean.length <= 12) return clean;
-    return clean.slice(0, 5) + base36Pad(fnv1a(clean));
+    var code = clean.length <= 12 ? clean : clean.slice(0, 5) + base36Pad(fnv1a(clean));
+    return asSlot(code);
   }
 
   function pageCode() {
@@ -171,8 +177,7 @@
     if (path === "/angles-v2/sobrecarga") return "v2-sob";
     var parts = path.split("/");
     var tail = parts.length ? parts[parts.length - 1] : "";
-    var code = shortenSlot(String(tail).toLowerCase());
-    return SLOT.test(code) ? code : "x";
+    return shortenSlot(tail);
   }
 
   function rawUtm() {
@@ -192,27 +197,27 @@
   function parseClientReference(value) {
     var text = value || "";
     if (text.indexOf("c2_") === 0) {
-      var c2 = /^c2_([A-Za-z0-9-]{1,12})_([A-Za-z0-9-]{1,12})_([0-9]+)_([0-9]+)_([0-9]+)_(.*)$/.exec(text);
+      var c2 = /^c2_([^_]*)_([^_]*)_([0-9]+)_([0-9]+)_([0-9]+)_(.*)$/.exec(text);
       if (!c2) return null;
       return {
         fbpTs: c2[3],
         fbpRand: c2[4],
         fbcTs: c2[5],
         fbclid: c2[6],
-        page: c2[1],
-        utm: c2[2]
+        page: asSlot(c2[1]),
+        utm: asSlot(c2[2])
       };
     }
     if (text.indexOf("c0_") === 0) {
-      var c0 = /^c0_([A-Za-z0-9-]{1,12})_([A-Za-z0-9-]{1,12})$/.exec(text);
-      if (!c0) return null;
+      var parts = text.split("_");
+      if (parts.length !== 3 || parts[0] !== "c0") return null;
       return {
         fbpTs: "",
         fbpRand: "",
         fbcTs: "",
         fbclid: "",
-        page: c0[1],
-        utm: c0[2]
+        page: asSlot(parts[1]),
+        utm: asSlot(parts[2])
       };
     }
     var match = /^c1_([0-9]+)_([0-9]+)_([0-9]+)_(.*)$/.exec(text);
@@ -237,13 +242,12 @@
   }
 
   function clientReferenceId() {
-    var page = pageCode();
-    var utm = utmSlot();
-    if (!SLOT.test(page)) page = "x";
-    if (!SLOT.test(utm)) utm = "x";
+    var page = asSlot(pageCode());
+    var utm = asSlot(utmSlot());
     if (!consentAccepted()) {
       var bare = "c0_" + page + "_" + utm;
-      return C0_SHAPE.test(bare) ? bare : "";
+      if (bare.split("_").length !== 3 || !C0_SHAPE.test(bare)) return "";
+      return bare;
     }
     ensureFbc();
     var fbp = parseFbp(cookieGet("_fbp"));

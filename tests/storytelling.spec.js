@@ -170,7 +170,7 @@ test.describe("storytelling preview", function () {
     expect(html).toContain("<!-- BLOCO PREÇO: INÍCIO (versão 37 €) · trocar só com OK do Pedro -->");
     expect(html).toContain("<!-- BLOCO PREÇO: FIM -->");
     expect(html).toContain('<h2>Hoje entras por 37 €</h2>');
-    expect(html).toContain('<a href="' + STRIPE_37 + '" class="cta">Quero o sistema por 37 €</a>');
+    expect(html).toContain('<a href="' + STRIPE_37 + '" class="cta">Quero o Método 21 por 37 €</a>');
     expect(html).toContain("human-gate.js");
     expect(html).toContain("SIA21_bootPosthog");
     expect(html).toContain("SIA21_onHuman");

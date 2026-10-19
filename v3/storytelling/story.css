@@ -62,10 +62,33 @@ body {
 }
 
 .brand {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 1px;
+  min-width: 0;
   color: var(--ink);
-  font-size: 1.05rem;
+  line-height: 1;
+}
+
+.brand-name {
+  font-size: 1.02rem;
   font-weight: 800;
   letter-spacing: -0.03em;
+  line-height: 1.05;
+}
+
+.brand-line {
+  max-width: 100%;
+  overflow: hidden;
+  color: #556575;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  line-height: 1.15;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .offer-page main > section.hero {
@@ -933,6 +956,24 @@ section[id] {
 }
 
 @media (max-width: 640px) {
+  .offer-page > header {
+    height: 48px;
+    min-height: 48px;
+    max-height: 48px;
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+
+  .offer-page > header .brand-name {
+    font-size: 0.9rem;
+    line-height: 1;
+  }
+
+  .offer-page > header .brand-line {
+    font-size: 0.54rem;
+    letter-spacing: -0.02em;
+  }
+
   .offer-page main > section.hero {
     padding: 1.6rem 1.1rem 1.8rem !important;
   }

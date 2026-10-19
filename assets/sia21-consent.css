@@ -366,6 +366,13 @@ a.bg-emerald-500:hover {
   line-height: 1.05;
 }
 
+.brand-logo {
+  display: block;
+  flex: 0 0 auto;
+  width: 113px;
+  height: 30px;
+}
+
 .brand-line {
   max-width: 100%;
   overflow: hidden;

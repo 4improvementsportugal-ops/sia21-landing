@@ -69,7 +69,7 @@ def paras(lines, cls):
     return "\n".join('<p class="{0}">{1}</p>'.format(cls, e(line)) for line in lines)
 
 
-NOTE_HOURS = "Exemplos ilustrativos. O tempo que ganhas depende de aplicares o método. O e-book estima até cerca de 8 horas por semana, e és tu que medes."
+NOTE_HOURS = "Exemplos ilustrativos. O tempo que ganhas depende de aplicares o método. O e-book estima 7 a 8 horas por semana, e és tu que medes."
 NOTE_PLAIN = "Exemplos ilustrativos. Não são casos de clientes."
 SCENES_LEAD = "Exemplos ilustrativos do dia a dia de um consultor. Não são casos de clientes."
 

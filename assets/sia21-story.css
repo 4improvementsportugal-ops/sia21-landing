@@ -1078,12 +1078,26 @@ section[id] {
     text-align: left !important;
   }
 
-  .hero-shell {
-    grid-template-columns: 250px minmax(0, 1fr);
+  /* offer.css stretches the first section's children to width:100%
+     and max-width:none. That pins the book to the 32px padding and
+     leaves the right half of the hero empty. The shell is the same
+     centered column as the sections below. /v4/ has no book and keeps
+     its own centered column. */
+  .offer-page:not(.v4) main > section.hero > .hero-shell {
+    width: min(1120px, 100%);
+    max-width: 1120px;
+    margin-left: auto;
+    margin-right: auto;
+    grid-template-columns: auto minmax(0, max-content);
     column-gap: 3.25rem;
-    align-items: center;
+    align-items: center !important;
+    justify-content: center;
     justify-items: start;
     text-align: left;
+  }
+
+  .offer-page:not(.v4) main > section.hero > .hero-shell > .hero-copy {
+    max-width: 42rem;
   }
 
   .hero-copy {
@@ -1213,6 +1227,13 @@ section[id] {
     max-width: 1040px;
     margin-left: auto;
     margin-right: auto;
+  }
+
+  .offer-page:not(.v4) main > section.band > *,
+  .offer-page:not(.v4) main > section.wide > *,
+  .offer-page:not(.v4) main > section.narrow > * {
+    width: min(1120px, 100%);
+    max-width: 1120px;
   }
 
   .offer-page main > section.night > .night-inner {

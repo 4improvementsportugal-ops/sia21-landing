@@ -53,6 +53,15 @@ test.describe("v4 variante", function () {
     expect(file.indexOf("fundador")).toBe(-1);
     expect(file.indexOf("Preço early")).toBe(-1);
     expect(file.indexOf("Pagamento único ·")).toBe(-1);
+    expect(file.match(/Pagamento único/g)).toEqual(["Pagamento único"]);
+    expect(file.match(/Recebes o PDF/g)).toEqual(["Recebes o PDF", "Recebes o PDF"]);
+    expect(file).toContain("Pagamento único. Recebes o PDF por email, normalmente em menos de 30 minutos. Dúvidas?");
+    expect(file.indexOf("Pagamento único. Sem mensalidades.")).toBe(-1);
+    expect(file.indexOf("Pagas no Stripe e recebes o PDF por email.")).toBe(-1);
+    expect(file.indexOf('class="pay-line"')).toBe(-1);
+    expect(file.indexOf('class="pay-lite"')).toBe(-1);
+    expect(file).toContain("Como recebo o e-book?");
+    expect(file).toContain("É um pagamento único, não é uma subscrição.");
     expect(file.indexOf("Estás dentro do Facebook")).toBe(-1);
     expect(file.indexOf("\u2014")).toBe(-1);
     expect(file.indexOf("\u2013")).toBe(-1);
@@ -117,6 +126,13 @@ test.describe("v4 variante", function () {
       return getComputedStyle(el).fontVariantNumeric;
     });
     expect(numeric).toContain("tabular-nums");
+    const note = await page.locator(".stat-note").evaluate(function (el) {
+      var cs = getComputedStyle(el);
+      return { size: cs.fontSize, color: cs.color, marginTop: cs.marginTop };
+    });
+    expect(note.size).toBe("13px");
+    expect(note.color).toBe("rgb(100, 116, 139)");
+    expect(note.marginTop).toBe("16px");
   });
 
   test("the count finishes on the final numbers without a new event name", async function ({ page }) {

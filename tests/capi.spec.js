@@ -5,35 +5,54 @@ const LOCAL = "http://127.0.0.1:4173";
 const TRACKING = /posthog\.com|facebook\.net|facebook\.com/i;
 const FBP = "fb.1.1711111111111.2222222222";
 
+function fnv1a(text) {
+  var h = 0x811c9dc5;
+  for (var i = 0; i < text.length; i++) {
+    h ^= text.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return h >>> 0;
+}
+
+function shortenSlot(raw) {
+  var clean = String(raw || "").replace(/[^A-Za-z0-9-]/g, "-");
+  if (!clean) return "x";
+  if (clean.length <= 12) return clean;
+  var hash = (fnv1a(clean) >>> 0).toString(36);
+  while (hash.length < 7) hash = "0" + hash;
+  return clean.slice(0, 5) + hash;
+}
+
 function pageCodeFromPath(pathname) {
   var path = String(pathname || "");
   path = path.replace(/\/index\.html$/, "/");
   path = path.replace(/\.html$/, "");
   if (path.length > 1 && path.charAt(path.length - 1) === "/") path = path.slice(0, -1);
-  if (path === "" || path === "/" || path === "/index") return "home";
+  if (path === "" || path === "/" || path === "/index") return "idx";
   if (path === "/v4") return "v4";
   if (path === "/v3/storytelling") return "v3";
   if (path === "/obrigado") return "obg";
   var v1 = /^\/angles\/(0[1-9]|10)(?:-|$)/.exec(path);
   if (v1) return "a" + v1[1];
   var v2 = /^\/angles-v2\/(0[1-9]|10)(?:-|$)/.exec(path);
-  if (v2) return "b" + v2[1];
-  if (path === "/angles-v2/sobrecarga") return "bsob";
-  var slug = path.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 12);
-  return /^[a-z0-9]+$/.test(slug) ? slug : "unk";
+  if (v2) return "v2-" + v2[1];
+  if (path === "/angles-v2/sobrecarga") return "v2-sob";
+  var parts = path.split("/");
+  var tail = parts.length ? parts[parts.length - 1] : "";
+  return shortenSlot(String(tail).toLowerCase());
 }
 
 function expectedRef(pathname, options) {
   options = options || {};
+  var page = options.page || pageCodeFromPath(pathname);
+  var utm = shortenSlot(options.utm || "");
+  if (!options.consent && options.consent !== undefined) return "c0_" + page + "_" + utm;
+  if (options.noConsent) return "c0_" + page + "_" + utm;
   var fbpTs = options.noFbp ? "0" : (options.fbpTs || "1711111111111");
   var fbpRand = options.noFbp ? "0" : (options.fbpRand || "2222222222");
   var fbcTs = options.fbcTs != null ? String(options.fbcTs) : "0";
   var fbclid = options.fbclid || "";
-  var utm = options.utm || "";
-  var page = options.page || pageCodeFromPath(pathname);
-  var value = "c1_" + fbpTs + "_" + fbpRand + "_" + fbcTs + "_" + fbclid + "_p-" + page;
-  if (utm) value += "_u-" + utm;
-  return value;
+  return "c2_" + page + "_" + utm + "_" + fbpTs + "_" + fbpRand + "_" + fbcTs + "_" + fbclid;
 }
 const CORE_37 = "aFa5kF1OFc4D1fNb6mgrS02";
 const EARLY_33 = "fZueVf1OFc4D7Eb1vMgrS04";
@@ -77,12 +96,13 @@ async function maskWebdriver(page) {
   });
 }
 
-function splitRef(value) {
-  // Python str.split("_", 4): four cuts, the fbclid stays in the last field.
+function splitRef(value, cuts) {
+  // cuts underscores, and the last piece keeps the remainder (Python split, not JS split).
   var parts = [];
   var rest = String(value);
   var i;
-  for (i = 0; i < 4; i++) {
+  var n = cuts == null ? 4 : cuts;
+  for (i = 0; i < n; i++) {
     var at = rest.indexOf("_");
     if (at === -1) {
       parts.push(rest);
@@ -229,6 +249,26 @@ test.beforeEach(async function ({ page }) {
 });
 
 test.describe("meta capi browser", function () {
+  test("pag and utm codes stay inside 12 characters and the two campaign names differ", function () {
+    expect(shortenSlot("teste-06-chatgpt-1018-v2-37a")).toBe("teste0k7xmj9");
+    expect(shortenSlot("06-chatgpt-1019-v4")).toBe("06-ch07rk8jc");
+    expect(shortenSlot("teste-06-chatgpt-1018-v2-37a")).not.toBe(shortenSlot("06-chatgpt-1019-v4"));
+    expect(shortenSlot("")).toBe("x");
+    expect(shortenSlot("bad.value")).toBe("bad-value");
+    expect(shortenSlot("criativo-v4")).toBe("criativo-v4");
+    expect(pageCodeFromPath("/")).toBe("idx");
+    expect(pageCodeFromPath("/angles/06-chatgpt-falhou/")).toBe("a06");
+    expect(pageCodeFromPath("/angles/01-tempo/")).toBe("a01");
+    expect(pageCodeFromPath("/angles/10-visitas-ops/")).toBe("a10");
+    expect(pageCodeFromPath("/v4/")).toBe("v4");
+    expect(pageCodeFromPath("/angles-v2/06-missing/")).toBe("v2-06");
+    expect(pageCodeFromPath("/angles-v2/sobrecarga/")).toBe("v2-sob");
+    expect(expectedRef("/angles/06-chatgpt-falhou/", { utm: "teste-06-chatgpt-1018-v2-37a" })).toBe("c2_a06_teste0k7xmj9_1711111111111_2222222222_0_");
+    expect(expectedRef("/v4/", { utm: "06-chatgpt-1019-v4" })).toBe("c2_v4_06-ch07rk8jc_1711111111111_2222222222_0_");
+    expect(expectedRef("/angles/06-chatgpt-falhou/", { noConsent: true, utm: "teste-06-chatgpt-1018-v2-37a" })).toBe("c0_a06_teste0k7xmj9");
+    expect(expectedRef("/v4/", { noConsent: true, utm: "06-chatgpt-1019-v4" })).toBe("c0_v4_06-ch07rk8jc");
+  });
+
   test("human-gate loads the capi helper before the checkout lock", function () {
     const fs = require("fs");
     const gate = fs.readFileSync("assets/human-gate.js", "utf8");
@@ -252,26 +292,30 @@ test.describe("meta capi browser", function () {
     expect(attachFn).toContain("raw.indexOf(STRIPE_PREFIX) !== 0");
   });
 
-  test("no consent: no client_reference_id, even with _fbp and fbclid", async function ({ page }) {
+  test("no consent: c0_pag_utm, and _fbp or fbclid stay out of it", async function ({ page }) {
     const navs = await arm(page, PROD + "/index.html?fbclid=abc_D-1", { fbp: FBP });
+    const bare = expectedRef("/index.html", { noConsent: true });
     expect(await readCookie(page, "_fbc")).toBe("");
     await allowCheckout(page);
     const buy = page.locator("#hero-cta");
     const before = await buy.getAttribute("href");
+    expect(new URL(before).searchParams.get("client_reference_id")).toBe(bare);
     await buy.scrollIntoViewIfNeeded();
     await buy.click({ noWaitAfter: true });
     await page.waitForTimeout(1600);
     const after = await buy.getAttribute("href");
     expect(after).toBe(before);
-    expect(after).not.toContain("client_reference_id");
+    expect(new URL(after).searchParams.get("client_reference_id")).toBe(bare);
+    expect(bare).not.toContain("1711111111111");
+    expect(bare).not.toContain("abc");
     expect(await readCookie(page, "_fbc")).toBe("");
     navs.forEach(function (hit) {
-      expect(new URL(hit).searchParams.get("client_reference_id")).toBeNull();
+      expect(new URL(hit).searchParams.get("client_reference_id")).toBe(bare);
     });
     expect(navs.length).toBeGreaterThan(0);
   });
 
-  test("consent and _fbp only: c1_TS_RAND_0_, and existing query params stay", async function ({ page }) {
+  test("consent and _fbp only: c2_pag_utm_TS_RAND_0_, and existing query params stay", async function ({ page }) {
     const navs = await arm(page, PROD + "/index.html", { consent: true, fbp: FBP });
     expect(await readCookie(page, "_fbc")).toBe("");
     const preserved = await page.evaluate(function (early14) {
@@ -287,7 +331,7 @@ test.describe("meta capi browser", function () {
     expect(preservedUrl.hash).toBe("#pay");
     const homeRef = expectedRef("/index.html");
     expect(preservedUrl.searchParams.get("client_reference_id")).toBe(homeRef);
-    expect(splitRef(preservedUrl.searchParams.get("client_reference_id"))).toEqual(["c1", "1711111111111", "2222222222", "0", "_p-home"]);
+    expect(splitRef(preservedUrl.searchParams.get("client_reference_id"), 6)).toEqual(["c2", "idx", "x", "1711111111111", "2222222222", "0", ""]);
     const parsed = await page.evaluate(function (value) {
       return {
         now: window.SIA21_parseClientReference(value),
@@ -295,7 +339,7 @@ test.describe("meta capi browser", function () {
         bare: window.SIA21_parseClientReference("c1_1711111111111_2222222222_0_")
       };
     }, homeRef);
-    expect(parsed.now).toEqual({ fbpTs: "1711111111111", fbpRand: "2222222222", fbcTs: "0", fbclid: "", page: "home", utm: "" });
+    expect(parsed.now).toEqual({ fbpTs: "1711111111111", fbpRand: "2222222222", fbcTs: "0", fbclid: "", page: "idx", utm: "x" });
     expect(parsed.old).toEqual({ fbpTs: "1711111111111", fbpRand: "2222222222", fbcTs: "1700000000000", fbclid: "abc_D-1", page: "", utm: "" });
     expect(parsed.bare).toEqual({ fbpTs: "1711111111111", fbpRand: "2222222222", fbcTs: "0", fbclid: "", page: "", utm: "" });
     await allowCheckout(page);
@@ -303,7 +347,7 @@ test.describe("meta capi browser", function () {
     expect(ref).toBe(homeRef);
   });
 
-  test("consent and ?fbclid=abc_D-1 sets _fbc and c1_..._ts_abc_D-1", async function ({ page }) {
+  test("consent and ?fbclid=abc_D-1 sets _fbc and c2_..._ts_abc_D-1", async function ({ page }) {
     const navs = await arm(page, PROD + "/index.html?fbclid=abc_D-1", { consent: true, fbp: FBP });
     const fbc = await readCookie(page, "_fbc");
     expect(fbc).toMatch(/^fb\.1\.[0-9]+\.abc_D-1$/);
@@ -320,7 +364,7 @@ test.describe("meta capi browser", function () {
     expect(ref).toBe(expectedRef("/angles-v2/sobrecarga/", { fbcTs: ts, fbclid: "abc_D-1" }));
     const parsed = await page.evaluate(function (value) { return window.SIA21_parseClientReference(value); }, ref);
     expect(parsed.fbclid).toBe("abc_D-1");
-    expect(parsed.page).toBe("bsob");
+    expect(parsed.page).toBe("v2-sob");
     expect(parsed.fbcTs).toBe(ts);
   });
 
@@ -336,7 +380,7 @@ test.describe("meta capi browser", function () {
     expect(ref).toBe(expectedRef("/angles-v2/01-tempo/", { noFbp: true, fbcTs: ts, fbclid: "abc_D-1" }));
     const parsed = await page.evaluate(function (value) { return window.SIA21_parseClientReference(value); }, ref);
     expect(parsed.fbclid).toBe("abc_D-1");
-    expect(parsed.page).toBe("b01");
+    expect(parsed.page).toBe("v2-01");
     expect(parsed.fbpTs).toBe("0");
   });
 
@@ -365,23 +409,22 @@ test.describe("meta capi browser", function () {
         document.cookie = "_fbc=; Max-Age=0; path=/; Secure";
         document.cookie = "_fbc=fb.1.3333333333333." + id + "; path=/; Secure";
       }
-      var head = "c1_1711111111111_2222222222_3333333333333_";
-      var suffix = "_p-home";
-      var keep = "b".repeat(200 - head.length - suffix.length);
+      var head = "c2_idx_x_1711111111111_2222222222_3333333333333_";
+      var keep = "b".repeat(200 - head.length);
       write(keep);
       var kept = window.SIA21_clientReferenceId();
       write(keep + "c");
       var dropped = window.SIA21_clientReferenceId();
-      return { head: head.length, suffix: suffix.length, keep: keep.length, kept: kept, dropped: dropped };
+      return { head: head.length, keep: keep.length, kept: kept, dropped: dropped };
     });
-    expect(boundary.head).toBe(42);
-    expect(boundary.suffix).toBe(7);
-    expect(boundary.keep).toBe(151);
+    expect(boundary.head).toBe(48);
+    expect(boundary.keep).toBe(152);
     expect(boundary.kept.length).toBe(200);
-    expect(boundary.kept).toBe("c1_1711111111111_2222222222_3333333333333_" + "b".repeat(151) + "_p-home");
+    expect(boundary.kept).toBe("c2_idx_x_1711111111111_2222222222_3333333333333_" + "b".repeat(152));
     const keptParsed = await page.evaluate(function (value) { return window.SIA21_parseClientReference(value); }, boundary.kept);
-    expect(keptParsed.fbclid).toBe("b".repeat(151));
-    expect(keptParsed.page).toBe("home");
+    expect(keptParsed.fbclid).toBe("b".repeat(152));
+    expect(keptParsed.page).toBe("idx");
+    expect(keptParsed.utm).toBe("x");
     expect(boundary.dropped).toBe(expectedRef("/index.html"));
   });
 
@@ -449,7 +492,7 @@ test.describe("meta capi browser", function () {
     expect(new URL(purchases[0]).searchParams.get("eid")).toBe(sid);
   });
 
-  test("with consent, c1_ is on Core, both exits, both obrigado links, and a future link", async function ({ page }) {
+  test("with consent, c2_ is on Core, both exits, both obrigado links, and a future link", async function ({ page }) {
     test.setTimeout(180000);
     const fs = require("fs");
     const rows = [];
@@ -548,16 +591,19 @@ test.describe("meta capi browser", function () {
     fs.writeFileSync("/tmp/capi-stripe-pages.json", JSON.stringify(rows, null, 2));
   });
 
-  test("without consent, Core, both exits and both obrigado links stay bare", async function ({ page }) {
+  test("without consent, Core, both exits and both obrigado links carry c0_pag_utm", async function ({ page }) {
     test.setTimeout(180000);
     const files = publishedStripePages();
     for (var i = 0; i < files.length; i++) {
       const file = files[i];
       await arm(page, PROD + pageUrl(file) + "?fbclid=abc_D-1", { fbp: FBP });
       const snap = await stripeSnapshot(page);
+      const bare = expectedRef(pageUrl(file), { noConsent: true });
       expect(snap.links.length).toBeGreaterThan(0);
       snap.links.forEach(function (link) {
-        expect(link.ref).toBe("");
+        expect(link.ref).toBe(bare);
+        expect(link.ref.indexOf("c0_")).toBe(0);
+        expect(link.ref).not.toContain("1711111111111");
       });
       expect(await readCookie(page, "_fbc")).toBe("");
       if (file === "obrigado.html") {
@@ -578,7 +624,7 @@ test.describe("meta capi browser", function () {
     await expect(offer33).toBeVisible({ timeout: 8000 });
     const href33 = await offer33.getAttribute("href");
     expect(href33).toContain(EARLY_33);
-    expect(href33).not.toContain("client_reference_id");
+    expect(new URL(href33).searchParams.get("client_reference_id")).toBe(expectedRef("/angles-v2/sobrecarga/", { noConsent: true }));
     await page.locator("#sia21-exit button.sia21-exit-secondary").click();
     await page.evaluate(function () {
       sessionStorage.setItem("sia21_stripe_left_at_v1", String(Date.now() - 120000));
@@ -590,7 +636,7 @@ test.describe("meta capi browser", function () {
     await expect(offer14).toBeVisible({ timeout: 8000 });
     const href14 = await offer14.getAttribute("href");
     expect(href14).toContain(EARLY_14);
-    expect(href14).not.toContain("client_reference_id");
+    expect(new URL(href14).searchParams.get("client_reference_id")).toBe(expectedRef("/angles-v2/sobrecarga/", { noConsent: true }));
 
     const injected = await page.evaluate(function (id) {
       var a = document.createElement("a");
@@ -600,14 +646,14 @@ test.describe("meta capi browser", function () {
     }, FUTURE_27);
     await page.waitForTimeout(300);
     const after = await page.locator('a[href*="' + FUTURE_27 + '"]').getAttribute("href");
-    expect(after).toBe(injected);
-    expect(after).not.toContain("client_reference_id");
+    expect(new URL(after).searchParams.get("client_reference_id")).toBe(expectedRef("/angles-v2/sobrecarga/", { noConsent: true }));
+    expect(after).not.toBe(injected);
   });
 
   test("Aceitar decorates links already on /obrigado without a checkout click", async function ({ page }) {
     await arm(page, PROD + "/obrigado.html", { fbp: FBP });
     const before = await page.locator('a[href*="' + KIT_PRO + '"]').getAttribute("href");
-    expect(before).not.toContain("client_reference_id");
+    expect(new URL(before).searchParams.get("client_reference_id")).toBe(expectedRef("/obrigado.html", { noConsent: true }));
     await page.locator("button[data-ck='accepted']").click();
     await expect.poll(async function () {
       return page.locator('a[href*="' + KIT_PRO + '"]').getAttribute("href");
@@ -636,6 +682,35 @@ test.describe("meta capi browser", function () {
       return document.getElementById("ghl-probe").getAttribute("href");
     });
     expect(new URL(restored).searchParams.get("client_reference_id")).toBe(expectedRef("/obrigado.html"));
+  });
+
+  test("LP 06 and /v4/ build c2 with consent and c0 without it", async function ({ page }) {
+    const cases = [
+      { path: "/angles/06-chatgpt-falhou/", utm: "teste-06-chatgpt-1018-v2-37a", consent: false },
+      { path: "/v4/", utm: "06-chatgpt-1019-v4", consent: false },
+      { path: "/angles/06-chatgpt-falhou/", utm: "teste-06-chatgpt-1018-v2-37a", consent: true },
+      { path: "/v4/", utm: "06-chatgpt-1019-v4", consent: true }
+    ];
+    for (var i = 0; i < cases.length; i++) {
+      const item = cases[i];
+      await arm(page, PROD + item.path + "?utm_content=" + encodeURIComponent(item.utm), { consent: item.consent, fbp: FBP });
+      const want = expectedRef(item.path, { utm: item.utm, noConsent: !item.consent });
+      const ref = await page.evaluate(function () { return window.SIA21_clientReferenceId(); });
+      expect(ref).toBe(want);
+      expect(ref.length).toBeLessThanOrEqual(200);
+      const parsed = await page.evaluate(function (value) { return window.SIA21_parseClientReference(value); }, ref);
+      expect(parsed.page).toBe(pageCodeFromPath(item.path));
+      expect(parsed.utm).toBe(shortenSlot(item.utm));
+      if (item.consent) {
+        expect(parsed.fbpTs).toBe("1711111111111");
+        expect(parsed.fbclid).toBe("");
+      } else {
+        expect(parsed.fbpTs).toBe("");
+        expect(parsed.fbclid).toBe("");
+        expect(await readCookie(page, "_fbc")).toBe("");
+      }
+    }
+    expect(shortenSlot("teste-06-chatgpt-1018-v2-37a")).not.toBe(shortenSlot("06-chatgpt-1019-v4"));
   });
 
   test("LP 06 and /v4/ checkout URLs carry the page code and utm_content", async function ({ page }) {
@@ -676,9 +751,10 @@ test.describe("meta capi browser", function () {
     await expect.poll(async function () { return badCta.getAttribute("href"); }).toContain("client_reference_id=");
     const badHref = await badCta.getAttribute("href");
     const badRef = new URL(badHref).searchParams.get("client_reference_id");
-    expect(badRef).toBe(expectedRef("/v4/"));
+    expect(badRef).toBe(expectedRef("/v4/", { utm: "bad.value" }));
     expect(new URL(badHref).searchParams.get("utm_content")).toBeNull();
-    expect(badRef).not.toContain("bad");
+    expect(badRef).toContain("bad-value");
+    expect(badRef).not.toContain(".");
 
     const rows = [];
     const files = publishedStripePages();

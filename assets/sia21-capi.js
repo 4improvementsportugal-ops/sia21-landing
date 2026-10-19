@@ -10,21 +10,21 @@
  * See docs/CAPI-CONTRACT.md.
  *
  * Consent is localStorage 4i_cookie_consent_v1 === "accepted" (this visit
- * or a previous one). Without that, the parameter is not added and _fbc
- * is not written.
+ * or a previous one). _fbc is written only after that. The reference is
+ * still added without consent, but then it carries no Meta cookies:
  *
- *   c1_<fbpTs>_<fbpRand>_<fbcTs>_<fbclid>_p-<page>_u-<utm>
+ *   with consent:    c2_<pag>_<utm>_<fbpTs>_<fbpRand>_<fbcTs>_<fbclid>
+ *   without consent: c0_<pag>_<utm>
  *
- * The first five parts are unchanged. _p-<page> and, when the landing URL
- * has a safe utm_content, _u-<utm> are a suffix after the fbclid. The
- * fbclid is still the remainder after the 4th underscore, then the suffix
- * is stripped from the end. A value with no _p- suffix parses as before.
- * JavaScript String.split("_", 4) truncates and must not be used. See
- * docs/CAPI-CONTRACT.md. Only [A-Za-z0-9_-]. A bad fbclid or utm_content
- * is dropped, never edited. A value longer than 200 characters drops the
- * utm first, then the fbc, and keeps the page code. The fbclid is never
- * truncated. utm_content is also copied onto the Payment Link when it fits
- * Stripe's 150 character UTM limit.
+ * fbclid is the last field: everything after the 6th underscore. pag and
+ * utm never contain an underscore, so that cut is stable. A historical
+ * c1_ value is not rewritten and its parser is unchanged. See
+ * docs/CAPI-CONTRACT.md. pag and utm are [A-Za-z0-9-], at most 12
+ * characters, or x when missing. A longer utm_content is shortened with
+ * a fixed hash of the whole sanitized value. A bad fbclid is dropped,
+ * never edited. A value longer than 200 characters drops the fbc and
+ * keeps pag, utm and the fbp. The fbclid is never truncated. A Stripe-safe
+ * utm_content is also copied onto the Payment Link (150 character limit).
  *
  * _fbp is fb.1.<ts>.<rand> (both numeric). _fbc is fb.1.<ts>.<fbclid>.
  * If the landing URL has ?fbclid= and there is no _fbc yet, the cookie is
@@ -42,9 +42,10 @@
   var MAX_LEN = 200;
   var FBC_MAX_AGE = 90 * 24 * 60 * 60;
   var SAFE_ID = /^[A-Za-z0-9_-]+$/;
-  var PAGE_CODE = /^[a-z0-9]+$/;
+  var SLOT = /^[A-Za-z0-9-]{1,12}$/;
   var UTM_MAX = 150;
-  var REF_SHAPE = /^c1_[0-9]+_[0-9]+_[0-9]+_[A-Za-z0-9_-]*$/;
+  var C2_SHAPE = /^c2_[A-Za-z0-9-]{1,12}_[A-Za-z0-9-]{1,12}_[0-9]+_[0-9]+_[0-9]+_[A-Za-z0-9_-]*$/;
+  var C0_SHAPE = /^c0_[A-Za-z0-9-]{1,12}_[A-Za-z0-9-]{1,12}$/;
 
   var landingFbclid = "";
   var landingSeenAt = 0;
@@ -134,30 +135,87 @@
     return path;
   }
 
+  function fnv1a(text) {
+    var h = 0x811c9dc5;
+    var i;
+    for (i = 0; i < text.length; i++) {
+      h ^= text.charCodeAt(i);
+      h = Math.imul(h, 0x01000193);
+    }
+    return h >>> 0;
+  }
+
+  function base36Pad(n) {
+    var s = (n >>> 0).toString(36);
+    while (s.length < 7) s = "0" + s;
+    return s;
+  }
+
+  function shortenSlot(raw) {
+    var clean = String(raw || "").replace(/[^A-Za-z0-9-]/g, "-");
+    if (!clean) return "x";
+    if (clean.length <= 12) return clean;
+    return clean.slice(0, 5) + base36Pad(fnv1a(clean));
+  }
+
   function pageCode() {
     var path = pagePath();
-    if (path === "" || path === "/" || path === "/index") return "home";
+    if (path === "" || path === "/" || path === "/index") return "idx";
     if (path === "/v4") return "v4";
     if (path === "/v3/storytelling") return "v3";
     if (path === "/obrigado") return "obg";
     var v1 = /^\/angles\/(0[1-9]|10)(?:-|$)/.exec(path);
     if (v1) return "a" + v1[1];
     var v2 = /^\/angles-v2\/(0[1-9]|10)(?:-|$)/.exec(path);
-    if (v2) return "b" + v2[1];
-    if (path === "/angles-v2/sobrecarga") return "bsob";
-    var slug = path.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 12);
-    return PAGE_CODE.test(slug) ? slug : "unk";
+    if (v2) return "v2-" + v2[1];
+    if (path === "/angles-v2/sobrecarga") return "v2-sob";
+    var parts = path.split("/");
+    var tail = parts.length ? parts[parts.length - 1] : "";
+    var code = shortenSlot(String(tail).toLowerCase());
+    return SLOT.test(code) ? code : "x";
+  }
+
+  function rawUtm() {
+    try { return new URLSearchParams(w.location.search || "").get("utm_content") || ""; } catch (e) { return ""; }
   }
 
   function utmContent() {
-    var raw = "";
-    try { raw = new URLSearchParams(w.location.search || "").get("utm_content") || ""; } catch (e) { return ""; }
+    var raw = rawUtm();
     if (!raw || raw.length > UTM_MAX || !SAFE_ID.test(raw)) return "";
     return raw;
   }
 
+  function utmSlot() {
+    return shortenSlot(rawUtm());
+  }
+
   function parseClientReference(value) {
-    var match = /^c1_([0-9]+)_([0-9]+)_([0-9]+)_(.*)$/.exec(value || "");
+    var text = value || "";
+    if (text.indexOf("c2_") === 0) {
+      var c2 = /^c2_([A-Za-z0-9-]{1,12})_([A-Za-z0-9-]{1,12})_([0-9]+)_([0-9]+)_([0-9]+)_(.*)$/.exec(text);
+      if (!c2) return null;
+      return {
+        fbpTs: c2[3],
+        fbpRand: c2[4],
+        fbcTs: c2[5],
+        fbclid: c2[6],
+        page: c2[1],
+        utm: c2[2]
+      };
+    }
+    if (text.indexOf("c0_") === 0) {
+      var c0 = /^c0_([A-Za-z0-9-]{1,12})_([A-Za-z0-9-]{1,12})$/.exec(text);
+      if (!c0) return null;
+      return {
+        fbpTs: "",
+        fbpRand: "",
+        fbcTs: "",
+        fbclid: "",
+        page: c0[1],
+        utm: c0[2]
+      };
+    }
+    var match = /^c1_([0-9]+)_([0-9]+)_([0-9]+)_(.*)$/.exec(text);
     if (!match) return null;
     var rest = match[4];
     var page = "";
@@ -179,7 +237,14 @@
   }
 
   function clientReferenceId() {
-    if (!consentAccepted()) return "";
+    var page = pageCode();
+    var utm = utmSlot();
+    if (!SLOT.test(page)) page = "x";
+    if (!SLOT.test(utm)) utm = "x";
+    if (!consentAccepted()) {
+      var bare = "c0_" + page + "_" + utm;
+      return C0_SHAPE.test(bare) ? bare : "";
+    }
     ensureFbc();
     var fbp = parseFbp(cookieGet("_fbp"));
     var fbc = parseFbc(cookieGet("_fbc"));
@@ -191,18 +256,9 @@
       fbcTs = fbc.ts;
       fbclid = fbc.fbclid;
     }
-    var page = pageCode();
-    var utm = utmContent();
-    if (!PAGE_CODE.test(page)) page = "unk";
-    function build(useFbcTs, useFbclid, useUtm) {
-      var value = "c1_" + fbpTs + "_" + fbpRand + "_" + useFbcTs + "_" + useFbclid + "_p-" + page;
-      if (useUtm) value += "_u-" + useUtm;
-      return value;
-    }
-    var full = build(fbcTs, fbclid, utm);
-    if (full.length > MAX_LEN) full = build(fbcTs, fbclid, "");
-    if (full.length > MAX_LEN) full = build("0", "", "");
-    if (!REF_SHAPE.test(full) || full.length > MAX_LEN) return "";
+    var full = "c2_" + page + "_" + utm + "_" + fbpTs + "_" + fbpRand + "_" + fbcTs + "_" + fbclid;
+    if (full.length > MAX_LEN) full = "c2_" + page + "_" + utm + "_" + fbpTs + "_" + fbpRand + "_0_";
+    if (!C2_SHAPE.test(full) || full.length > MAX_LEN) return "";
     return full;
   }
 
@@ -216,7 +272,7 @@
 
   function attachClientReference(anchor) {
     if (excludedPage()) return false;
-    if (!anchor || !anchor.getAttribute || !consentAccepted()) return false;
+    if (!anchor || !anchor.getAttribute) return false;
     var ref = clientReferenceId();
     if (!ref) return false;
     var raw = anchor.getAttribute("href") || "";
@@ -258,7 +314,7 @@
     if (!root) return;
     w.__SIA21_CAPI_OBS = true;
     var obs = new MutationObserver(function (records) {
-      if (excludedPage() || !consentAccepted()) return;
+      if (excludedPage()) return;
       var i, j;
       for (i = 0; i < records.length; i++) {
         var rec = records[i];

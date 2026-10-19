@@ -247,7 +247,7 @@ test.describe("storytelling preview", function () {
     const priceHref = await page.locator("#preco .cta").getAttribute("href");
     const priceUrl = new URL(priceHref);
     expect(priceUrl.origin + priceUrl.pathname).toBe(STRIPE_37);
-    expect(priceUrl.searchParams.get("client_reference_id")).toBe("c1_0_0_0__p-v3");
+    expect(priceUrl.searchParams.get("client_reference_id")).toBe("c2_v3_x_0_0_0_");
     await expect(page.locator(".sia21-retorno")).toHaveCount(0);
     await expect(page.locator("#sia21-toast")).toHaveCount(0);
     await page.mouse.wheel(0, 500);
@@ -306,7 +306,7 @@ test.describe("storytelling preview", function () {
     await page.mouse.move(90, 260);
     await page.waitForFunction(function () { return window.__SIA21_ENGAGED === true; });
     await expect(page.locator("#sia21-exit")).toBeVisible({ timeout: 8000 });
-    await expect(page.locator("#sia21-exit a.sia21-exit-primary")).toHaveAttribute("href", EARLY_33);
+    await expect(page.locator("#sia21-exit a.sia21-exit-primary")).toHaveAttribute("href", EARLY_33 + "?client_reference_id=c0_v3_x");
     await expect(page.locator("#sia21-exit-timer")).toBeHidden();
     await page.locator("#sia21-exit button.sia21-exit-secondary").click();
     await expect(page.locator("#sia21-exit")).toBeHidden();
@@ -318,7 +318,7 @@ test.describe("storytelling preview", function () {
     await page.waitForFunction(function () { return window.__SIA21_ENGAGED === true; });
     await expect(page.locator("#sia21-exit")).toBeVisible({ timeout: 8000 });
     await expect(page.locator("#sia21-exit-kicker")).toHaveText("Última oferta");
-    await expect(page.locator("#sia21-exit a.sia21-exit-primary")).toHaveAttribute("href", EARLY_14);
+    await expect(page.locator("#sia21-exit a.sia21-exit-primary")).toHaveAttribute("href", EARLY_14 + "?client_reference_id=c0_v3_x");
     await expect(page.locator("#sia21-exit-timer")).toBeVisible();
     await waitFor(hits, function (events) {
       return events.some(function (event) {

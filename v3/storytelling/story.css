@@ -272,8 +272,8 @@ body {
 }
 
 .offer-page .proof {
-  margin-top: 6.5rem;
-  margin-bottom: calc(6.5rem - 1.6rem - 1.15rem);
+  margin-top: 32px;
+  margin-bottom: calc(48px - 1.6rem - 1.15rem);
 }
 
 .band {
@@ -938,7 +938,8 @@ section[id] {
   }
 
   .offer-page .proof {
-    margin-bottom: calc(6.5rem - 1.8rem - 1.15rem);
+    margin-top: 32px;
+    margin-bottom: calc(48px - 1.8rem - 1.15rem);
   }
 }
 
@@ -1019,8 +1020,8 @@ section[id] {
   }
 
   .offer-page .proof {
-    margin-top: 9.5rem;
-    margin-bottom: calc(9.5rem - 2rem - 1.25rem);
+    margin-top: calc(32px * 4.75 / 3.25);
+    margin-bottom: calc(48px * 4.75 / 3.25 - 2rem - 1.25rem);
   }
 
   .night {

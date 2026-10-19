@@ -69,7 +69,7 @@ def paras(lines, cls):
     return "\n".join('<p class="{0}">{1}</p>'.format(cls, e(line)) for line in lines)
 
 
-NOTE_HOURS = "Exemplos ilustrativos. O tempo que ganhas depende de aplicares o método. O e-book estima até cerca de 8 horas por semana, e és tu que medes."
+NOTE_HOURS = "Exemplos ilustrativos. O tempo que ganhas depende de aplicares o método. O e-book estima 7 a 8 horas por semana, e és tu que medes."
 NOTE_PLAIN = "Exemplos ilustrativos. Não são casos de clientes."
 SCENES_LEAD = "Exemplos ilustrativos do dia a dia de um consultor. Não são casos de clientes."
 
@@ -77,10 +77,10 @@ PAGES = [
     {
         "path": "index.html",
         "title": "Pedes tudo à IA do zero? | Sistema IA do Consultor",
-        "description": "Cinco momentos que já viveste esta semana. E como ficam com um plano de 21 dias, 80 prompts prontos a copiar e checklists simples. Em português de Portugal, sem pôr dados de clientes em risco.",
+        "description": "Cinco momentos que já viveste esta semana. E como os resolves com 80 prompts prontos a copiar.",
         "lead": "Como recuperar horas sem escrever tudo do zero mesmo que a IA te confunda.",
         "h1": "Pedes tudo à IA do zero? Vê o teu dia antes e depois de teres prompts prontos.",
-        "sub": "Cinco momentos que já viveste esta semana. E como ficam com um plano de 21 dias, 80 prompts prontos a copiar e checklists simples. Em português de Portugal, sem pôr dados de clientes em risco.",
+        "sub": "Cinco momentos que já viveste esta semana. E como os resolves com 80 prompts prontos a copiar.",
         "night": ["Estás no sofá com o portátil no colo.", "Ainda tens um anúncio para pôr no Idealista.", "Tens três leads de hoje sem resposta.", "E não te lembras se ligaste ao senhor da visita de terça.", "Abres o ChatGPT.", "Escreves «faz um anúncio de um T2».", "Sai um texto bonito, cheio de «oportunidade única».", "Não diz a área certa.", "Inventa uma varanda que não existe.", "Apagas tudo e escreves tu."],
         "same": "Amanhã é igual.",
         "turn": ["O problema não és tu.", "E o problema não é a IA.", "O problema é começar do zero todos os dias.", "Este e-book dá-te o que falta: uma tarefa por dia durante 21 dias, prompts prontos para o teu trabalho e checklists para não te esqueceres de nada."],
@@ -98,7 +98,7 @@ PAGES = [
              "No e-book: Cap. 3, Bloco C de prompts (Idealista e Casa Sapo), Checklist C (antes de publicar anúncio)."),
             ("O follow-up que só existia na tua cabeça",
              ["Na semana passada mostraste um T2 a um casal.", "Gostaram.", "Disseste «falo convosco na sexta».", "Sexta passou.", "Hoje vês que compraram com outra pessoa."],
-             ["Cada lead quente tem uma próxima ação com data no teu CRM.", "Tens uma sequência de 7 contactos já escrita, cada um com uma razão para falar.", "O último contacto pergunta, com educação, se podes arquivar.", "Não insistes sem motivo. E não te esqueces."],
+             ["Cada lead quente tem uma próxima ação com data no teu CRM.", "Tens uma sequência de 7 mensagens de follow-up já escritas, cada uma com uma razão para falar.", "O último contacto pergunta, com educação, se podes arquivar.", "Não insistes sem motivo. E não te esqueces."],
              "No e-book: Cap. 5 (porque o follow-up falha, sequência de 7 toques, quando parar), Bloco G de prompts, Checklist E."),
             ("A visita preparada no carro",
              ["Estás estacionado à porta do prédio.", "Faltam 5 minutos.", "Procuras no telemóvel o que o comprador te disse ao telefone.", "Depois da visita, as notas ficam num papel no banco do carro."],
@@ -120,7 +120,7 @@ PAGES = [
         "description": "O dia começa no WhatsApp e acaba em admin. Vê o antes e o depois com um plano de 21 dias, 80 prompts prontos e checklists. Em português de Portugal. €37.",
         "lead": "Volta a ser tu a decidir onde vão as tuas horas.",
         "h1": "O dia começa no WhatsApp e acaba em admin. Vê o antes e o depois com prompts prontos.",
-        "sub": "Cinco momentos em que as horas se perdem em texto e admin. E como ficam com um plano de 21 dias, 80 prompts prontos a copiar e checklists simples. Em português de Portugal.",
+        "sub": "Cinco momentos em que perdes horas em texto e admin. E como os resolves com 80 prompts prontos a copiar.",
         "night": ["O telemóvel ainda tem conversas de hoje por responder.", "O anúncio ficou para a noite.", "Amanhã o dia começa outra vez no WhatsApp.", "E o admin fica para o fim, outra vez.", "Abres o chat e pedes um texto do zero.", "Sai qualquer coisa.", "Reescreves tu."],
         "same": "Amanhã é igual.",
         "turn": ["O problema não és tu.", "O problema é escrever o mesmo texto do zero, outra vez.", "Este e-book dá-te uma tarefa por dia durante 21 dias, prompts prontos e checklists para o admin não comer a semana."],
@@ -160,7 +160,7 @@ PAGES = [
         "description": "Ou evitas a IA, ou colas e ficas na dúvida. Em 21 dias ficas com a lista do que nunca sai do CRM, códigos e placeholders. 80 prompts e checklists. €37.",
         "lead": "Usa IA todos os dias sem pôr os dados do teu cliente em jogo.",
         "h1": "Ou evitas a IA, ou colas e ficas na dúvida. Vê o antes e o depois com regras escritas.",
-        "sub": "Cinco momentos em que os dados do cliente travam o dia. E como ficam com uma lista do que nunca colar, códigos, placeholders e prompts prontos. Em português de Portugal.",
+        "sub": "Cinco momentos em que os dados do cliente travam o dia. E como os resolves sem colar dados na IA.",
         "night": ["Tens um email de cliente para responder.", "O nome, o telefone e a morada estão na mensagem.", "Abres o ChatGPT.", "Paras.", "Ou colas tudo e ficas com a dúvida o resto da noite.", "Apagas.", "Escreves tu, à mão."],
         "same": "Amanhã é igual.",
         "turn": ["O problema não é ter cuidado.", "O problema é decidir de cabeça, todos os dias, o que pode sair do CRM.", "Nos primeiros dias escreves essa lista. Depois usas a IA no trabalho real."],
@@ -200,7 +200,7 @@ PAGES = [
         "description": "A ficha espera e a página em branco come a tarde. Publica no mesmo dia em que angarias, sem inventar um único facto. Plano de 21 dias e 80 prompts. €37.",
         "lead": "Publica no mesmo dia em que angarias, sem inventar um único facto.",
         "h1": "A ficha espera e a página em branco come a tarde. Vê o anúncio antes e depois.",
-        "sub": "Cinco momentos entre a angariação e o Idealista. E como ficam quando colas os factos num prompt que não inventa. Título, 5 destaques, descrição e checklist antes de publicar.",
+        "sub": "Cinco momentos entre a angariação e o Idealista. E como os resolves com um prompt que não inventa.",
         "night": ["Angariaste hoje.", "O anúncio do Idealista ainda não existe.", "Abres um anúncio antigo e mudas as palavras.", "Ou escreves «faz um anúncio de um T2».", "Sai um texto bonito, cheio de «oportunidade única».", "Não diz a área certa.", "Inventa uma varanda que não existe.", "Apagas tudo e escreves tu."],
         "same": "Amanhã a ficha continua à espera.",
         "turn": ["O problema não é falta de jeito para escrever.", "O problema é começar do zero, sem os factos à frente.", "O prompt do Idealista e Casa Sapo pede a ficha. Se falta um dado, deixa um espaço."],
@@ -240,10 +240,10 @@ PAGES = [
         "description": "Lembras-te do lead quando já arrefeceu. Troca mensagens improvisadas por 7 toques, do D0 ao D21, com próxima ação e saída educada. €37.",
         "lead": "Nenhum lead volta a morrer no teu telemóvel.",
         "h1": "Lembras-te do lead quando já arrefeceu. Vê o telemóvel antes e depois.",
-        "sub": "Cinco momentos em que a mensagem se improvisa ou se esquece. E como ficam com uma primeira mensagem curta, 7 toques do D0 ao D21 e uma próxima ação com data.",
+        "sub": "Cinco momentos em que a mensagem se improvisa ou se esquece. E como os resolves com uma mensagem curta e um toque com data.",
         "night": ["Três leads de hoje continuam sem resposta.", "Cada mensagem foi diferente, escrita na hora.", "Um deles já não se lembra de ti.", "Amanhã vais improvisar outra vez.", "E outro vai arrefecer em silêncio."],
         "same": "O telemóvel não avisa quando um lead morre.",
-        "turn": ["O problema não é falta de vontade.", "O problema é não teres a próxima mensagem escrita, nem uma data para a enviar.", "A sequência tem 7 contactos. Cada um com uma razão para falar. Sem pressão."],
+        "turn": ["O problema não é falta de vontade.", "O problema é não teres a próxima mensagem escrita, nem uma data para a enviar.", "A sequência tem 7 mensagens de follow-up já escritas. Cada uma com uma razão para falar. Sem pressão."],
         "payoff": "Cada lead tem próxima ação e data. Nenhum fica só na memória.",
         "scenes_title": "Cinco momentos no telemóvel. Antes e depois.",
         "note": NOTE_PLAIN,
@@ -258,7 +258,7 @@ PAGES = [
              "No e-book: Cap. 5, próxima ação com data, Checklist E."),
             ("Sete toques que não existiam",
              ["Um contactas. Outro não.", "Não há segunda mensagem pensada.", "Quem não responde desaparece."],
-             ["Tens uma sequência de 7 contactos, do D0 ao D21.", "Cada toque tem uma razão para falar.", "Não é a mesma frase repetida."],
+             ["Tens uma sequência de 7 mensagens de follow-up já escritas, do D0 ao D21.", "Cada toque tem uma razão para falar.", "Não é a mesma frase repetida."],
              "No e-book: Cap. 5 (sequência de 7 toques), Bloco G de prompts."),
             ("A mensagem que insiste sem motivo",
              ["Quando finalmente escreves, pressionas.", "Ou não escreves, para não parecer pesado.", "As duas saídas perdem o lead."],
@@ -280,7 +280,7 @@ PAGES = [
         "description": "A reunião salta para a comissão. Em 21 dias preparas diagnóstico, objeções e proposta de 1 página, sem inventar números nem prometer resultados. €37.",
         "lead": "Entra na reunião de angariação a conduzir a conversa.",
         "h1": "A reunião salta para a comissão. Vê-a antes e depois de entrares a conduzir.",
-        "sub": "Cinco momentos da angariação em que a conversa te foge. E como ficam com diagnóstico antes do pitch, objeções preparadas e uma proposta de 1 página. Sem inventar números nem prometer resultados.",
+        "sub": "Cinco momentos da angariação em que a conversa te foge. E como os resolves com o diagnóstico antes do pitch.",
         "night": ["Amanhã tens uma angariação.", "Ainda estás a pensar no que vais dizer quando falarem de comissão.", "As objeções vão aparecer.", "Vais respondê-las na hora.", "O pitch ainda está na tua cabeça."],
         "same": "A reunião começa contigo a reagir.",
         "turn": ["O problema não é saberes pouco do imóvel.", "O problema é entrares sem diagnóstico, sem objeções escritas e sem uma proposta de 1 página.", "O e-book prepara isso. Não inventa números. Não promete a angariação."],
@@ -320,7 +320,7 @@ PAGES = [
         "description": "Guardas reels e paras à segunda semana. Do D1 ao D21 há uma tarefa, 25 a 45 minutos, e um entregável no fim. 80 prompts e checklists. €37.",
         "lead": "21 dias. Uma tarefa por dia. Um entregável no fim de cada uma.",
         "h1": "Guardas reels e paras à segunda semana. Vê os 21 dias antes e depois.",
-        "sub": "Cinco momentos em que a formação não chega ao trabalho. E como ficam com uma tarefa por dia, do D1 ao D21, 25 a 45 minutos, e algo pronto no fim.",
+        "sub": "Cinco momentos em que a formação não chega ao trabalho. E como os resolves com uma tarefa por dia, durante 21 dias.",
         "night": ["Guardaste mais um reel para ver depois.", "A lista de coisas a experimentar cresceu.", "A segunda semana de cada tentativa acaba por parar.", "Amanhã ainda não sabes qual é a tarefa.", "E o trabalho real continua à mão."],
         "same": "Amanhã há mais uma lista. Não há um entregável.",
         "turn": ["O problema não é falta de informação.", "O problema é não teres uma tarefa só, com tempo e com um fim.", "Do D1 ao D21 sabes o que executar. Falhaste um dia? Retomas no seguinte."],
@@ -360,7 +360,7 @@ PAGES = [
         "description": "Só tu sabes como se faz, e o negócio para quando tu paras. Em 21 dias o processo fica em pastas, prompts e checklists. €37.",
         "lead": "Tira o teu processo da cabeça e põe-no onde pode crescer.",
         "h1": "Só tu sabes como se faz, e o negócio para quando tu paras. Vê o antes e o depois.",
-        "sub": "Cinco momentos em que o processo vive só na tua cabeça. E como ficam com prompts, regras e checklists escritos, prontos a repetir e, mais tarde, a entregar.",
+        "sub": "Cinco momentos em que o processo vive só na tua cabeça. E como os resolves com prompts e checklists escritos.",
         "night": ["Mais um dia em que só tu sabias o passo seguinte.", "O anúncio, a mensagem, a nota de visita: o jeito está na tua cabeça.", "Se amanhã parares, o negócio para.", "Não há uma pasta que outra pessoa consiga abrir."],
         "same": "Amanhã continua tudo contigo.",
         "turn": ["O problema não é seres insubstituível.", "O problema é o processo não estar escrito.", "Em 21 dias ele passa para pastas, prompts e checklists. Primeiro para ti. Depois, se chegares a ter equipa, para quem trabalhar contigo."],
@@ -400,7 +400,7 @@ PAGES = [
         "description": "Guardaste o link para ver com calma. O mesmo Sistema IA do Consultor: 21 Dias, pelo preço early de €37. A referência é €47. Sem escassez inventada. Pagamento único.",
         "lead": "Decide hoje. Entras por €37 antes do preço de referência de €47.",
         "h1": "Guardaste o link para ver com calma. Vê o antes e o depois de entrares hoje.",
-        "sub": "O mesmo e-book: plano de 21 dias, 80 prompts e checklists. Só o preço de entrada muda. Hoje é €37. A referência é €47. Sem vagas inventadas e sem pressa falsa.",
+        "sub": "O mesmo e-book: 21 dias e 80 prompts. Hoje entras por €37. A referência é €47.",
         "night": ["O link ficou guardado.", "«Para ver com calma.»", "A calma foi a semana passada.", "E vai ser a próxima.", "O e-book é o mesmo de sempre.", "O que muda é entrares, ou adiares outra vez."],
         "same": "«Com calma» é sempre a próxima semana.",
         "turn": ["Não há um relógio falso nesta página.", "Não há últimas unidades.", "Há um preço early de €37 e uma referência de €47.", "O core, os prompts e as checklists são os mesmos."],
@@ -440,7 +440,7 @@ PAGES = [
         "description": "Chegas a casa com notas soltas e o CRM fica para amanhã. Briefing de 1 página antes de entrares e follow-up com o contexto fresco. Plano de 21 dias. €37.",
         "lead": "A visita acaba na visita, mas não às onze da noite.",
         "h1": "A visita acaba na visita e o CRM fica para amanhã. Vê o antes e o depois.",
-        "sub": "Cinco momentos entre o carro e a meia-noite. E como ficam com um briefing de 1 página, notas limpas para o CRM e o follow-up enviado enquanto te lembras.",
+        "sub": "Cinco momentos entre o carro e a meia-noite. E como os resolves com o follow-up enviado enquanto te lembras.",
         "night": ["A visita correu bem.", "As notas estão no telemóvel, aos bocados.", "O CRM fica para amanhã.", "São quase onze.", "Ainda falta o email de pós-visita.", "Amanhã o contexto já arrefeceu."],
         "same": "A visita acaba. A operação não.",
         "turn": ["O problema não é fazeres poucas visitas.", "O problema é cada visita deixar um rasto solto.", "O briefing cabe numa página. As notas saem limpas. O follow-up sai no próprio dia."],
@@ -480,7 +480,7 @@ PAGES = [
         "description": "Anúncios, mensagens e CRM pedem a mesma hora. Em 21 dias cada frente parte de um prompt fechado. 80 prompts e checklists. €37.",
         "lead": "Três frentes ao mesmo tempo. Um sistema para as arrumar.",
         "h1": "Anúncios, mensagens e CRM pedem a mesma hora. Vê o dia antes e depois.",
-        "sub": "Cinco momentos em que as três frentes caem ao mesmo tempo. E como ficam quando cada uma parte de um prompt fechado e o dia acaba sem levar o admin para casa.",
+        "sub": "Cinco momentos em que as três frentes caem ao mesmo tempo. E como os resolves com um prompt fechado para cada uma.",
         "night": ["O anúncio não está feito.", "As mensagens de hoje continuam abertas.", "O CRM tem visitas por registar.", "Os separadores estão todos abertos.", "Nenhum está fechado.", "A noite vai nisso."],
         "same": "Amanhã as três frentes voltam a pedir a mesma hora.",
         "turn": ["O problema não é teres trabalho.", "O problema é cada frente começar do zero, à mesma hora.", "Um sistema: um prompt para o anúncio, um para a mensagem, um para a nota. O dia deixa de ser três páginas em branco."],
@@ -520,7 +520,7 @@ PAGES = [
         "description": "Abres o chat e não sabes o que pedir. Em 21 dias o prompt-base fixa contexto, tom e regras, e cada tarefa tem um prompt fechado. €37.",
         "lead": "Já abriste o ChatGPT. Falta seres tu a mandar nele.",
         "h1": "Abres o chat e não sabes o que pedir. Vê o antes e o depois de mandares tu.",
-        "sub": "Cinco momentos em que o ChatGPT responde ao lado. E como ficam com um prompt-base em português de Portugal, regras escritas e um prompt fechado para cada tarefa.",
+        "sub": "Cinco momentos em que o ChatGPT responde ao lado. E como os resolves com um prompt fechado para cada tarefa.",
         "night": ["Abres o ChatGPT outra vez.", "Escreves «faz um anúncio de um T2».", "Sai um texto bonito e genérico.", "Soa a outro país.", "Inventa um pormenor.", "Apagas.", "Escreves tu.", "A ferramenta fica aberta. Quem manda nela não és tu."],
         "same": "Amanhã a conversa começa do zero.",
         "turn": ["O problema não é o ChatGPT ser mau.", "O problema é pedires tudo sem contexto, sem tom e sem regras.", "O prompt-base fixa isso. Cada tarefa passa a ter o seu prompt, já escrito."],
@@ -615,7 +615,6 @@ def render(page):
           <p class="hero-sub">{sub}</p>
           <div class="cta-stack">
             <a id="hero-cta" class="cta" href="{stripe}" target="_blank" rel="noopener">Quero o sistema</a>
-            <p class="pay-line">Pagamento único · Produto digital · Recebes o acesso por email</p>
             {pay_dark}
           </div>
           <p class="proof">
@@ -725,7 +724,6 @@ def render(page):
   <p>Preço early. Depois passa para 47 €.</p>
   <p>Pagamento único. Sem mensalidades.</p>
   <a href="{stripe}" class="cta">Quero o sistema por 37 €</a>
-  <p class="micro">Pagamento seguro no Stripe. Recebes o acesso por email.</p>
   {pay_light}
 </section>
 <!-- BLOCO PREÇO: FIM -->
@@ -782,7 +780,7 @@ def render(page):
         </article>
         <article class="qa-item">
           <h3>Como recebo o e-book?</h3>
-          <p>Pagas no Stripe e recebes o acesso por email. Recebes o PDF por email, normalmente em menos de 30 minutos.</p>
+          <p>Recebes o PDF por email, normalmente em menos de 30 minutos.</p>
         </article>
         <article class="qa-item">
           <h3>É uma subscrição?</h3>
@@ -797,7 +795,6 @@ def render(page):
         {close}
         <div class="cta-stack">
           <a class="cta" href="{stripe}" target="_blank" rel="noopener">Quero o sistema</a>
-          <p class="pay-line">Pagamento único · Produto digital · Recebes o acesso por email</p>
           {pay_dark}
         </div>
         <p class="ps"><strong>P.S.</strong> {ps}</p>
@@ -810,7 +807,7 @@ def render(page):
       <a href="https://www.livroreclamacoes.pt" target="_blank" rel="noopener">Livro de Reclamações</a>
       <a href="#" data-ck-open>Preferências de cookies</a>
     </footer>
-    <p class="legal-note">Autor: Pedro Ferreira · 4Improvements · pt-PT · produto digital</p>
+    <p class="legal-note">Autor: Pedro Ferreira · 4Improvements · pt-PT</p>
     <div class="mobile-spacer" aria-hidden="true"></div>
   </main>
   <div class="mobile-cta">

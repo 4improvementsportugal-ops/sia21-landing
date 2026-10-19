@@ -1053,8 +1053,7 @@ test.describe("tracking", function () {
     expect(conv.indexOf("—")).toBe(-1);
     const gate = fs.readFileSync("assets/human-gate.js", "utf8");
     expect(gate).toContain('SIA21_captureWhenHuman("cookie_consent"');
-    expect(gate).toContain("Estás dentro do Facebook ou do Instagram?");
-    expect(gate).toContain("/FBAN|FBAV|Instagram/i");
+    expect(gate).not.toContain("inapp-note");
   });
 
   test("Aceitar records cookie_consent and only then loads the pixel", async function ({ page }) {
@@ -1165,7 +1164,7 @@ test.describe("tracking", function () {
     await expect(page.locator(".inapp-note")).toHaveCount(0);
   });
 
-  test("the in-app notice exists only inside Facebook or Instagram", async function ({ page }) {
+  test("an in-app browser does not get an extra notice and the checkout link stays", async function ({ page }) {
     await page.addInitScript(function () {
       var ua = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/21A329 [FBAN/FBIOS;FBAV/470.0.0.0.0;FBBV/1]";
       try {
@@ -1174,41 +1173,9 @@ test.describe("tracking", function () {
     });
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(PROD + "/angles-v2/01-tempo/", { waitUntil: "domcontentloaded" });
-    const note = page.locator(".inapp-note").first();
-    await expect(note).toBeVisible();
-    await expect(note).toHaveText("Estás dentro do Facebook ou do Instagram? Se o pagamento não abrir, toca nos três pontos em cima e escolhe «Abrir no browser».");
-    const place = await page.evaluate(function () {
-      var hero = document.getElementById("hero-cta");
-      var heroBox = hero.getBoundingClientRect();
-      var node = hero;
-      var after = null;
-      var guard = 0;
-      while (node && guard < 6) {
-        node = node.nextElementSibling;
-        guard += 1;
-        if (node && node.classList && node.classList.contains("inapp-note")) {
-          after = node;
-          break;
-        }
-      }
-      var afterBox = after ? after.getBoundingClientRect() : null;
-      var notes = Array.prototype.slice.call(document.querySelectorAll(".inapp-note"));
-      var sticky = document.getElementById("sticky-cta").getBoundingClientRect();
-      return {
-        belowHero: !!(afterBox && afterBox.top >= heroBox.bottom - 2),
-        coversSticky: notes.some(function (el) {
-          var r = el.getBoundingClientRect();
-          if (r.width < 2 || sticky.width < 2) return false;
-          return !(r.right <= sticky.left || r.left >= sticky.right || r.bottom <= sticky.top || r.top >= sticky.bottom);
-        }),
-        headerHas: !!document.querySelector("header .inapp-note"),
-        fixed: notes.some(function (el) { return getComputedStyle(el).position === "fixed"; })
-      };
-    });
-    expect(place.belowHero).toBe(true);
-    expect(place.coversSticky).toBe(false);
-    expect(place.headerHas).toBe(false);
-    expect(place.fixed).toBe(false);
+    await expect(page.locator(".inapp-note")).toHaveCount(0);
+    await expect(page.locator("#hero-cta")).toHaveAttribute("href", "https://buy.stripe.com/aFa5kF1OFc4D1fNb6mgrS02");
+    await expect(page.locator("#sticky-cta")).toHaveAttribute("href", "https://buy.stripe.com/aFa5kF1OFc4D1fNb6mgrS02");
   });
 });
 

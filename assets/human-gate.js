@@ -711,46 +711,6 @@
     });
   }
 
-  var INAPP_COPY = "Estás dentro do Facebook ou do Instagram? Se o pagamento não abrir, toca nos três pontos em cima e escolhe «Abrir no browser».";
-
-  function inAppBrowser() {
-    return /FBAN|FBAV|Instagram/i.test(userAgent());
-  }
-
-  function noticeAnchor(anchor) {
-    var node = anchor;
-    var guard = 0;
-    while (node && guard < 4) {
-      var next = node.nextElementSibling;
-      if (!next || !next.classList) return node;
-      if (next.classList.contains("pay-note") || next.classList.contains("tool-note") || next.classList.contains("inapp-note")) {
-        node = next;
-      } else break;
-      guard += 1;
-    }
-    return node;
-  }
-
-  function mountInAppNotice() {
-    if (!inAppBrowser() || !d.body) return;
-    /* /v4/ opts out. PR 26, which removes this notice, is not on main. */
-    if (d.body.getAttribute("data-no-inapp") === "1") return;
-    var links = d.querySelectorAll('a[href*="buy.stripe.com"]');
-    for (var i = 0; i < links.length; i++) {
-      var anchor = links[i];
-      if (!anchor || (anchor.closest && (anchor.closest("header") || anchor.closest(".mobile-cta")))) continue;
-      var host = noticeAnchor(anchor);
-      if (host.classList && host.classList.contains("inapp-note")) continue;
-      var note = d.createElement("p");
-      note.className = "inapp-note";
-      var section = anchor.closest ? anchor.closest("section, #sia21-exit") : null;
-      var cls = section ? String(section.className || "") : "";
-      if (/checkout-gradient|bg-slate-9|bg-\[#0f172a\]|\bhero\b/.test(cls)) note.className += " inapp-note-on-dark";
-      note.textContent = INAPP_COPY;
-      if (host.parentNode) host.parentNode.insertBefore(note, host.nextSibling);
-    }
-  }
-
   function bindEngagement() {
     w.addEventListener("scroll", onScroll, true);
     w.addEventListener("mousemove", onMove, true);
@@ -779,11 +739,6 @@
 
   function bootChrome() {
     watchCookieBar();
-    mountInAppNotice();
-    if (inAppBrowser() && d.body && w.MutationObserver && !w.__SIA21_INAPP_OBS) {
-      w.__SIA21_INAPP_OBS = true;
-      new MutationObserver(function () { mountInAppNotice(); }).observe(d.body, { childList: true, subtree: true });
-    }
   }
 
   if (d.readyState === "loading") d.addEventListener("DOMContentLoaded", bootChrome);

@@ -184,6 +184,10 @@ async function showPage(page) {
 const EARLY_33 = "https://buy.stripe.com/fZueVf1OFc4D7Eb1vMgrS04";
 const EARLY_14 = "https://buy.stripe.com/6oU3cx3WN0lVbUr0rIgrS05";
 
+function withC0(base, page) {
+  return base + "?client_reference_id=c0_" + page + "_x";
+}
+
 function anglePages() {
   const pages = [];
   ["angles", "angles-v2"].forEach(function (root) {
@@ -493,7 +497,7 @@ test.describe("tracking", function () {
     await expect(page.locator("#sia21-exit")).toBeVisible({ timeout: 4000 });
     await expect(page.locator("#sia21-exit-title")).toHaveText("Garante o Early Bird antes de sair");
     await expect(page.locator("#sia21-exit-timer")).toBeHidden();
-    await expect(page.locator("#sia21-exit a.sia21-exit-primary")).toHaveAttribute("href", EARLY_33);
+    await expect(page.locator("#sia21-exit a.sia21-exit-primary")).toHaveAttribute("href", withC0(EARLY_33, "v2-02"));
     await waitFor(hits, function (events) {
       return events.some(function (event) { return event.event === "exit_offer_33_shown"; });
     }, "missing exit_offer_33_shown");
@@ -557,7 +561,7 @@ test.describe("tracking", function () {
       return page.evaluate(function () { return window.__SIA21_MAX_SCROLL; });
     }).toBeGreaterThanOrEqual(99);
     await expect(page.locator("#sia21-exit")).toBeVisible({ timeout: 4000 });
-    await expect(page.locator("#sia21-exit a.sia21-exit-primary")).toHaveAttribute("href", EARLY_33);
+    await expect(page.locator("#sia21-exit a.sia21-exit-primary")).toHaveAttribute("href", withC0(EARLY_33, "a06"));
     await waitFor(hits, function (events) {
       return events.some(function (event) {
         return event.event === "exit_offer_33_shown" && event.properties && event.properties.angle === "06-chatgpt-falhou";
@@ -580,7 +584,7 @@ test.describe("tracking", function () {
     const up = await scrollInner(page, 40);
     expect(up.inner).toBeLessThan(80);
     await expect(page.locator("#sia21-exit")).toBeVisible({ timeout: 3000 });
-    await expect(page.locator("#sia21-exit a.sia21-exit-primary")).toHaveAttribute("href", EARLY_33);
+    await expect(page.locator("#sia21-exit a.sia21-exit-primary")).toHaveAttribute("href", withC0(EARLY_33, "a01"));
     await waitFor(hits, function (events) {
       return events.some(function (event) {
         return event.event === "exit_offer_33_shown" && event.properties && event.properties.angle === "01-tempo" && event.properties.price === 33;
@@ -607,7 +611,7 @@ test.describe("tracking", function () {
     await showPage(page);
     await expect(page.locator("#sia21-exit")).toBeHidden();
     await expect(page.locator("#sia21-exit")).toBeVisible({ timeout: 12000 });
-    await expect(page.locator("#sia21-exit a.sia21-exit-primary")).toHaveAttribute("href", EARLY_33);
+    await expect(page.locator("#sia21-exit a.sia21-exit-primary")).toHaveAttribute("href", withC0(EARLY_33, "a10"));
     await waitFor(hits, function (events) {
       return events.some(function (event) {
         return event.event === "exit_offer_33_shown" && event.properties && event.properties.angle === "10-visitas-ops" && event.properties.price === 33;
@@ -637,7 +641,7 @@ test.describe("tracking", function () {
     await engage(page);
     await expect(page.locator("#sia21-exit")).toBeVisible({ timeout: 3000 });
     await expect(page.locator("#sia21-exit-title")).toHaveText("Garante o Early Bird antes de sair");
-    await expect(page.locator("#sia21-exit a.sia21-exit-primary")).toHaveAttribute("href", EARLY_33);
+    await expect(page.locator("#sia21-exit a.sia21-exit-primary")).toHaveAttribute("href", withC0(EARLY_33, "a06"));
     await expect(page.locator("#sia21-exit-timer")).toBeHidden();
     await page.locator("#sia21-exit button.sia21-exit-secondary").click();
     await expect(page.locator("#sia21-exit")).toBeHidden();
@@ -645,7 +649,7 @@ test.describe("tracking", function () {
     await engage(page);
     await expect(page.locator("#sia21-exit")).toBeVisible({ timeout: 3000 });
     await expect(page.locator("#sia21-exit-kicker")).toHaveText("Última oferta");
-    await expect(page.locator("#sia21-exit a.sia21-exit-primary")).toHaveAttribute("href", EARLY_14);
+    await expect(page.locator("#sia21-exit a.sia21-exit-primary")).toHaveAttribute("href", withC0(EARLY_14, "a06"));
     await expect(page.locator("#sia21-exit-timer")).toBeVisible();
     await waitFor(hits, function (events) {
       var names = events.map(function (event) { return event.event; });
@@ -1174,8 +1178,8 @@ test.describe("tracking", function () {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(PROD + "/angles-v2/01-tempo/", { waitUntil: "domcontentloaded" });
     await expect(page.locator(".inapp-note")).toHaveCount(0);
-    await expect(page.locator("#hero-cta")).toHaveAttribute("href", "https://buy.stripe.com/aFa5kF1OFc4D1fNb6mgrS02");
-    await expect(page.locator("#sticky-cta")).toHaveAttribute("href", "https://buy.stripe.com/aFa5kF1OFc4D1fNb6mgrS02");
+    await expect(page.locator("#hero-cta")).toHaveAttribute("href", "https://buy.stripe.com/aFa5kF1OFc4D1fNb6mgrS02?client_reference_id=c0_v2-01_x");
+    await expect(page.locator("#sticky-cta")).toHaveAttribute("href", "https://buy.stripe.com/aFa5kF1OFc4D1fNb6mgrS02?client_reference_id=c0_v2-01_x");
   });
 });
 

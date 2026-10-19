@@ -61,7 +61,7 @@ test.describe("v4 variante", function () {
     expect(file.indexOf('class="pay-line"')).toBe(-1);
     expect(file.indexOf('class="pay-lite"')).toBe(-1);
     expect(file).toContain("Como recebo o e-book?");
-    expect(file).toContain("Pagas uma vez, com cartão. Recebes o PDF por email, normalmente em menos de 30 minutos. Não é uma subscrição.");
+    expect(file).toContain("Pagas uma vez. Recebes o PDF por email, normalmente em menos de 30 minutos. Não é uma subscrição.");
     expect(file.indexOf("Pagas no Stripe")).toBe(-1);
     expect(file.indexOf("Estás dentro do Facebook")).toBe(-1);
     expect(file.indexOf("\u2014")).toBe(-1);

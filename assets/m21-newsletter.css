@@ -1,0 +1,56 @@
+/* SIA21 newsletter pop-up (preview). Mobile: compact bottom sheet up to 60vh.
+   Desktop: centred card. Above the toast and sticky bar, below nothing else. */
+.m21-nl[hidden], .m21-nl [hidden] { display: none !important; }
+.m21-nl { position: fixed; inset: 0; z-index: 120; }
+.m21-nl-bg { position: absolute; inset: 0; background: rgba(15, 23, 42, 0.55); }
+.m21-nl-dlg {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  box-sizing: border-box; max-height: 60vh; overflow-y: auto;
+  background: #fff; color: #0f172a;
+  border-radius: 16px 16px 0 0; padding: 18px 16px 14px;
+  box-shadow: 0 -12px 32px rgba(2, 6, 23, 0.25);
+  font: inherit;
+}
+.m21-nl-x {
+  position: absolute; top: 4px; right: 4px; width: 44px; height: 44px;
+  border: 0; background: transparent; color: #475569; font-size: 26px; line-height: 1; cursor: pointer;
+}
+.m21-nl-tag {
+  display: inline-block; margin: 0 0 6px; padding: 2px 8px; border-radius: 999px;
+  background: #fef3c7; color: #92400e; font-size: 11.5px; font-weight: 700; letter-spacing: .02em;
+}
+.m21-nl-title { margin: 0 40px 6px 0; font-size: 19px; line-height: 1.25; font-weight: 800; }
+.m21-nl-sub { margin: 0 0 10px; font-size: 14.5px; line-height: 1.4; color: #334155; }
+.m21-nl-form { display: flex; flex-direction: column; gap: 8px; margin: 0; }
+.m21-nl-email {
+  box-sizing: border-box; width: 100%; min-height: 44px; padding: 10px 12px;
+  border: 1px solid #cbd5e1; border-radius: 10px; font-size: 16px; color: #0f172a; background: #fff;
+}
+.m21-nl-email[aria-invalid="true"] { border-color: #dc2626; }
+.m21-nl-hp { position: absolute !important; left: -9999px !important; width: 1px; height: 1px; opacity: 0; }
+.m21-nl-consent { display: flex; gap: 8px; align-items: flex-start; font-size: 12.5px; line-height: 1.4; color: #334155; cursor: pointer; }
+.m21-nl-consent input { flex: 0 0 auto; width: 18px; height: 18px; margin: 1px 0 0; }
+.m21-nl-consent a { color: inherit; text-decoration: underline; }
+.m21-nl-btn {
+  display: block; box-sizing: border-box; width: 100%; min-height: 46px; padding: 12px 14px;
+  border: 0; border-radius: 10px; background: #16a34a; color: #fff;
+  font-size: 16px; font-weight: 800; text-align: center; text-decoration: none; cursor: pointer;
+}
+.m21-nl-btn:disabled { background: #94a3b8; cursor: not-allowed; }
+.m21-nl-no {
+  align-self: center; min-height: 36px; padding: 4px 10px; border: 0; background: transparent;
+  color: #64748b; font-size: 13.5px; text-decoration: underline; cursor: pointer;
+}
+.m21-nl-note { margin: 10px 0 0; font-size: 12px; line-height: 1.4; color: #92400e; }
+.m21-nl-dlg button, .m21-nl-dlg input { font-family: inherit; }
+.m21-nl-title { white-space: normal; word-break: keep-all; }
+html.m21-nl-open, html.m21-nl-open body { overflow: hidden; }
+@media (min-width: 720px) {
+  .m21-nl-dlg {
+    left: 50%; right: auto; bottom: auto; top: 50%; transform: translate(-50%, -50%);
+    width: 440px; max-height: 86vh; border-radius: 16px; padding: 24px 24px 18px;
+    box-shadow: 0 24px 60px rgba(2, 6, 23, 0.35);
+  }
+  .m21-nl-title { font-size: 22px; }
+  .m21-nl-sub { font-size: 15.5px; }
+}

@@ -190,17 +190,22 @@ body {
 }
 
 .hero .hero-sub {
-  max-width: 38rem;
-  margin-top: 0.9rem;
-  color: #e2e8f0;
-  font-size: 1.05rem;
+  max-width: 34rem;
+  margin-top: 1.5rem;
+  margin-bottom: 0.35rem;
+  color: #cbd5e1;
+  font-size: 0.98rem;
   font-weight: 500;
-  line-height: 1.6;
+  line-height: 1.7;
 }
 
 .cta-stack {
   width: min(100%, 28rem);
   margin-top: 1.35rem;
+}
+
+.hero .cta-stack {
+  margin-top: 1.85rem;
 }
 
 .offer-page a.cta,
@@ -244,6 +249,7 @@ body {
   gap: 0.55rem;
   width: min(100%, 28rem);
   margin-top: 1.15rem;
+  margin-bottom: 0;
   padding: 0.7rem 0.8rem;
   border: 1px solid var(--line);
   border-radius: 0.9rem;
@@ -259,6 +265,14 @@ body {
   flex: 0 0 auto;
   margin-top: 0.1rem;
   color: var(--blue);
+}
+
+/* Same content gap as two neighbouring sections: 3.25rem + 3.25rem.
+   The hero padding below and the night padding above are already there,
+   so the bottom margin makes up the rest. */
+.offer-page .proof {
+  margin-top: 6.5rem;
+  margin-bottom: calc(6.5rem - 1.6rem - 1.15rem);
 }
 
 .band {
@@ -999,13 +1013,14 @@ section[id] {
   }
 
   .hero .hero-sub {
-    margin-top: 0.35rem;
-    font-size: 0.9rem;
-    line-height: 1.35;
+    margin-top: 1.75rem;
+    margin-bottom: 0;
+    font-size: 0.92rem;
+    line-height: 1.65;
   }
 
   .hero .cta-stack {
-    margin-top: 0.55rem;
+    margin-top: 1.75rem;
   }
 
   .offer-page .mobile-cta {
@@ -1032,6 +1047,11 @@ section[id] {
     min-height: 48px;
     padding: 0.4rem 0.85rem;
     font-size: 0.95rem;
+  }
+
+  .offer-page .proof {
+    margin-top: 6.5rem;
+    margin-bottom: calc(6.5rem - 1rem - 1.15rem);
   }
 }
 
@@ -1109,6 +1129,11 @@ section[id] {
   .narrow {
     padding-top: 4.75rem;
     padding-bottom: 4.75rem;
+  }
+
+  .offer-page .proof {
+    margin-top: 9.5rem;
+    margin-bottom: calc(9.5rem - 2rem - 1.25rem);
   }
 
   .night {

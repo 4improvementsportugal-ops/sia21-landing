@@ -6,7 +6,7 @@ Stripe Early (todas as variantes): `https://buy.stripe.com/aFa5kF1OFc4D1fNb6mgrS
 
 | # | Slug | Headline thesis | Primary pain | Hero H1 (draft) | Meta ad angle (one-liner) |
 |---|------|-----------------|--------------|-----------------|---------------------------|
-| 01 | `01-tempo` | Recuperar 8+ h/semana com método | Admin e tarefas repetíveis comem o dia | Deixa de perder o dia em admin. / 21 Dias para Recuperar 8+ Horas/Semana | «Recupera 8+ horas/semana com um sistema de IA em 21 dias: early €37.» |
+| 01 | `01-tempo` | Recuperar 7 a 8 h/semana com método | Admin e tarefas repetíveis comem o dia | Deixa de perder o dia em admin. / 21 Dias para Recuperar 7 a 8 Horas/Semana | «Recupera 7 a 8 horas/semana com um sistema de IA em 21 dias: early €37.» |
 | 02 | `02-rgpd` | IA útil sem vazar dados de clientes | Medo RGPD / colar NIF, IBAN, contratos | IA no imobiliário sem pôr clientes em risco. / Regras Claras · Placeholders · 21 Dias | «Usa ChatGPT no imobiliário sem colar dados de clientes: Cap. 1 RGPD.» |
 | 03 | `03-idealista` | Copy Idealista/Casa Sapo em minutos | Anúncios do zero + IA que inventa factos | Anúncios Idealista e Casa Sapo / em minutos, sem inventar factos | «Templates Idealista pt-PT em minutos, sem a IA inventar áreas ou preços.» |
 | 04 | `04-whatsapp` | Sequências WA e follow-up que cola | Improviso no telemóvel, leads a arrefecer | WhatsApp e follow-up / que não caem no esquecimento | «7 toques + pós-visita no WhatsApp. Deixa de improvisar em cada lead.» |

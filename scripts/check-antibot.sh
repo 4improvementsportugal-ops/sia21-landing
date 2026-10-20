@@ -107,6 +107,22 @@ if ! grep -q 'protocol !== "https:"' assets/human-gate.js; then
   echo "FAIL assets/human-gate.js must refuse non-HTTPS hosts"
   fail=1
 fi
+if ! grep -q 'SIA21_metaHostAllowed' assets/human-gate.js; then
+  echo "FAIL assets/human-gate.js must expose SIA21_metaHostAllowed"
+  fail=1
+fi
+if ! grep -q 'meta tracking disabled on non-production host' assets/human-gate.js; then
+  echo "FAIL assets/human-gate.js must log when Meta is disabled off production"
+  fail=1
+fi
+if ! grep -q 'meta_debug=1' assets/human-gate.js; then
+  echo "FAIL assets/human-gate.js must ignore meta_debug off the production host"
+  fail=1
+fi
+if ! grep -q 'route.abort' tests/live-block.js; then
+  echo "FAIL tests/live-block.js must abort Meta, CAPI and Stripe requests"
+  fail=1
+fi
 if ! grep -q 'SIA21_obviousTestId' assets/human-gate.js; then
   echo "FAIL assets/human-gate.js must refuse obvious test checkout ids"
   fail=1

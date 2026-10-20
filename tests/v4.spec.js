@@ -1,5 +1,6 @@
 const fs = require("fs");
 const { test, expect } = require("@playwright/test");
+const { blockLiveTargets } = require("./live-block");
 
 const PROD = "https://4improvementsportugal-ops.github.io";
 const LOCAL = "http://127.0.0.1:4173";
@@ -103,6 +104,7 @@ test.describe("v4 variante", function () {
   });
 
   test.beforeEach(async function ({ page }) {
+    await blockLiveTargets(page);
     await page.route(PROD + "/**", proxyProd);
   });
 

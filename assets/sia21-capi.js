@@ -22,6 +22,12 @@
  * edited. A value longer than 200 characters drops the fbc and keeps the
  * fbp. The fbclid is never truncated.
  *
+ * SIA21_sendCapi is the only fetch to a CAPI endpoint, and it runs only when
+ * SIA21_metaHostAllowed() is true: https and the exact production host.
+ * Off that host this file does not write _fbc and does not add
+ * client_reference_id, so a local click cannot feed the server CAPI.
+ * /obrigado is not exempt. ?meta_debug=1 does not enable it off production.
+ *
  * _fbp is fb.1.<ts>.<rand> (both numeric). _fbc is fb.1.<ts>.<fbclid>.
  * If the landing URL has ?fbclid= and there is no _fbc yet, the cookie is
  * created after consent: fb.1.<ts>.<fbclid>, ts = when that fbclid was
@@ -42,6 +48,59 @@
 
   var landingFbclid = "";
   var landingSeenAt = 0;
+
+  function fallbackMetaHost() {
+    var loc = w.location;
+    if (!loc || loc.protocol !== "https:") return false;
+    if (loc.protocol === "file:") return false;
+    var host = String(loc.hostname || "");
+    if (!host || host === "localhost" || host === "127.0.0.1" || host === "raw.githack.com" || host.indexOf("githack.com") !== -1) return false;
+    if (host !== "4improvementsportugal-ops.github.io") return false;
+    var port = String(loc.port || "");
+    if (port && port !== "443") return false;
+    if (/[?&]meta_debug=1(?:&|$)/.test(String(loc.search || ""))) return true;
+    return true;
+  }
+
+  function metaHostAllowed() {
+    if (typeof w.SIA21_metaHostAllowed === "function") return w.SIA21_metaHostAllowed() === true;
+    var ok = false;
+    try { ok = fallbackMetaHost(); } catch (e) { ok = false; }
+    if (!ok && !w.__SIA21_META_HOST_LOGGED) {
+      w.__SIA21_META_HOST_LOGGED = true;
+      try { console.info("meta tracking disabled on non-production host"); } catch (e2) {}
+    }
+    return ok;
+  }
+
+  function capiEndpoint(url) {
+    var raw = String(url || "");
+    if (!raw) return false;
+    var host = "";
+    try {
+      var base = w.location && w.location.href ? w.location.href : undefined;
+      host = new URL(raw, base).hostname || "";
+    } catch (e) { host = ""; }
+    if (host === "facebook.com" || (host.length > 13 && host.slice(-13) === ".facebook.com")) return true;
+    if (host === "facebook.net" || (host.length > 13 && host.slice(-13) === ".facebook.net")) return true;
+    if (/\/capi(?:\/|\?|$)/i.test(raw) || /conversionsapi/i.test(raw)) return true;
+    return false;
+  }
+
+  // The only browser fetch toward a CAPI endpoint. Refuses the call off-host.
+  w.SIA21_sendCapi = function (url, payload) {
+    if (!metaHostAllowed() || !capiEndpoint(url) || typeof w.fetch !== "function") return Promise.resolve(false);
+    try {
+      return w.fetch(url, {
+        method: "POST",
+        credentials: "omit",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload || {})
+      }).then(function () { return true; }, function () { return false; });
+    } catch (e) {
+      return Promise.resolve(false);
+    }
+  };
 
   function consentAccepted() {
     try { return w.localStorage.getItem(CONSENT_KEY) === "accepted"; } catch (e) { return false; }
@@ -101,6 +160,7 @@
   }
 
   function ensureFbc() {
+    if (!metaHostAllowed()) return;
     if (!consentAccepted()) return;
     if (cookieGet("_fbc")) return;
     if (!landingFbclid || !landingSeenAt || !safeFbclid(landingFbclid)) return;
@@ -120,6 +180,7 @@
   }
 
   function clientReferenceId() {
+    if (!metaHostAllowed()) return "";
     if (!consentAccepted()) return "";
     ensureFbc();
     var fbp = parseFbp(cookieGet("_fbp"));
@@ -147,6 +208,7 @@
   }
 
   function attachClientReference(anchor) {
+    if (!metaHostAllowed()) return false;
     if (excludedPage()) return false;
     if (!anchor || !anchor.getAttribute || !consentAccepted()) return false;
     var ref = clientReferenceId();

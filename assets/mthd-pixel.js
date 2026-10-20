@@ -12,6 +12,8 @@
  * window.__SIA21_PURCHASE_ALLOW is true, which only firePurchaseOnce sets.
  * SIA21_trackingSuppressed() (human-gate.js) blocks fbevents.js and every fbq
  * call for QA flags, stored sia21_qa, webdriver, and automated user agents.
+ * SIA21_metaHostAllowed() must be true before fbevents.js is inserted and
+ * before any fbq call. /obrigado is not exempt from that host guard.
  *
  * Before the fbevents.js tag is inserted, and again immediately before
  * fbq("init"), this file queues:
@@ -32,7 +34,32 @@
   var DEFAULT_PIXEL_ID = "1506988540335331";
   var DEFAULT_INSTANT_PATHS = ["/obrigado.html", "/obrigado", "/ghl-agencias/obrigado.html"];
 
+  function fallbackMetaHost() {
+    var loc = w.location;
+    if (!loc || loc.protocol !== "https:") return false;
+    if (loc.protocol === "file:") return false;
+    var host = String(loc.hostname || "");
+    if (!host || host === "localhost" || host === "127.0.0.1" || host === "raw.githack.com" || host.indexOf("githack.com") !== -1) return false;
+    if (host !== "4improvementsportugal-ops.github.io") return false;
+    var port = String(loc.port || "");
+    if (port && port !== "443") return false;
+    if (/[?&]meta_debug=1(?:&|$)/.test(String(loc.search || ""))) return true;
+    return true;
+  }
+
+  function metaHostAllowed() {
+    if (typeof w.SIA21_metaHostAllowed === "function") return w.SIA21_metaHostAllowed() === true;
+    var ok = false;
+    try { ok = fallbackMetaHost(); } catch (e) { ok = false; }
+    if (!ok && !w.__SIA21_META_HOST_LOGGED) {
+      w.__SIA21_META_HOST_LOGGED = true;
+      try { console.info("meta tracking disabled on non-production host"); } catch (e2) {}
+    }
+    return ok;
+  }
+
   function trackingBlocked() {
+    if (!metaHostAllowed()) return true;
     if (typeof w.SIA21_trackingSuppressed !== "function" || w.SIA21_trackingSuppressed()) return true;
     if (typeof w.SIA21_allowCapture === "function" && !w.SIA21_allowCapture()) return true;
     return false;
@@ -65,6 +92,7 @@
       return;
     }
     var n = function () {
+      if (!metaHostAllowed()) return;
       if (purchaseBlocked(arguments)) return;
       if (n.callMethod) n.callMethod.apply(n, arguments);
       else n.queue.push(arguments);
@@ -87,6 +115,7 @@
             return;
           }
           rawCall = function () {
+            if (!metaHostAllowed()) return;
             if (purchaseBlocked(arguments)) return;
             return fn.apply(this, arguments);
           };
@@ -96,6 +125,7 @@
     // Queue the kill switch before the tag exists so it is ahead of init
     // when fbevents drains fbq.queue.
     lockAutomatic(DEFAULT_PIXEL_ID);
+    if (!metaHostAllowed()) return;
     var t = d.createElement("script");
     t.async = true;
     t.src = "https://connect.facebook.net/en_US/fbevents.js";
@@ -148,8 +178,10 @@
     ensureFbqStub();
     if (trackingBlocked() || typeof w.fbq !== "function") return;
 
+    if (!metaHostAllowed()) return;
     try { w.fbq("consent", "grant"); } catch (e) {}
     lockAutomatic(pixelId);
+    if (!metaHostAllowed()) return;
     w.fbq("init", pixelId);
 
     w.__SIA21_MTHD_ONINIT_DONE = true;
@@ -157,7 +189,7 @@
 
     var pageViewFired = false;
     function firePageView() {
-      if (pageViewFired || trackingBlocked() || typeof w.fbq !== "function") return;
+      if (pageViewFired || trackingBlocked() || !metaHostAllowed() || typeof w.fbq !== "function") return;
       pageViewFired = true;
       try { w.fbq("track", "PageView"); } catch (e) {}
     }

@@ -1,6 +1,7 @@
 const fs = require("fs");
 const path = require("path");
 const { test, expect } = require("@playwright/test");
+const { blockLiveTargets } = require("./live-block");
 
 const PROD = "https://4improvementsportugal-ops.github.io";
 const LOCAL = "http://127.0.0.1:4173";
@@ -48,6 +49,7 @@ async function proxyProd(route) {
 }
 
 async function installHarness(page) {
+  await blockLiveTargets(page);
   await page.route(PROD + "/**", proxyProd);
   await page.route(TRACKING, function (route) { return fulfillTracking(route); });
 }
@@ -1176,6 +1178,117 @@ test.describe("tracking", function () {
     await expect(page.locator(".inapp-note")).toHaveCount(0);
     await expect(page.locator("#hero-cta")).toHaveAttribute("href", "https://buy.stripe.com/aFa5kF1OFc4D1fNb6mgrS02");
     await expect(page.locator("#sticky-cta")).toHaveAttribute("href", "https://buy.stripe.com/aFa5kF1OFc4D1fNb6mgrS02");
+  });
+});
+
+const HUMAN_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36";
+
+test.describe("production host guard", function () {
+  test.use({ userAgent: HUMAN_UA });
+
+  test("guard function returns true only for the production host", async function ({ page }) {
+    await page.goto(PROD + "/index.html", { waitUntil: "domcontentloaded" });
+    const table = await page.evaluate(function () {
+      function at(loc) { return window.SIA21_metaHostAllowed(loc); }
+      return {
+        prod: at({ protocol: "https:", hostname: "4improvementsportugal-ops.github.io", port: "", search: "" }),
+        prod443: at({ protocol: "https:", hostname: "4improvementsportugal-ops.github.io", port: "443", search: "" }),
+        prodDebug: at({ protocol: "https:", hostname: "4improvementsportugal-ops.github.io", port: "", search: "?meta_debug=1" }),
+        live: window.SIA21_metaHostAllowed(),
+        same: window.SIA21_isProductionHost(),
+        httpProd: at({ protocol: "http:", hostname: "4improvementsportugal-ops.github.io", port: "", search: "" }),
+        preview: at({ protocol: "http:", hostname: "4improvementsportugal-ops.github.io", port: "4173", search: "" }),
+        httpsPort: at({ protocol: "https:", hostname: "4improvementsportugal-ops.github.io", port: "9921", search: "?meta_debug=1" }),
+        ip: at({ protocol: "http:", hostname: "127.0.0.1", port: "9921", search: "" }),
+        ipDebug: at({ protocol: "https:", hostname: "127.0.0.1", port: "", search: "?meta_debug=1" }),
+        localhost: at({ protocol: "http:", hostname: "localhost", port: "4173", search: "" }),
+        file: at({ protocol: "file:", hostname: "", port: "", search: "" }),
+        githack: at({ protocol: "https:", hostname: "raw.githack.com", port: "", search: "?meta_debug=1" }),
+        githackCdn: at({ protocol: "https:", hostname: "rawcdn.githack.com", port: "", search: "" }),
+        other: at({ protocol: "https:", hostname: "example.com", port: "", search: "" }),
+        caseHost: at({ protocol: "https:", hostname: "4ImprovementsPortugal-ops.github.io", port: "", search: "" })
+      };
+    });
+    expect(table.prod).toBe(true);
+    expect(table.prod443).toBe(true);
+    expect(table.prodDebug).toBe(true);
+    expect(table.live).toBe(true);
+    expect(table.same).toBe(true);
+    expect(table.httpProd).toBe(false);
+    expect(table.preview).toBe(false);
+    expect(table.httpsPort).toBe(false);
+    expect(table.ip).toBe(false);
+    expect(table.ipDebug).toBe(false);
+    expect(table.localhost).toBe(false);
+    expect(table.file).toBe(false);
+    expect(table.githack).toBe(false);
+    expect(table.githackCdn).toBe(false);
+    expect(table.other).toBe(false);
+    expect(table.caseHost).toBe(false);
+  });
+
+  test("127.0.0.1 makes no request to connect.facebook.net or CAPI", async function ({ page }) {
+    await maskWebdriver(page);
+    const logs = [];
+    page.on("console", function (msg) {
+      if (msg.type() === "info") logs.push(msg.text());
+    });
+    const meta = [];
+    page.on("request", function (req) {
+      const url = req.url();
+      if (/connect\.facebook\.net|facebook\.com|facebook\.net|\/capi(?:\/|\?|$)|conversionsapi/i.test(url)) meta.push(url);
+    });
+    await page.addInitScript(function () {
+      try { localStorage.setItem("4i_cookie_consent_v1", "accepted"); } catch (e) {}
+    });
+    await page.goto(LOCAL + "/index.html", { waitUntil: "domcontentloaded" });
+    await page.mouse.wheel(0, 900);
+    await page.evaluate(function () { window.scrollTo(0, document.documentElement.scrollHeight); });
+    await page.locator("#hero-cta").click({ timeout: 5000 }).catch(function () {});
+    await page.waitForTimeout(400);
+    const onIndex = await page.evaluate(function () {
+      return {
+        allowed: window.SIA21_metaHostAllowed(),
+        host: window.SIA21_isProductionHost(),
+        suppressed: window.SIA21_trackingSuppressed(),
+        fbq: typeof window.fbq,
+        ph: !!(window.posthog && window.posthog.__loaded)
+      };
+    });
+    expect(onIndex).toEqual({
+      allowed: false,
+      host: false,
+      suppressed: false,
+      fbq: "undefined",
+      ph: false
+    });
+    const info = logs.filter(function (line) { return line === "meta tracking disabled on non-production host"; });
+    expect(info).toEqual(["meta tracking disabled on non-production host"]);
+    await page.goto(LOCAL + "/obrigado.html?session_id=" + LIVE_SESSION + "&amount=37", { waitUntil: "load" });
+    await page.waitForTimeout(1200);
+    const onThanks = await page.evaluate(async function () {
+      var srcs = Array.prototype.map.call(document.scripts, function (node) { return node.src || ""; });
+      var capi = false;
+      try {
+        capi = await window.SIA21_sendCapi("https://graph.facebook.com/v19.0/capi", { event_name: "Purchase" });
+      } catch (e) { capi = "threw"; }
+      return {
+        allowed: window.SIA21_metaHostAllowed(),
+        human: window.__SIA21_HUMAN === true,
+        fbq: typeof window.fbq,
+        purchase: window.SIA21_firePurchaseOnce(),
+        capi: capi,
+        pixel: srcs.some(function (src) { return /fbevents\.js/.test(src); })
+      };
+    });
+    expect(onThanks.allowed).toBe(false);
+    expect(onThanks.human).toBe(true);
+    expect(onThanks.fbq).toBe("undefined");
+    expect(onThanks.purchase).toBe(false);
+    expect(onThanks.pixel).toBe(false);
+    expect(onThanks.capi).toBe(false);
+    expect(meta, JSON.stringify(meta)).toEqual([]);
+    expect(logs.filter(function (line) { return line === "meta tracking disabled on non-production host"; })).toHaveLength(2);
   });
 });
 

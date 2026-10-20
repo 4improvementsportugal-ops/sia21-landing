@@ -23,6 +23,7 @@ import { fileURLToPath } from "node:url";
 
 const require = createRequire(path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../package.json"));
 const { chromium } = require("playwright");
+const { blockLiveTargets } = require(path.resolve(path.dirname(fileURLToPath(import.meta.url)), "live-block.js"));
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const PORT = 9921;
@@ -38,6 +39,8 @@ const BLOCKED_HOSTS = [
   "MAP connect.facebook.net 0.0.0.0",
   "MAP facebook.net 0.0.0.0",
   "MAP www.facebook.net 0.0.0.0",
+  "MAP graph.facebook.com 0.0.0.0",
+  "MAP buy.stripe.com 0.0.0.0",
   "MAP eu.i.posthog.com 0.0.0.0",
   "MAP us.i.posthog.com 0.0.0.0",
   "MAP eu-assets.i.posthog.com 0.0.0.0",
@@ -129,6 +132,7 @@ async function fulfillTracking(route) {
 }
 
 async function installRoutes(context) {
+  await blockLiveTargets(context);
   await context.route(ORIGIN + "/**", async (route) => {
     const url = new URL(route.request().url());
     const res = await fetch(LOCAL + url.pathname + url.search);

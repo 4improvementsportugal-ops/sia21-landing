@@ -126,7 +126,32 @@
     storageSet(w.sessionStorage, "sia21_purchase_fired_" + sid, "1");
   }
 
+  function fallbackMetaHost() {
+    var loc = w.location;
+    if (!loc || loc.protocol !== "https:") return false;
+    if (loc.protocol === "file:") return false;
+    var host = String(loc.hostname || "");
+    if (!host || host === "localhost" || host === "127.0.0.1" || host === "raw.githack.com" || host.indexOf("githack.com") !== -1) return false;
+    if (host !== "4improvementsportugal-ops.github.io") return false;
+    var port = String(loc.port || "");
+    if (port && port !== "443") return false;
+    if (/[?&]meta_debug=1(?:&|$)/.test(String(loc.search || ""))) return true;
+    return true;
+  }
+
+  function metaHostAllowed() {
+    if (typeof w.SIA21_metaHostAllowed === "function") return w.SIA21_metaHostAllowed() === true;
+    var ok = false;
+    try { ok = fallbackMetaHost(); } catch (e) { ok = false; }
+    if (!ok && !w.__SIA21_META_HOST_LOGGED) {
+      w.__SIA21_META_HOST_LOGGED = true;
+      try { console.info("meta tracking disabled on non-production host"); } catch (e2) {}
+    }
+    return ok;
+  }
+
   function trackingBlocked() {
+    if (!metaHostAllowed()) return true;
     if (typeof w.SIA21_trackingSuppressed !== "function" || w.SIA21_trackingSuppressed()) return true;
     if (typeof w.SIA21_allowCapture === "function" && !w.SIA21_allowCapture()) return true;
     return false;
@@ -134,7 +159,7 @@
 
   function firePurchaseOnce() {
     if (!isThankYou()) return false;
-    if (trackingBlocked()) return false;
+    if (!metaHostAllowed() || trackingBlocked()) return false;
     if (typeof w.fbq !== "function") return false;
     var sid = sessionId();
     if (!sid) return false;

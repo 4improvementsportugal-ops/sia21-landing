@@ -1,4 +1,5 @@
 const { test, expect } = require("@playwright/test");
+const { blockLiveTargets } = require("./live-block");
 
 const PROD = "https://4improvementsportugal-ops.github.io";
 const LOCAL = "http://127.0.0.1:4173";
@@ -23,6 +24,7 @@ async function proxyProd(route) {
 }
 
 async function installHarness(page) {
+  await blockLiveTargets(page);
   await page.route(PROD + "/**", proxyProd);
   await page.route(TRACKING, function (route) {
     const url = route.request().url();

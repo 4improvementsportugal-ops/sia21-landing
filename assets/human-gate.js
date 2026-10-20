@@ -64,8 +64,18 @@
  *
  * PostHog and the Meta Pixel only start on the production host over HTTPS
  * with no explicit port other than 443: 4improvementsportugal-ops.github.io.
- * localhost, 127.0.0.1, ::1, 0.0.0.0, any other port (including a preview on
- * :4173), http://, and file:// never capture. An obvious test checkout id in
+ * SIA21_metaHostAllowed() is that host guard. It requires location.protocol
+ * === "https:" and location.hostname === "4improvementsportugal-ops.github.io"
+ * (exact, not lowercased). localhost, 127.0.0.1, ::1, 0.0.0.0, file://,
+ * raw.githack.com and any other githack host, http://, and any other port
+ * (including a preview on :4173) never load fbevents.js, call fbq, or fetch
+ * Meta / the CAPI endpoint. A failed check on the live page logs one
+ * console.info: "meta tracking disabled on non-production host".
+ * ?meta_debug=1 does not enable Meta off that https production host.
+ * /obrigado stays on the instant human-gate path and is not exempt from
+ * this host guard. PostHog still follows SIA21_allowCapture(). On localhost,
+ * 127.0.0.1 and file: SIA21_bootPosthog does not init and calls
+ * opt_out_capturing. An obvious test checkout id in
  * the URL (cs_test_, or a value containing test, fake, dummy, sample,
  * example, placeholder, headless, or xxx) also refuses every Meta and PostHog
  * event. SIA21_trackingSuppressed() is the shared QA gate for this file,
@@ -253,19 +263,123 @@
     return found;
   }
 
-  w.SIA21_isProductionHost = function () {
-    try {
-      var loc = w.location;
-      if (!loc || loc.protocol === "file:") return false;
-      var host = String(loc.hostname || "").replace(/\.+$/, "").toLowerCase();
-      if (!host || host === "localhost" || host === "127.0.0.1" || host === "::1" || host === "[::1]" || host === "0.0.0.0") return false;
-      if (host !== PROD_HOST) return false;
-      var port = String(loc.port || "");
-      if (port && port !== "443") return false;
-      if (loc.protocol !== "https:") return false;
-      return true;
-    } catch (e) { return false; }
+  function locationInfo(loc) {
+    var target = loc;
+    if (!target) {
+      try { target = w.location; } catch (e) { target = null; }
+    }
+    var info = { protocol: "", hostname: "", port: "", search: "" };
+    if (!target) return info;
+    try { info.protocol = String(target.protocol || ""); } catch (e1) {}
+    try { info.hostname = String(target.hostname || ""); } catch (e2) {}
+    try { info.port = String(target.port || ""); } catch (e3) {}
+    try { info.search = String(target.search || ""); } catch (e4) {}
+    return info;
+  }
+
+  function metaHostPasses(info) {
+    if (!info || info.protocol !== "https:") return false;
+    if (info.protocol === "file:") return false;
+    var host = info.hostname;
+    if (!host || host === "localhost" || host === "127.0.0.1" || host === "::1" || host === "[::1]" || host === "0.0.0.0") return false;
+    if (host === "raw.githack.com" || host.indexOf("githack.com") !== -1) return false;
+    if (host !== PROD_HOST) return false;
+    if (info.port && info.port !== "443") return false;
+    return true;
+  }
+
+  function noteMetaDisabled() {
+    if (w.__SIA21_META_HOST_LOGGED) return;
+    w.__SIA21_META_HOST_LOGGED = true;
+    try { console.info("meta tracking disabled on non-production host"); } catch (e) {}
+  }
+
+  // True only for https://4improvementsportugal-ops.github.io (port 443).
+  // Pass a location-like object in tests. With no argument, the live page
+  // is checked and a failed check logs once. ?meta_debug=1 is ignored unless
+  // that https production host already passed.
+  w.SIA21_metaHostAllowed = function (loc) {
+    var live = !loc;
+    var info = locationInfo(loc);
+    var ok = metaHostPasses(info);
+    var debug = /[?&]meta_debug=1(?:&|$)/.test(info.search);
+    if (!ok) {
+      if (live) noteMetaDisabled();
+      return false;
+    }
+    if (debug) return true;
+    return true;
   };
+
+  w.SIA21_isProductionHost = function () {
+    return w.SIA21_metaHostAllowed() === true;
+  };
+
+  function localAnalyticsHost() {
+    var info = locationInfo(null);
+    if (info.protocol === "file:") return true;
+    var host = info.hostname;
+    return host === "localhost" || host === "127.0.0.1" || host === "::1" || host === "[::1]" || host === "0.0.0.0";
+  }
+
+  function isMetaEndpoint(url) {
+    var raw = String(url || "");
+    if (!raw) return false;
+    var host = "";
+    try {
+      var base = w.location && w.location.href ? w.location.href : undefined;
+      host = new URL(raw, base).hostname || "";
+    } catch (e) { host = ""; }
+    if (host === "facebook.com" || (host.length > 13 && host.slice(-13) === ".facebook.com")) return true;
+    if (host === "facebook.net" || (host.length > 13 && host.slice(-13) === ".facebook.net")) return true;
+    if (/\/capi(?:\/|\?|$)/i.test(raw) || /conversionsapi/i.test(raw)) return true;
+    return false;
+  }
+
+  function installMetaNetworkGuard() {
+    if (w.__SIA21_META_NET_GUARDED) return;
+    w.__SIA21_META_NET_GUARDED = true;
+    if (typeof w.fetch === "function") {
+      var origFetch = w.fetch;
+      w.fetch = function (input) {
+        var url = "";
+        try { url = typeof input === "string" ? input : (input && input.url) || ""; } catch (e) {}
+        if (isMetaEndpoint(url) && !w.SIA21_metaHostAllowed()) {
+          try { return Promise.resolve(new Response("", { status: 204, statusText: "No Content" })); } catch (e2) {
+            return Promise.resolve(null);
+          }
+        }
+        return origFetch.apply(this, arguments);
+      };
+    }
+    try {
+      var nav = w.navigator;
+      if (nav && typeof nav.sendBeacon === "function") {
+        var origBeacon = nav.sendBeacon.bind(nav);
+        nav.sendBeacon = function (url, data) {
+          if (isMetaEndpoint(url) && !w.SIA21_metaHostAllowed()) return false;
+          return origBeacon(url, data);
+        };
+      }
+    } catch (e3) {}
+    try {
+      var XHR = w.XMLHttpRequest;
+      if (XHR && XHR.prototype) {
+        var origOpen = XHR.prototype.open;
+        var origSend = XHR.prototype.send;
+        XHR.prototype.open = function (method, url) {
+          try { this.__sia21Url = url; } catch (e4) {}
+          return origOpen.apply(this, arguments);
+        };
+        XHR.prototype.send = function () {
+          var blocked = false;
+          try { blocked = isMetaEndpoint(this.__sia21Url) && !w.SIA21_metaHostAllowed(); } catch (e5) { blocked = false; }
+          if (blocked) return;
+          return origSend.apply(this, arguments);
+        };
+      }
+    } catch (e6) {}
+  }
 
   w.SIA21_trackingSuppressed = function () {
     syncQaFlag();
@@ -495,6 +609,13 @@
 
   w.SIA21_bootPosthog = function () {
     if (w.__SIA21_PH_BOOTED) return;
+    if (localAnalyticsHost()) {
+      w.__SIA21_PH_BOOTED = true;
+      try {
+        if (w.posthog && typeof w.posthog.opt_out_capturing === "function") w.posthog.opt_out_capturing();
+      } catch (e) {}
+      return;
+    }
     if (!w.SIA21_allowCapture()) return;
     if (!w.posthog || typeof w.posthog.init !== "function") return;
     w.__SIA21_PH_BOOTED = true;
@@ -1063,6 +1184,9 @@
   }
 
   bindScrollTracking();
+
+  installMetaNetworkGuard();
+  w.SIA21_metaHostAllowed();
 
   d.addEventListener("click", onCookieChoice, true);
 

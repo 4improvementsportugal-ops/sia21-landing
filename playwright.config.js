@@ -1,5 +1,9 @@
 const { defineConfig, devices } = require("@playwright/test");
 
+// Specs call tests/live-block.js before navigation: route.abort for
+// connect.facebook.net, *.facebook.com, *.facebook.net, /capi and
+// buy.stripe.com. Hosts below also resolve nowhere, so a missed route
+// still cannot deliver a pixel, a CAPI call, or a live Payment Link.
 module.exports = defineConfig({
   testDir: "tests",
   timeout: 60000,
@@ -21,6 +25,8 @@ module.exports = defineConfig({
           "MAP connect.facebook.net 0.0.0.0",
           "MAP facebook.net 0.0.0.0",
           "MAP www.facebook.net 0.0.0.0",
+          "MAP graph.facebook.com 0.0.0.0",
+          "MAP buy.stripe.com 0.0.0.0",
           "MAP eu.i.posthog.com 0.0.0.0",
           "MAP us.i.posthog.com 0.0.0.0",
           "MAP eu-assets.i.posthog.com 0.0.0.0",

@@ -63,9 +63,11 @@ body {
 
 .brand {
   color: var(--ink);
-  font-size: 1.05rem;
-  font-weight: 800;
-  letter-spacing: -0.03em;
+}
+
+.brand-line {
+  color: #556575;
+  opacity: 1;
 }
 
 .offer-page main > section.hero {
@@ -962,8 +964,8 @@ section[id] {
     padding-bottom: 0;
   }
 
-  .offer-page > header .brand {
-    font-size: 0.95rem;
+  .offer-page > header .brand-name {
+    font-size: 0.9rem;
     line-height: 1;
   }
 

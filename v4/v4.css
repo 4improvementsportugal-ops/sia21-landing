@@ -8,6 +8,11 @@
   justify-content: center;
 }
 
+.offer-page.v4 > header .brand {
+  align-items: center;
+  text-align: center;
+}
+
 .offer-page.v4 main > section.hero,
 .offer-page.v4 .hero-shell,
 .offer-page.v4 .hero-copy,

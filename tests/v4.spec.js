@@ -79,7 +79,7 @@ test.describe("v4 variante", function () {
     expect(list.match(/<li>/g)).toHaveLength(12);
     expect(file).toContain("Quero os prompts prontos");
     expect(file).toContain("Quero começar no Dia 1");
-    expect(file).toContain("Quero o e-book por 37 €");
+    expect(file).toContain("Quero o Método 21 por 37 €");
     expect(file).toContain("Quero deixar de começar do zero");
     expect(file).toContain(STRIPE);
     expect(file).not.toContain("https://buy.stripe.com/fZueVf1OFc4D7Eb1vMgrS04");

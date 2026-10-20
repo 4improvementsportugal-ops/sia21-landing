@@ -48,10 +48,15 @@
  * let this click through to buy.stripe.com. The allowed click opens the
  * human gate itself, so InitiateCheckout does not wait for an earlier
  * signal. The same handler sets window.__SIA21_IC_ARMED so the gate can
- * hold navigation until the pixel request is queued. A replayed click
- * (window.__SIA21_STRIPE_LEAVING) is ignored. A second tap while that
- * navigation is held does not fire another stripe_checkout_click or
- * InitiateCheckout.
+ * hold navigation until the pixel request is queued. Each InitiateCheckout
+ * that fires gets a new eventID, m21ic_ plus a uuid, generated for that
+ * fire and never reused. The same value is the event_id property on
+ * stripe_checkout_click. A replayed click (window.__SIA21_STRIPE_LEAVING)
+ * is ignored. A second tap while that navigation is held does not fire
+ * another stripe_checkout_click or InitiateCheckout, and does not mint
+ * another eventID. After the gate finishes that navigation, it clears
+ * window.__SIA21_CHECKOUT_SENT_HREF. The next tap on the same Payment
+ * Link is a new checkout and a new eventID.
  */
 (function (w, d) {
   "use strict";
@@ -250,18 +255,64 @@
     return typeof w.__SIA21_CHECKOUT_LOCK_UNTIL === "number" && Date.now() < w.__SIA21_CHECKOUT_LOCK_UNTIL;
   }
 
+  function freshUuid() {
+    try {
+      if (w.crypto && typeof w.crypto.randomUUID === "function") return w.crypto.randomUUID();
+    } catch (e) {}
+    var bytes = new Array(16);
+    var i;
+    var filled = false;
+    try {
+      if (w.crypto && typeof w.crypto.getRandomValues === "function") {
+        var buf = new Uint8Array(16);
+        w.crypto.getRandomValues(buf);
+        for (i = 0; i < 16; i++) bytes[i] = buf[i];
+        filled = true;
+      }
+    } catch (e2) { filled = false; }
+    if (!filled) {
+      for (i = 0; i < 16; i++) bytes[i] = Math.floor(Math.random() * 256);
+    }
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+    var hex = "";
+    for (i = 0; i < 16; i++) {
+      var part = bytes[i].toString(16);
+      hex += (part.length === 1 ? "0" : "") + part;
+    }
+    return hex.slice(0, 8) + "-" + hex.slice(8, 12) + "-" + hex.slice(12, 16) + "-" + hex.slice(16, 20) + "-" + hex.slice(20);
+  }
+
+  // One id per InitiateCheckout. A later tap on the same Payment Link,
+  // including after a return from Stripe, mints another. A double tap
+  // during the wait, and the click the gate replays, never reach here.
+  function checkoutEventId() {
+    var issued = w.__SIA21_IC_EVENT_IDS || (w.__SIA21_IC_EVENT_IDS = {});
+    var id = "";
+    var n = 0;
+    do {
+      id = "m21ic_" + freshUuid();
+      n += 1;
+    } while (issued[id] && n < 8);
+    issued[id] = 1;
+    return id;
+  }
+
   function onCheckoutClick(e) {
     if (w.__SIA21_STRIPE_LEAVING) return;
     var anchor = e.target && e.target.closest ? e.target.closest('a[href*="buy.stripe.com"]') : null;
     if (!anchor) return;
     if (w.__SIA21_CHECKOUT_OK !== true) return;
-    // The gate already stops a second tap on the same Payment Link. This
-    // is the same rule when that click still reaches here. A different
-    // link, such as the €33 exit, is a new intent.
+    // The gate already stops a second tap on the same Payment Link while
+    // that checkout is in flight. This is the same rule when the click
+    // still reaches here. The gate clears __SIA21_CHECKOUT_SENT_HREF
+    // after the navigation, so a later tap on the same link is a new
+    // intent. A different link, such as the €33 exit, is a new intent too.
     var href = anchor.getAttribute("href") || "";
     if (checkoutIntentLocked() && href && href === w.__SIA21_CHECKOUT_SENT_HREF) return;
     w.__SIA21_CHECKOUT_SENT_HREF = href;
-    capturePh("stripe_checkout_click", { angle: angleSlug(), price: stripePrice(anchor) });
+    var eventId = checkoutEventId();
+    capturePh("stripe_checkout_click", { angle: angleSlug(), price: stripePrice(anchor), event_id: eventId });
     // human-gate.js calls markHuman() on this same click before we run.
     if (!w.__SIA21_HUMAN || !pixelReady() || isThankYou()) return;
     var value = checkoutValue(anchor);
@@ -274,7 +325,7 @@
     };
     remember("InitiateCheckout", payload);
     if (trackingBlocked() || !metaHostAllowed() || typeof w.fbq !== "function") return;
-    try { w.fbq("track", "InitiateCheckout", payload); } catch (err) { return; }
+    try { w.fbq("track", "InitiateCheckout", payload, { eventID: eventId }); } catch (err) { return; }
     w.__SIA21_IC_ARMED = true;
   }
 

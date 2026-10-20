@@ -1000,6 +1000,38 @@ test.describe("tracking", function () {
     expect(hits.some(function (url) { return /[?&]ev=Purchase(?:&|$)/.test(url); })).toBe(false);
   });
 
+  test("a return to the same Payment Link sends a new InitiateCheckout eventID", async function ({ page }) {
+    await maskWebdriver(page);
+    const tracked = await watchTracking(page);
+    const hits = await armCheckout(page, PROD + "/angles-v2/01-tempo/?sia21_debug=1");
+    const cta = page.locator("#hero-cta");
+
+    await cta.click({ noWaitAfter: true });
+    await page.waitForTimeout(200);
+    await cta.click({ noWaitAfter: true });
+    await expect.poll(function () { return icUrls(hits).length; }, { timeout: 15000 }).toBe(1);
+    const firstEid = new URL(icUrls(hits)[0]).searchParams.get("eid");
+    expect(firstEid).toMatch(/^m21ic_/);
+    expect(firstEid.length).toBeGreaterThan("m21ic_".length);
+    await waitCheckoutIdle(page);
+    expect(icUrls(hits)).toHaveLength(1);
+    expect(new URL(icUrls(hits)[0]).searchParams.get("eid")).toBe(firstEid);
+
+    await cta.click({ noWaitAfter: true });
+    await expect.poll(function () { return icUrls(hits).length; }, { timeout: 15000 }).toBe(2);
+    await waitCheckoutIdle(page);
+    const eids = icUrls(hits).map(function (url) {
+      expect(url).toMatch(/facebook\.com\/tr/i);
+      return new URL(url).searchParams.get("eid");
+    });
+    expect(eids[0]).toBe(firstEid);
+    expect(eids[1]).toMatch(/^m21ic_/);
+    expect(eids[0]).not.toBe(eids[1]);
+    const clicks = eventsFrom(tracked).filter(function (event) { return event.event === "stripe_checkout_click"; });
+    expect(clicks.map(function (event) { return event.properties && event.properties.event_id; })).toEqual(eids);
+    expect(hits.some(function (url) { return /[?&]ev=Purchase(?:&|$)/.test(url); })).toBe(false);
+  });
+
   test("a click a few milliseconds after navigation is not a second checkout", async function ({ page }) {
     await maskWebdriver(page);
     const tracked = await watchTracking(page);

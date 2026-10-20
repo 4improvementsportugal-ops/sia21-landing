@@ -152,6 +152,46 @@ if(window.SIA21_onHuman){SIA21_onHuman(function(){if(window.SIA21_bootPosthog)SI
       else { if (window.fbq && !(typeof window.SIA21_trackingSuppressed === "function" && window.SIA21_trackingSuppressed())) fbq('consent','revoke'); clearMeta(); }
     }
 
+    function freshUuid(){
+      try {
+        if (window.crypto && typeof window.crypto.randomUUID === "function") return window.crypto.randomUUID();
+      } catch (e) {}
+      var bytes = new Array(16);
+      var i;
+      var filled = false;
+      try {
+        if (window.crypto && typeof window.crypto.getRandomValues === "function") {
+          var buf = new Uint8Array(16);
+          window.crypto.getRandomValues(buf);
+          for (i = 0; i < 16; i++) bytes[i] = buf[i];
+          filled = true;
+        }
+      } catch (e2) { filled = false; }
+      if (!filled) {
+        for (i = 0; i < 16; i++) bytes[i] = Math.floor(Math.random() * 256);
+      }
+      bytes[6] = (bytes[6] & 0x0f) | 0x40;
+      bytes[8] = (bytes[8] & 0x3f) | 0x80;
+      var hex = "";
+      for (i = 0; i < 16; i++) {
+        var part = bytes[i].toString(16);
+        hex += (part.length === 1 ? "0" : "") + part;
+      }
+      return hex.slice(0, 8) + "-" + hex.slice(8, 12) + "-" + hex.slice(12, 16) + "-" + hex.slice(16, 20) + "-" + hex.slice(20);
+    }
+
+    function checkoutEventId(){
+      var issued = window.__SIA21_IC_EVENT_IDS || (window.__SIA21_IC_EVENT_IDS = {});
+      var id = "";
+      var n = 0;
+      do {
+        id = "m21ic_" + freshUuid();
+        n += 1;
+      } while (issued[id] && n < 8);
+      issued[id] = 1;
+      return id;
+    }
+
     function setCheckoutBannerCopy(){
       if (!sessionId()) return;
       var el = document.getElementById("ck-copy");
@@ -167,11 +207,12 @@ if(window.SIA21_onHuman){SIA21_onHuman(function(){if(window.SIA21_bootPosthog)SI
       if (!a) return;
       if (window.__SIA21_CHECKOUT_OK !== true) return;
       var label = (a.textContent || "").indexOf("97") >= 0 ? 97 : ((a.textContent || "").indexOf("47") >= 0 ? 47 : 37);
+      var eventId = checkoutEventId();
       if (typeof window.SIA21_capturePh === "function") {
-        window.SIA21_capturePh("stripe_checkout_click", { angle: "obrigado", price: label });
+        window.SIA21_capturePh("stripe_checkout_click", { angle: "obrigado", price: label, event_id: eventId });
       }
       if (window.__SIA21_MTHD_STARTED && window.__SIA21_HUMAN && window.fbq && !(typeof window.SIA21_trackingSuppressed === "function" && window.SIA21_trackingSuppressed())) {
-        fbq('track','InitiateCheckout',{value:label,currency:'EUR',content_name:'Upsell obrigado SIA21'});
+        fbq('track','InitiateCheckout',{value:label,currency:'EUR',content_name:'Upsell obrigado SIA21'},{eventID:eventId});
         window.__SIA21_IC_ARMED = true;
       }
     });

@@ -38,12 +38,17 @@
  * ignore target=_blank and cancel the pixel image request if the document
  * unloads in the same turn. The replayed click is marked
  * __SIA21_STRIPE_LEAVING so InitiateCheckout and stripe_checkout_click do
- * not fire a second time. A second tap on that same Payment Link during
- * the wait is not a new checkout: the first valid click locks that link
- * for 3s, or until its one navigation is issued, whichever comes first.
- * Further taps on it are ignored, so the intent fires one InitiateCheckout,
- * one stripe_checkout_click, and opens Stripe once. A different Payment
- * Link, such as the €33 exit, can still record its own checkout.
+ * not fire a second time. A second click dispatched while that replay is
+ * running is swallowed, so Stripe opens once. A second tap on that same
+ * Payment Link during the wait is not a new checkout: the first valid
+ * click locks that link for 3s, or until its one navigation is issued,
+ * whichever comes first. After navigation, the same link stays locked
+ * for a short trail. Some Android browsers emit another click a few
+ * milliseconds later; that click is the same tap. When the trail ends,
+ * the remembered href is cleared. A later tap on the same Payment Link,
+ * for example after coming back from Stripe without paying, is a new
+ * checkout and is counted once. A different Payment Link, such as the
+ * €33 exit, can still record its own checkout.
  *
  * When that click is allowed and cookie consent is already accepted,
  * SIA21_attachClientReference (assets/sia21-capi.js) appends
@@ -700,6 +705,10 @@
   var IC_MIN_MS = 300;
   var IC_CAP_MS = 1200;
   var CHECKOUT_LOCK_MS = 3000;
+  // After navigation, ignore another click on the same link for this long.
+  // Some Android browsers emit that click 4 to 7ms after the replay.
+  var CHECKOUT_TRAIL_MS = 100;
+  var leaveSerial = 0;
 
   function checkoutLocked() {
     return typeof w.__SIA21_CHECKOUT_LOCK_UNTIL === "number" && Date.now() < w.__SIA21_CHECKOUT_LOCK_UNTIL;
@@ -733,20 +742,34 @@
 
   function leaveForStripe(anchor) {
     if (w.__SIA21_STRIPE_LEAVING) return;
+    var href = (anchor && anchor.getAttribute && anchor.getAttribute("href")) || "";
+    var serial = ++leaveSerial;
     w.__SIA21_STRIPE_LEAVING = true;
+    w.__SIA21_STRIPE_LEAVE_SEEN = false;
     try {
       anchor.click();
     } catch (err) {
       try { w.location.href = anchor.href; } catch (err2) {}
     }
-    // The synthetic click has finished dispatching. A later real click
-    // (exit offer, sticky bar, upsell) can arm InitiateCheckout again.
+    // The replayed click has finished, or it never dispatched. A later
+    // real click (exit offer, sticky bar, upsell) can arm InitiateCheckout
+    // again. The same link stays locked for CHECKOUT_TRAIL_MS so a second
+    // click a few milliseconds later is not a new checkout.
     w.__SIA21_STRIPE_LEAVING = false;
     w.__SIA21_STRIPE_LEAVE_PENDING = false;
     w.__SIA21_IC_ARMED = false;
-    // Navigation for this intent has been issued. A later offer (the €33
-    // exit, for example) may start its own checkout.
-    unlockCheckout();
+    w.__SIA21_CHECKOUT_LOCK_HREF = href;
+    w.__SIA21_CHECKOUT_LOCK_UNTIL = Date.now() + CHECKOUT_TRAIL_MS;
+    w.setTimeout(function () {
+      if (serial !== leaveSerial) return;
+      if (w.__SIA21_STRIPE_LEAVE_PENDING) return;
+      if ((w.__SIA21_CHECKOUT_LOCK_HREF || "") !== href) return;
+      unlockCheckout();
+      // sia21-conv.js treats a locked click on this href as a double tap.
+      // Forgetting it here makes the next tap on the same Payment Link,
+      // after the visitor comes back, a new checkout.
+      w.__SIA21_CHECKOUT_SENT_HREF = "";
+    }, CHECKOUT_TRAIL_MS);
   }
 
   function scheduleStripeLeave(anchor) {
@@ -772,7 +795,16 @@
     if (e.type === "auxclick" && e.button !== 1) return;
     // The delayed anchor.click() must follow the link. Other listeners
     // see __SIA21_STRIPE_LEAVING and skip a second InitiateCheckout.
-    if (w.__SIA21_STRIPE_LEAVING) return;
+    // The first replayed click navigates. Another click in that same
+    // turn would open Stripe again, so it is swallowed.
+    if (w.__SIA21_STRIPE_LEAVING) {
+      if (w.__SIA21_STRIPE_LEAVE_SEEN) {
+        swallowCheckout(e);
+        return;
+      }
+      w.__SIA21_STRIPE_LEAVE_SEEN = true;
+      return;
+    }
     if ((w.__SIA21_STRIPE_LEAVE_PENDING || checkoutLocked()) && sameLockedCheckout(anchor)) {
       swallowCheckout(e);
       return;

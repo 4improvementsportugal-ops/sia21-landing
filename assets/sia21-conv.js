@@ -51,7 +51,9 @@
  * hold navigation until the pixel request is queued. A replayed click
  * (window.__SIA21_STRIPE_LEAVING) is ignored. A second tap while that
  * navigation is held does not fire another stripe_checkout_click or
- * InitiateCheckout.
+ * InitiateCheckout. After the gate finishes that navigation, it clears
+ * window.__SIA21_CHECKOUT_SENT_HREF. The next tap on the same Payment
+ * Link is a new checkout.
  */
 (function (w, d) {
   "use strict";
@@ -255,9 +257,11 @@
     var anchor = e.target && e.target.closest ? e.target.closest('a[href*="buy.stripe.com"]') : null;
     if (!anchor) return;
     if (w.__SIA21_CHECKOUT_OK !== true) return;
-    // The gate already stops a second tap on the same Payment Link. This
-    // is the same rule when that click still reaches here. A different
-    // link, such as the €33 exit, is a new intent.
+    // The gate already stops a second tap on the same Payment Link while
+    // that checkout is in flight. This is the same rule when the click
+    // still reaches here. The gate clears __SIA21_CHECKOUT_SENT_HREF
+    // after the navigation, so a later tap on the same link is a new
+    // intent. A different link, such as the €33 exit, is a new intent too.
     var href = anchor.getAttribute("href") || "";
     if (checkoutIntentLocked() && href && href === w.__SIA21_CHECKOUT_SENT_HREF) return;
     w.__SIA21_CHECKOUT_SENT_HREF = href;

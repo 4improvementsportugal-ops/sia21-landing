@@ -844,6 +844,33 @@ test.describe("tracking", function () {
     return hits.filter(function (url) { return /[?&]ev=InitiateCheckout(?:&|$)/.test(url); });
   }
 
+  function checkoutClickCount(hits) {
+    return hits.reduce(function (n, hit) {
+      var blob = (hit.body || "") + "\n" + hit.url;
+      return n + (blob.split("stripe_checkout_click").length - 1);
+    }, 0);
+  }
+
+  function checkoutPrices(hits) {
+    var prices = [];
+    hits.forEach(function (hit) {
+      var blob = (hit.body || "") + "\n" + hit.url;
+      var re = /stripe_checkout_click[\s\S]{0,240}?"price":\s*(\d+)/g;
+      var match;
+      while ((match = re.exec(blob))) prices.push(Number(match[1]));
+    });
+    return prices;
+  }
+
+  async function waitCheckoutIdle(page) {
+    await page.waitForFunction(function () {
+      var pending = window.__SIA21_STRIPE_LEAVE_PENDING === true;
+      var until = window.__SIA21_CHECKOUT_LOCK_UNTIL;
+      var locked = typeof until === "number" && Date.now() < until;
+      return !pending && !locked && !window.__SIA21_CHECKOUT_SENT_HREF;
+    }, null, { timeout: 5000 });
+  }
+
   test("InitiateCheckout fires on a Stripe link click before navigation", async function ({ page }) {
     await maskWebdriver(page);
     const order = [];
@@ -914,6 +941,119 @@ test.describe("tracking", function () {
     await expect.poll(function () { return icUrls(hits).length; }, { timeout: 15000 }).toBe(2);
     expect(new URL(icUrls(hits)[1]).searchParams.get("cd[value]")).toBe("33");
     expect(hits.some(function (url) { return /[?&]ev=Purchase(?:&|$)/.test(url); })).toBe(false);
+  });
+
+  test("same Payment Link counts again after Stripe, not on a double tap, and the €33 exit counts too", async function ({ page }) {
+    await maskWebdriver(page);
+    const tracked = await watchTracking(page);
+    const navs = [];
+    page.on("request", function (req) {
+      if (/buy\.stripe\.com/i.test(req.url())) navs.push(req.url());
+    });
+    const popups = [];
+    page.on("popup", function (popup) {
+      popups.push(popup);
+      popup.close().catch(function () {});
+    });
+    const hits = await armCheckout(page, PROD + "/angles-v2/01-tempo/?sia21_debug=1");
+    const cta = page.locator("#hero-cta");
+
+    await cta.click({ noWaitAfter: true });
+    await page.waitForTimeout(200);
+    await cta.click({ noWaitAfter: true });
+    await expect.poll(function () { return icUrls(hits).length; }, { timeout: 15000 }).toBe(1);
+    await expect.poll(function () { return checkoutClickCount(tracked); }, { timeout: 15000 }).toBe(1);
+    expect(new URL(icUrls(hits)[0]).searchParams.get("cd[value]")).toBe("37");
+    await waitCheckoutIdle(page);
+    expect(icUrls(hits)).toHaveLength(1);
+    expect(checkoutClickCount(tracked)).toBe(1);
+    expect(checkoutPrices(tracked)).toEqual([37]);
+    expect(navs.length + popups.length).toBe(1);
+    expect(page.url()).toContain("/angles-v2/01-tempo/");
+
+    await cta.click({ noWaitAfter: true });
+    await expect.poll(function () { return icUrls(hits).length; }, { timeout: 15000 }).toBe(2);
+    await expect.poll(function () { return checkoutClickCount(tracked); }, { timeout: 15000 }).toBe(2);
+    expect(new URL(icUrls(hits)[1]).searchParams.get("cd[value]")).toBe("37");
+    await waitCheckoutIdle(page);
+    expect(icUrls(hits)).toHaveLength(2);
+    expect(checkoutClickCount(tracked)).toBe(2);
+    expect(checkoutPrices(tracked)).toEqual([37, 37]);
+    expect(navs.length + popups.length).toBe(2);
+
+    await page.evaluate(function () {
+      try { sessionStorage.setItem("sia21_stripe_left_at_v1", String(Date.now() - 120000)); } catch (e) {}
+      window.__SIA21_STRIPE_CLICKED_HERE = false;
+    });
+    await hidePage(page);
+    await page.waitForTimeout(500);
+    await showPage(page);
+    const offer = page.locator("#sia21-exit a.sia21-exit-primary");
+    await expect(offer).toBeVisible({ timeout: 8000 });
+    await offer.click({ noWaitAfter: true });
+    await expect.poll(function () { return icUrls(hits).length; }, { timeout: 15000 }).toBe(3);
+    await expect.poll(function () { return checkoutClickCount(tracked); }, { timeout: 15000 }).toBe(3);
+    expect(new URL(icUrls(hits)[2]).searchParams.get("cd[value]")).toBe("33");
+    await waitCheckoutIdle(page);
+    expect(checkoutPrices(tracked)).toEqual([37, 37, 33]);
+    expect(navs.length + popups.length).toBe(3);
+    expect(hits.some(function (url) { return /[?&]ev=Purchase(?:&|$)/.test(url); })).toBe(false);
+  });
+
+  test("a click a few milliseconds after navigation is not a second checkout", async function ({ page }) {
+    await maskWebdriver(page);
+    const tracked = await watchTracking(page);
+    const navs = [];
+    page.on("request", function (req) {
+      if (/buy\.stripe\.com/i.test(req.url())) navs.push(req.url());
+    });
+    const popups = [];
+    page.on("popup", function (popup) {
+      popups.push(popup);
+      popup.close().catch(function () {});
+    });
+    const hits = [];
+    await page.route(/facebook\.com\/tr/i, async function (route) {
+      hits.push(route.request().url());
+      await route.fulfill({ status: 200, contentType: "text/plain", body: "" });
+    });
+    await page.route(/buy\.stripe\.com/, function (route) { return route.abort(); });
+    await page.goto(PROD + "/angles/06-chatgpt-falhou/", { waitUntil: "domcontentloaded" });
+    await page.mouse.wheel(0, 800);
+    await page.waitForFunction(function () {
+      return window.__SIA21_ENGAGED === true && window.SIA21_checkoutAllowed && window.SIA21_checkoutAllowed();
+    });
+    await page.evaluate(function () {
+      var bar = document.getElementById("ck");
+      if (bar) bar.hidden = true;
+      var orig = HTMLAnchorElement.prototype.click;
+      HTMLAnchorElement.prototype.click = function () {
+        var el = this;
+        orig.call(el);
+        window.setTimeout(function () {
+          el.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, view: window }));
+        }, 6);
+      };
+    });
+    const cta = page.locator("#hero-cta");
+    await cta.click({ noWaitAfter: true });
+    await expect.poll(function () { return checkoutClickCount(tracked); }, { timeout: 15000 }).toBe(1);
+    await page.waitForTimeout(400);
+    expect(checkoutClickCount(tracked)).toBe(1);
+    expect(checkoutPrices(tracked)).toEqual([37]);
+    expect(icUrls(hits)).toHaveLength(0);
+    await waitCheckoutIdle(page);
+    expect(navs.length + popups.length).toBe(1);
+
+    await cta.click({ noWaitAfter: true });
+    await expect.poll(function () { return checkoutClickCount(tracked); }, { timeout: 15000 }).toBe(2);
+    await page.waitForTimeout(400);
+    expect(checkoutClickCount(tracked)).toBe(2);
+    expect(checkoutPrices(tracked)).toEqual([37, 37]);
+    expect(icUrls(hits)).toHaveLength(0);
+    await waitCheckoutIdle(page);
+    expect(navs.length + popups.length).toBe(2);
+    expect(page.url()).toContain("/angles/06-chatgpt-falhou/");
   });
 
   async function countFbq(page) {

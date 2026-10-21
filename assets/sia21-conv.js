@@ -935,6 +935,7 @@
       opts = opts || {};
       if (typeof w.SIA21_mayShowExit !== "function" || !w.SIA21_mayShowExit()) return false;
       if (!root.hidden) return false;
+      if (w.__SIA21_MODAL_OPEN === true) return false;
       if (exitStep() >= 2) return false;
       if (Date.now() - openedAt < minAge()) return false;
       if (!opts.ignoreCooldown && Date.now() < cooldownUntil) return false;
@@ -1064,6 +1065,7 @@
       if (opts.fromStripe) {
         if (isAutomatedBrowser()) return false;
         if (!root.hidden) return false;
+        if (w.__SIA21_MODAL_OPEN === true) return false;
         if (exitStep() >= 2) return false;
         if (!engagedForExit()) return false;
       } else if (!canOpen(opts) || blockExitUntilGesture) {

@@ -197,6 +197,28 @@ function anglePages() {
   return pages.sort();
 }
 
+function walkHtml(dir, files) {
+  fs.readdirSync(dir, { withFileTypes: true }).forEach(function (entry) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) walkHtml(full, files);
+    else if (entry.isFile() && entry.name.endsWith(".html")) files.push(full.split(path.sep).join("/"));
+  });
+}
+
+function copyScopePages() {
+  const files = ["index.html"];
+  ["angles", "angles-v2", "v4"].forEach(function (dir) {
+    if (fs.existsSync(dir)) walkHtml(dir, files);
+  });
+  return files.sort();
+}
+
+// angles/06-chatgpt-falhou and v4 are frozen until the A/B ends on 26/10.
+function isFrozenAbPage(file) {
+  const norm = String(file).split(path.sep).join("/");
+  return norm.indexOf("angles/06-chatgpt-falhou/") === 0 || norm.indexOf("v4/") === 0;
+}
+
 async function engage(page) {
   for (let i = 0; i < 5; i++) await page.mouse.move(24 + i * 10, 160 + i * 6);
   await page.waitForFunction(function () { return window.__SIA21_ENGAGED === true; });
@@ -1209,7 +1231,8 @@ test.describe("tracking", function () {
         if (html.indexOf(needle) === -1) missing.push(file + " missing " + needle);
       });
       if (html.indexOf("—") !== -1) missing.push(file + " contains an em dash");
-      if (html.indexOf("Pagamento seguro via Stripe.") !== -1) missing.push(file + " still has the old pay note");
+      // angles/06-chatgpt-falhou and v4 are frozen until the A/B ends on 26/10.
+      if (!isFrozenAbPage(file) && html.indexOf("Pagamento seguro na Stripe") !== -1) missing.push(file + " still has the old pay note");
     });
     expect(missing, missing.join("\n")).toEqual([]);
     const obrigado = fs.readFileSync("obrigado.html", "utf8");
@@ -1228,6 +1251,34 @@ test.describe("tracking", function () {
     const gate = fs.readFileSync("assets/human-gate.js", "utf8");
     expect(gate).toContain('SIA21_captureWhenHuman("cookie_consent"');
     expect(gate).not.toContain("inapp-note");
+  });
+
+  test("no live page still says Pagamento seguro na Stripe, and 01-tempo has the new H1", function () {
+    // angles/06-chatgpt-falhou and v4 are frozen until the A/B ends on 26/10.
+    const forbidden = "Pagamento seguro na Stripe";
+    const approved = "Pagas uma vez. Recebes o PDF por email, normalmente em menos de 30 minutos";
+    const h1 = "Menos admin, mais tempo para visitas. 80 prompts prontos para o teu dia de consultor.";
+    const pages = copyScopePages();
+    const frozen = pages.filter(isFrozenAbPage);
+    expect(frozen.some(function (file) { return file.indexOf("angles/06-chatgpt-falhou/") === 0; })).toBe(true);
+    expect(frozen.some(function (file) { return file.indexOf("v4/") === 0; })).toBe(true);
+    const problems = [];
+    pages.forEach(function (file) {
+      if (isFrozenAbPage(file)) return;
+      const html = fs.readFileSync(file, "utf8");
+      if (html.indexOf(forbidden) !== -1) problems.push(file + " still contains " + forbidden);
+      if (html.indexOf("pay-note") !== -1 && html.indexOf(approved) === -1) problems.push(file + " missing the approved pay note");
+    });
+    expect(problems, problems.join("\n")).toEqual([]);
+    const tempo = fs.readFileSync("angles-v2/01-tempo/index.html", "utf8");
+    const found = tempo.match(/<h1>([^<]*)<\/h1>/);
+    expect(found && found[1]).toBe(h1);
+    expect(tempo).toContain('<p class="lead-in">Volta a ser tu a decidir onde vão as tuas horas.</p>');
+    const six = fs.readFileSync("angles/06-chatgpt-falhou/index.html", "utf8");
+    expect(six).toContain(forbidden);
+    const v4 = fs.readFileSync("v4/index.html", "utf8");
+    expect(v4).toContain("Pagamento único. Recebes o PDF por email, normalmente em menos de 30 minutos");
+    expect(v4.indexOf(forbidden)).toBe(-1);
   });
 
   test("Aceitar records cookie_consent and only then loads the pixel", async function ({ page }) {

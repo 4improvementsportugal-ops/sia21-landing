@@ -369,7 +369,8 @@ body {
 .offer-page .method h2,
 .offer-page .inside h2,
 .offer-page .objections h2,
-.offer-page .faq h2 {
+.offer-page .faq h2,
+.offer-page .author h2 {
   color: var(--ink);
   font-size: clamp(1.7rem, 4vw, 2.45rem);
   font-weight: 800;
@@ -857,7 +858,8 @@ body {
 
 .method,
 .inside,
-.objections {
+.objections,
+.offer-page:not(.v4) .author {
   background: #ffffff;
 }
 
@@ -1055,9 +1057,132 @@ section[id] {
   }
 }
 
+.author-grid {
+  display: grid;
+  gap: 1.1rem;
+  align-items: start;
+}
+
+.author-photo {
+  display: block;
+  width: 100%;
+  max-width: 240px;
+  height: auto;
+  border-radius: 1rem;
+}
+
+.author-copy p + p {
+  margin-top: 0.75rem;
+}
+
+.author-proof {
+  font-weight: 700;
+}
+
+.ebook-demo {
+  margin-top: 1.75rem;
+}
+
+.ebook-pages {
+  display: grid;
+  gap: 1rem;
+}
+
+.pdf-sheet {
+  margin: 0;
+  padding: 0.9rem 0.95rem 1rem;
+  background: #fff;
+  color: #0f172a;
+  border: 1px solid #e7e1d8;
+  border-radius: 0.4rem;
+  box-shadow: 0 18px 36px -28px rgba(15, 23, 42, 0.7);
+}
+
+.pdf-kicker {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin: 0 0 0.55rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid #e7e1d8;
+  color: #334155;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.pdf-sheet h3 {
+  margin: 0 0 0.55rem;
+  color: #0f172a;
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+}
+
+.pdf-prompt,
+.pdf-meta {
+  margin: 0;
+  color: #1e293b;
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+
+.pdf-prompt + .pdf-prompt {
+  margin-top: 0.45rem;
+}
+
+.pdf-prompt .muted {
+  color: #1e3a8a;
+  font-weight: 800;
+}
+
+.pdf-list,
+.pdf-plan {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pdf-list li,
+.pdf-plan li {
+  margin: 0;
+  padding: 0.4rem 0 0.4rem 0.85rem;
+  border-top: 1px solid #e7e1d8;
+  color: #1e293b;
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+
+.pdf-list li:first-child,
+.pdf-plan li:first-child {
+  border-top: 0;
+}
+
+.pdf-meta {
+  margin-top: 0.65rem;
+  font-weight: 700;
+}
+
+@media (min-width: 700px) {
+  .author-grid {
+    grid-template-columns: 240px minmax(0, 1fr);
+    gap: 1.5rem;
+    align-items: center;
+  }
+}
+
 @media (min-width: 800px) {
   .gift-list {
     grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (min-width: 900px) {
+  .ebook-pages {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: stretch;
   }
 }
 

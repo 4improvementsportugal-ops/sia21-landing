@@ -357,3 +357,42 @@ a.bg-blue-500:hover {
   background-color: #1e40af !important;
   color: #ffffff !important;
 }
+
+/* Local marks beside ChatGPT and Claude when the copy names them as tools.
+   Masks use the SVGs in this folder. No remote image. */
+.tool-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.22em;
+  white-space: nowrap;
+  vertical-align: baseline;
+}
+
+.tool-mark::before {
+  content: "";
+  width: 0.95em;
+  height: 0.95em;
+  flex: 0 0 auto;
+  background-color: currentColor;
+  -webkit-mask: var(--tool-icon) center / contain no-repeat;
+  mask: var(--tool-icon) center / contain no-repeat;
+}
+
+.tool-chatgpt {
+  --tool-icon: url("logo-chatgpt.svg");
+}
+
+.tool-claude {
+  --tool-icon: url("logo-claude.svg");
+}
+
+@media (max-width: 640px) {
+  .tool-mark {
+    gap: 0.16em;
+  }
+
+  .tool-mark::before {
+    width: 0.85em;
+    height: 0.85em;
+  }
+}

@@ -96,7 +96,10 @@
  * pages call, and only from SIA21_onHuman.
  *
  * Scroll depth is sia21_scroll (25/50/75/100, plus section ids when the
- * page has them), queued behind the same human gate. A milestone is the
+ * page has them), queued behind the same human gate. Each milestone also
+ * carries elapsed_ms (milliseconds since page load) and time_on_page_s
+ * (whole seconds the tab has been visible; the clock pauses while hidden).
+ * A milestone is the
  * fraction of the real scroll range the visitor has moved, not a reading
  * taken while the document is still one screen tall. $pageleave is flushed
  * on visibilitychange (hidden), pagehide and freeze, with sendBeacon.
@@ -140,6 +143,11 @@
   var accumulated = 0;
   var lastSample = 0;
   var lastVisible = false;
+  var visibleMs = 0;
+  var visibleCursor = 0;
+  try {
+    if (d.visibilityState === "visible") visibleCursor = Date.now();
+  } catch (e) {}
   var dwellTimer = null;
   var phQueue = [];
   var phDropped = false;
@@ -447,10 +455,13 @@
       var payload = props || {};
       if (name === "sia21_scroll") {
         collectVisibleSections();
+        var timing = scrollClock();
         payload = {
           depth: payload.depth,
           path: payload.path || (w.location.pathname || ""),
-          sections: seenSections.slice()
+          sections: seenSections.slice(),
+          elapsed_ms: typeof payload.elapsed_ms === "number" ? payload.elapsed_ms : timing.elapsed_ms,
+          time_on_page_s: typeof payload.time_on_page_s === "number" ? payload.time_on_page_s : timing.time_on_page_s
         };
         if (payload.depth) depthSent[payload.depth] = true;
       }
@@ -669,8 +680,38 @@
     if (moveCount > 3) markEngaged();
   }
 
+  function noteVisible(now) {
+    var open = false;
+    try { open = d.visibilityState === "visible"; } catch (e) { open = false; }
+    // A set cursor means the previous span was visible. Close it here, including
+    // the visibilitychange that hides the tab, then drop the cursor so a later
+    // tick cannot add the hidden gap.
+    if (visibleCursor) {
+      var delta = now - visibleCursor;
+      if (delta > 0) visibleMs += delta;
+    }
+    visibleCursor = open ? now : 0;
+  }
+
+  function scrollClock() {
+    var now = Date.now();
+    noteVisible(now);
+    var elapsed = now - startedAt;
+    if (!(elapsed >= 0)) elapsed = 0;
+    var seconds = Math.floor(visibleMs / 1000);
+    if (!(seconds >= 0)) seconds = 0;
+    return { elapsed_ms: Math.round(elapsed), time_on_page_s: seconds };
+  }
+
+  // Engagement cleanup removes the dwell sampler. This listener stays so the
+  // visible-time clock still closes when the tab hides.
+  d.addEventListener("visibilitychange", function () {
+    noteVisible(Date.now());
+  });
+
   function sampleDwell() {
     var now = Date.now();
+    noteVisible(now);
     var visible = tabVisible();
     if (!w.__SIA21_ENGAGED && visible && lastVisible && lastSample) {
       accumulated += now - lastSample;
@@ -681,6 +722,7 @@
   }
 
   function onVisibility() {
+    noteVisible(Date.now());
     lastSample = Date.now();
     lastVisible = tabVisible();
   }
@@ -1087,10 +1129,13 @@
     if (firedDepth[depth]) return;
     collectVisibleSections();
     firedDepth[depth] = true;
+    var timing = scrollClock();
     w.SIA21_captureWhenHuman("sia21_scroll", {
       depth: depth,
       path: w.location.pathname || "",
-      sections: seenSections.slice()
+      sections: seenSections.slice(),
+      elapsed_ms: timing.elapsed_ms,
+      time_on_page_s: timing.time_on_page_s
     }, { send_instantly: true });
   }
 

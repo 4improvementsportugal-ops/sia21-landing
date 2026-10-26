@@ -59,3 +59,8 @@ section h2{font-size:clamp(28px,4vw,42px);line-height:1.08;font-weight:800;lette
 @media(max-width:640px){.section{padding:56px 0}.steps,.offer-grid,.cost,.ledger,.adopt{grid-template-columns:1fr}.adopt div:last-child{grid-column:auto}.trust{grid-template-columns:1fr 1fr}.mobile-cta{display:flex}}
 @media(min-width:641px){.mobile-cta{display:none}}
 @media(prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
+.tool-mark{display:inline-flex;align-items:center;gap:.22em;white-space:nowrap;vertical-align:baseline}
+.tool-mark::before{content:"";width:.95em;height:.95em;flex:0 0 auto;background-color:currentColor;-webkit-mask:var(--tool-icon) center/contain no-repeat;mask:var(--tool-icon) center/contain no-repeat}
+.tool-chatgpt{--tool-icon:url("logo-chatgpt.svg")}
+.tool-claude{--tool-icon:url("logo-claude.svg")}
+@media(max-width:640px){.tool-mark{gap:.16em}.tool-mark::before{width:.85em;height:.85em}}

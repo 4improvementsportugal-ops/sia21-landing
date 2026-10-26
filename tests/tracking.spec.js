@@ -213,12 +213,6 @@ function copyScopePages() {
   return files.sort();
 }
 
-// angles/06-chatgpt-falhou and v4 are frozen until the A/B ends on 26/10.
-function isFrozenAbPage(file) {
-  const norm = String(file).split(path.sep).join("/");
-  return norm.indexOf("angles/06-chatgpt-falhou/") === 0 || norm.indexOf("v4/") === 0;
-}
-
 async function engage(page) {
   for (let i = 0; i < 5; i++) await page.mouse.move(24 + i * 10, 160 + i * 6);
   await page.waitForFunction(function () { return window.__SIA21_ENGAGED === true; });
@@ -1228,11 +1222,11 @@ test.describe("tracking", function () {
       const html = fs.readFileSync(file, "utf8");
       const need = [EARLY_37, "€37", "line-through", "€47", TRUST_LINE, TOOLS_LINE, PROOF_LINE, "sia21-consent.css", "privacidade", "Política de Privacidade", 'data-ck="accepted"', 'data-ck="rejected"'].concat(VALUE_LINES);
       need.forEach(function (needle) {
-        if (html.indexOf(needle) === -1) missing.push(file + " missing " + needle);
+        const hay = needle === TOOLS_LINE ? html.replace(/<[^>]+>/g, "") : html;
+        if (hay.indexOf(needle) === -1) missing.push(file + " missing " + needle);
       });
       if (html.indexOf("—") !== -1) missing.push(file + " contains an em dash");
-      // angles/06-chatgpt-falhou and v4 are frozen until the A/B ends on 26/10.
-      if (!isFrozenAbPage(file) && html.indexOf("Pagamento seguro na Stripe") !== -1) missing.push(file + " still has the old pay note");
+      if (html.indexOf("Pagamento seguro na Stripe") !== -1) missing.push(file + " still has the old pay note");
     });
     expect(missing, missing.join("\n")).toEqual([]);
     const obrigado = fs.readFileSync("obrigado.html", "utf8");
@@ -1254,17 +1248,13 @@ test.describe("tracking", function () {
   });
 
   test("no live page still says Pagamento seguro na Stripe, and 01-tempo has the new H1", function () {
-    // angles/06-chatgpt-falhou and v4 are frozen until the A/B ends on 26/10.
     const forbidden = "Pagamento seguro na Stripe";
     const approved = "Pagas uma vez. Recebes o PDF por email, normalmente em menos de 30 minutos";
     const h1 = "Menos admin, mais tempo para visitas. 80 prompts prontos para o teu dia de consultor.";
+    const scent = "Prompts prontos para o teu dia de consultor. Deixas de pedir tudo à IA do zero.";
     const pages = copyScopePages();
-    const frozen = pages.filter(isFrozenAbPage);
-    expect(frozen.some(function (file) { return file.indexOf("angles/06-chatgpt-falhou/") === 0; })).toBe(true);
-    expect(frozen.some(function (file) { return file.indexOf("v4/") === 0; })).toBe(true);
     const problems = [];
     pages.forEach(function (file) {
-      if (isFrozenAbPage(file)) return;
       const html = fs.readFileSync(file, "utf8");
       if (html.indexOf(forbidden) !== -1) problems.push(file + " still contains " + forbidden);
       if (html.indexOf("pay-note") !== -1 && html.indexOf(approved) === -1) problems.push(file + " missing the approved pay note");
@@ -1275,10 +1265,16 @@ test.describe("tracking", function () {
     expect(found && found[1]).toBe(h1);
     expect(tempo).toContain('<p class="lead-in">Volta a ser tu a decidir onde vão as tuas horas.</p>');
     const six = fs.readFileSync("angles/06-chatgpt-falhou/index.html", "utf8");
-    expect(six).toContain(forbidden);
+    const sixH1 = six.match(/<h1>([^<]*)<\/h1>/);
+    expect(sixH1 && sixH1[1]).toBe(scent);
+    expect(six).toContain(approved);
+    expect(six.indexOf(forbidden)).toBe(-1);
     const v4 = fs.readFileSync("v4/index.html", "utf8");
-    expect(v4).toContain("Pagamento único. Recebes o PDF por email, normalmente em menos de 30 minutos");
+    const v4H1 = v4.match(/<h1>([^<]*)<\/h1>/);
+    expect(v4H1 && v4H1[1]).toBe(scent);
+    expect(v4).toContain(approved);
     expect(v4.indexOf(forbidden)).toBe(-1);
+    expect(v4.indexOf("Pagamento único. Recebes o PDF")).toBe(-1);
   });
 
   test("Aceitar records cookie_consent and only then loads the pixel", async function ({ page }) {
@@ -1563,3 +1559,102 @@ test.describe("automated user agent", function () {
     expect(pixel, JSON.stringify(pixel)).toEqual([]);
   });
 });
+
+test("LP 06 and v4 put Pagas uma vez next to the 37 euro checkout", function () {
+    const approved = "Pagas uma vez. Recebes o PDF por email, normalmente em menos de 30 minutos";
+    const stripe = "buy.stripe.com/aFa5kF1OFc4D1fNb6mgrS02";
+    ["angles/06-chatgpt-falhou/index.html", "v4/index.html"].forEach(function (file) {
+      const html = fs.readFileSync(file, "utf8");
+      expect(html.indexOf("Pagamento seguro na Stripe")).toBe(-1);
+      let from = 0;
+      let notes = 0;
+      while (from < html.length) {
+        const idx = html.indexOf(approved, from);
+        if (idx === -1) break;
+        notes += 1;
+        const before = html.slice(Math.max(0, idx - 900), idx);
+        expect(before.indexOf(stripe), file + " note " + notes).not.toBe(-1);
+        from = idx + approved.length;
+      }
+      expect(notes).toBeGreaterThan(0);
+    });
+    const six = fs.readFileSync("angles/06-chatgpt-falhou/index.html", "utf8");
+    expect(six.match(/<h1>([^<]*)<\/h1>/)[1]).toBe("Prompts prontos para o teu dia de consultor. Deixas de pedir tudo à IA do zero.");
+    const v4 = fs.readFileSync("v4/index.html", "utf8");
+    expect(v4.match(/<h1>([^<]*)<\/h1>/)[1]).toBe("Prompts prontos para o teu dia de consultor. Deixas de pedir tudo à IA do zero.");
+    expect(six).toContain('id="pedro"');
+    expect(six).toContain('src="../../assets/pedro.webp"');
+    expect(six).toContain("Quem é o Pedro Ferreira");
+    expect(six).toContain('class="pdf-sheet"');
+    expect((six.match(/class="pdf-sheet"/g) || []).length).toBe(3);
+  });
+
+  test("compatible tool names keep a local ChatGPT mark and a local Claude mark", function () {
+    const pages = copyScopePages().concat(["obrigado.html", "v3/storytelling/index.html"]);
+    const missing = [];
+    pages.forEach(function (file) {
+      const html = fs.readFileSync(file, "utf8");
+      const namesTools = html.indexOf("planos pagos são opcionais") !== -1 || html.indexOf("Funciona com ChatGPT ou Claude") !== -1 || html.indexOf("ChatGPT ou Claude no telemóvel") !== -1;
+      if (!namesTools) return;
+      if (html.indexOf("tool-chatgpt") === -1 || html.indexOf("tool-claude") === -1) missing.push(file);
+      if (/https?:\/\/[^"']+(chatgpt|claude|openai|anthropic)[^"']*/i.test(html)) missing.push(file + " hotlinks a logo");
+    });
+    expect(missing, missing.join("\n")).toEqual([]);
+    expect(fs.existsSync("assets/logo-chatgpt.svg")).toBe(true);
+    expect(fs.existsSync("assets/logo-claude.svg")).toBe(true);
+    const consent = fs.readFileSync("assets/sia21-consent.css", "utf8");
+    expect(consent).toContain('url("logo-chatgpt.svg")');
+    expect(consent).toContain('url("logo-claude.svg")');
+  });
+
+  test("sia21_scroll records elapsed_ms and visible-tab seconds", async function ({ page }) {
+    await maskWebdriver(page);
+    const hits = await watchTracking(page);
+    await page.goto(PROD + "/index.html", { waitUntil: "domcontentloaded" });
+    await page.mouse.wheel(0, 400);
+    await page.evaluate(function () {
+      window.scrollTo(0, Math.round(document.documentElement.scrollHeight * 0.3));
+    });
+    const early = await waitFor(hits, function (events) {
+      return events.some(function (event) {
+        return event.event === "sia21_scroll" && event.properties && event.properties.depth === 25;
+      });
+    }, "missing depth 25");
+    const first = early.filter(function (event) {
+      return event.event === "sia21_scroll" && event.properties && event.properties.depth === 25;
+    })[0];
+    expect(Number.isInteger(first.properties.elapsed_ms)).toBe(true);
+    expect(first.properties.elapsed_ms).toBeGreaterThanOrEqual(0);
+    expect(Number.isInteger(first.properties.time_on_page_s)).toBe(true);
+    expect(first.properties.time_on_page_s).toBeGreaterThanOrEqual(0);
+    expect(first.properties.time_on_page_s * 1000).toBeLessThanOrEqual(first.properties.elapsed_ms + 1000);
+    await hidePage(page);
+    await page.waitForTimeout(2200);
+    await showPage(page);
+    await page.evaluate(function () {
+      window.scrollTo(0, document.documentElement.scrollHeight);
+    });
+    const scrolled = await waitFor(hits, function (events) {
+      const depths = events.filter(function (event) { return event.event === "sia21_scroll"; }).map(function (event) {
+        return event.properties && event.properties.depth;
+      });
+      return [25, 50, 75, 100].every(function (depth) { return depths.indexOf(depth) !== -1; });
+    }, "missing sia21_scroll depths");
+    [25, 50, 75, 100].forEach(function (depth) {
+      const hit = scrolled.filter(function (event) {
+        return event.event === "sia21_scroll" && event.properties && event.properties.depth === depth;
+      })[0];
+      expect(Number.isInteger(hit.properties.elapsed_ms)).toBe(true);
+      expect(Number.isInteger(hit.properties.time_on_page_s)).toBe(true);
+      expect(hit.properties.time_on_page_s).toBeGreaterThanOrEqual(0);
+    });
+    const full = scrolled.filter(function (event) {
+      return event.event === "sia21_scroll" && event.properties && event.properties.depth === 100;
+    })[0];
+    const visibleGain = full.properties.time_on_page_s - first.properties.time_on_page_s;
+    const elapsedGain = full.properties.elapsed_ms - first.properties.elapsed_ms;
+    expect(elapsedGain).toBeGreaterThanOrEqual(2000);
+    // 2200ms hidden must stay out of the floored visible clock. Real visible
+    // work between the two milestones can add about a second.
+    expect(elapsedGain - visibleGain * 1000).toBeGreaterThanOrEqual(1200);
+  });

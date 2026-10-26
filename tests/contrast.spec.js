@@ -247,7 +247,7 @@ test.describe("checkout contrast", function () {
       var html = await page.content();
       if (html.indexOf("human-gate.js") === -1) problems.push(rel + " missing human gate");
       if (html.indexOf(TRUST) === -1) problems.push(rel + " missing trust line");
-      if (html.indexOf(TOOLS) === -1) problems.push(rel + " missing ChatGPT line");
+      if (html.replace(/<[^>]+>/g, "").indexOf(TOOLS) === -1) problems.push(rel + " missing ChatGPT line");
       if (rel.indexOf("obrigado") === -1 && html.indexOf(EARLY) === -1) problems.push(rel + " missing the €37 payment link");
       var struck = html.indexOf("€47") !== -1 || (html.indexOf("47 €") !== -1 && html.indexOf("line-through") !== -1);
       if (!struck && rel.indexOf("obrigado") === -1) problems.push(rel + " missing the struck 47 €");

@@ -54,9 +54,10 @@ test.describe("v4 variante", function () {
     expect(file.indexOf("fundador")).toBe(-1);
     expect(file.indexOf("Preço early")).toBe(-1);
     expect(file.indexOf("Pagamento único ·")).toBe(-1);
-    expect(file.match(/Pagamento único/g)).toEqual(["Pagamento único"]);
+    expect(file.indexOf("Pagamento único")).toBe(-1);
+    expect(file).toContain("pagamento único");
     expect(file.match(/Recebes o PDF/g)).toEqual(["Recebes o PDF", "Recebes o PDF"]);
-    expect(file).toContain("Pagamento único. Recebes o PDF por email, normalmente em menos de 30 minutos. Dúvidas?");
+    expect(file).toContain("Pagas uma vez. Recebes o PDF por email, normalmente em menos de 30 minutos. Dúvidas?");
     expect(file.indexOf("Pagamento único. Sem mensalidades.")).toBe(-1);
     expect(file.indexOf("Pagas no Stripe e recebes o PDF por email.")).toBe(-1);
     expect(file.indexOf('class="pay-line"')).toBe(-1);
@@ -91,7 +92,9 @@ test.describe("v4 variante", function () {
     expect(file).toContain('loading="lazy"');
     expect(file).toContain("ChatGPT");
     expect(file).toContain("Claude");
-    expect(file).toContain("Funciona com o ChatGPT grátis ou com o Claude; os planos pagos são opcionais.");
+    expect(file.replace(/<[^>]+>/g, "")).toContain("Funciona com o ChatGPT grátis ou com o Claude; os planos pagos são opcionais.");
+    expect(file).toContain("tool-chatgpt");
+    expect(file).toContain("tool-claude");
     expect(count).toContain("IntersectionObserver");
     expect(count).toContain("1350");
     expect(count).toContain("prefers-reduced-motion");

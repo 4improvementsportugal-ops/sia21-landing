@@ -135,7 +135,8 @@
   var INTERNAL_KEY = "sia21_internal_v1";
   var UA_TOKENS = ["headlesschrome", "headless", "playwright", "puppeteer", "lighthouse", "bot", "crawler", "spider"];
   var ENGAGED_KEY = "sia21_engaged_v1";
-  var PH_TOKEN = "phc_knF2fZccBcGVgHcayHbPfcYfXguFx3jzxaBksdduz9R3";
+  // PostHog: projeto próprio do SIA21 (organização SIA21, projeto 330142), separado da N5 Clara desde 1/11/2026
+  var PH_TOKEN = "phc_mAcoW4TV3uQhYAbMAqmW5w6riDmwzSEQt2VRANRuA7xi";
   var listeners = [];
   var fired = false;
   var cleaned = false;
